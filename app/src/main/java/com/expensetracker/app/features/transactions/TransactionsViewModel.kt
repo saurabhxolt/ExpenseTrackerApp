@@ -22,9 +22,11 @@ data class TransactionsUiState(
     val categories: List<String> = emptyList(),
     val monthYearOptions: List<String> = listOf("ALL"),
     val selectedMonthYear: String = "ALL",
+    val selectedCategoryFilter: String = "ALL",
     val selectedFilter: String = "ALL", // ALL, DEBIT, CREDIT
     val selectedSortOrder: String = "NEWEST", // NEWEST, OLDEST, HIGH_LOW, LOW_HIGH
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val lastDeletedTransaction: TransactionEntity? = null
 )
 
 @HiltViewModel
@@ -34,24 +36,28 @@ class TransactionsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _selectedFilter = MutableStateFlow("ALL")
+    private val _selectedCategoryFilter = MutableStateFlow("ALL")
     private val _selectedMonthYear = MutableStateFlow("ALL")
     private val _selectedSortOrder = MutableStateFlow("NEWEST")
     private val _searchQuery = MutableStateFlow("")
+    private val _lastDeletedTransaction = MutableStateFlow<TransactionEntity?>(null)
 
     private val _filterState = combine(
         _selectedFilter,
+        _selectedCategoryFilter,
         _selectedMonthYear,
         _selectedSortOrder,
         _searchQuery
-    ) { filter, monthYear, sortOrder, query ->
-        FilterState(filter, monthYear, sortOrder, query)
+    ) { filter, catFilter, monthYear, sortOrder, query ->
+        FilterState(filter, catFilter, monthYear, sortOrder, query)
     }
 
     val uiState: StateFlow<TransactionsUiState> = combine(
         repository.allTransactions,
         categoryRepository.allCategories,
-        _filterState
-    ) { list, categoryEntities, filterState ->
+        _filterState,
+        _lastDeletedTransaction
+    ) { list, categoryEntities, filterState, lastDeleted ->
 
         val monthFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
         val availableMonths = list
@@ -66,12 +72,13 @@ class TransactionsViewModel @Inject constructor(
                 "CREDIT" -> item.type == "CREDIT"
                 else -> true
             }
+            val matchesCategory = if (filterState.categoryFilter == "ALL") true else item.category.equals(filterState.categoryFilter, ignoreCase = true)
             val matchesMonth = if (filterState.monthYear == "ALL") true else monthFormat.format(Date(item.timestamp)) == filterState.monthYear
             val matchesQuery = filterState.query.isBlank() ||
                     item.merchant.contains(filterState.query, ignoreCase = true) ||
                     item.category.contains(filterState.query, ignoreCase = true)
 
-            matchesType && matchesMonth && matchesQuery
+            matchesType && matchesCategory && matchesMonth && matchesQuery
         }
 
         val sorted = when (filterState.sortOrder) {
@@ -90,9 +97,11 @@ class TransactionsViewModel @Inject constructor(
             categories = combinedCategories,
             monthYearOptions = allMonthOptions,
             selectedMonthYear = filterState.monthYear,
+            selectedCategoryFilter = filterState.categoryFilter,
             selectedFilter = filterState.filter,
             selectedSortOrder = filterState.sortOrder,
-            searchQuery = filterState.query
+            searchQuery = filterState.query,
+            lastDeletedTransaction = lastDeleted
         )
     }.stateIn(
         scope = viewModelScope,
@@ -102,6 +111,10 @@ class TransactionsViewModel @Inject constructor(
 
     fun setFilter(filter: String) {
         _selectedFilter.value = filter
+    }
+
+    fun setCategoryFilter(category: String) {
+        _selectedCategoryFilter.value = category
     }
 
     fun setMonthYearFilter(monthYear: String) {
@@ -129,12 +142,23 @@ class TransactionsViewModel @Inject constructor(
 
     fun deleteTransaction(transaction: TransactionEntity) {
         viewModelScope.launch {
+            _lastDeletedTransaction.value = transaction
             repository.deleteTransaction(transaction)
+        }
+    }
+
+    fun restoreLastDeletedTransaction() {
+        viewModelScope.launch {
+            _lastDeletedTransaction.value?.let { trx ->
+                repository.insertTransaction(trx)
+                _lastDeletedTransaction.value = null
+            }
         }
     }
 
     private data class FilterState(
         val filter: String,
+        val categoryFilter: String,
         val monthYear: String,
         val sortOrder: String,
         val query: String

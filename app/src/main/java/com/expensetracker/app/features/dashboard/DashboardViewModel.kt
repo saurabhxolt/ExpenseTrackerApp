@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -27,9 +28,12 @@ data class DashboardUiState(
     val monthYearOptions: List<String> = listOf("ALL"),
     val selectedMonthYear: String = "ALL",
     val selectedSortOrder: String = "NEWEST", // NEWEST, OLDEST, HIGH_LOW, LOW_HIGH
+    val todayExpenses: Double = 0.0,
+    val thisWeekExpenses: Double = 0.0,
     val totalExpenses: Double = 0.0,
     val totalIncome: Double = 0.0,
     val netBalance: Double = 0.0,
+    val lastDeletedTransaction: TransactionEntity? = null,
     val isAutoTrackingEnabled: Boolean = false,
     val isScanning: Boolean = false
 )
@@ -44,6 +48,7 @@ class DashboardViewModel @Inject constructor(
     private val _isAutoTrackingEnabled = MutableStateFlow(false)
     private val _selectedMonthYear = MutableStateFlow("ALL")
     private val _selectedSortOrder = MutableStateFlow("NEWEST")
+    private val _lastDeletedTransaction = MutableStateFlow<TransactionEntity?>(null)
 
     private val _filterState = combine(
         _selectedMonthYear,
@@ -57,8 +62,15 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = combine(
         repository.allTransactions,
         categoryRepository.allCategories,
-        _filterState
-    ) { transactions, categoryEntities, filterState ->
+        _filterState,
+        _lastDeletedTransaction
+    ) { transactions, categoryEntities, filterState, lastDeleted ->
+
+        val startOfToday = getStartOfTodayTimestamp()
+        val startOf7DaysAgo = getStartOf7DaysAgoTimestamp()
+
+        val todayExp = transactions.filter { it.type == "DEBIT" && it.timestamp >= startOfToday }.sumOf { it.amount }
+        val weekExp = transactions.filter { it.type == "DEBIT" && it.timestamp >= startOf7DaysAgo }.sumOf { it.amount }
 
         val monthFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
         val availableMonths = transactions
@@ -93,9 +105,12 @@ class DashboardViewModel @Inject constructor(
             monthYearOptions = allMonthOptions,
             selectedMonthYear = filterState.monthYear,
             selectedSortOrder = filterState.sortOrder,
+            todayExpenses = todayExp,
+            thisWeekExpenses = weekExp,
             totalExpenses = totalExp,
             totalIncome = totalInc,
             netBalance = totalInc - totalExp,
+            lastDeletedTransaction = lastDeleted,
             isAutoTrackingEnabled = filterState.isAutoTrackingEnabled,
             isScanning = filterState.isScanning
         )
@@ -165,8 +180,37 @@ class DashboardViewModel @Inject constructor(
 
     fun deleteTransaction(transaction: TransactionEntity) {
         viewModelScope.launch {
+            _lastDeletedTransaction.value = transaction
             repository.deleteTransaction(transaction)
         }
+    }
+
+    fun restoreLastDeletedTransaction() {
+        viewModelScope.launch {
+            _lastDeletedTransaction.value?.let { trx ->
+                repository.insertTransaction(trx)
+                _lastDeletedTransaction.value = null
+            }
+        }
+    }
+
+    private fun getStartOfTodayTimestamp(): Long {
+        val c = Calendar.getInstance()
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        return c.timeInMillis
+    }
+
+    private fun getStartOf7DaysAgoTimestamp(): Long {
+        val c = Calendar.getInstance()
+        c.add(Calendar.DAY_OF_YEAR, -7)
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        return c.timeInMillis
     }
 
     private data class FilterState(

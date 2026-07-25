@@ -1,7 +1,7 @@
 # Expense Tracker App - Software Requirements Specification (SRS)
 Version: 5.0 | Platform Target: Android Native (Kotlin + Compose)
 
-This document serves as the master blueprint for developing an offline-first, privacy-focused Android expense tracker with automated multi-channel transaction parsing, SQLCipher encryption, on-device machine learning, smart NLP regex engines, monthwise SMS scanning, Budgets Engine, Analytics Charts, Encrypted Backup & Restore, Custom Categories, Subscriptions Tracker, and Transaction Details with Original SMS View launcher.
+This document serves as the master blueprint for developing an offline-first, privacy-focused Android expense tracker with automated multi-channel transaction parsing, SQLCipher encryption, on-device machine learning, smart NLP regex engines, monthwise SMS scanning, Budgets Engine, Analytics Charts, Encrypted Backup & Restore, Custom Categories, Subscriptions Tracker, Transaction Details with Original SMS View launcher, Today/Weekly Spending Cards, and Interactive Canvas Charts.
 
 # 1. Vision
 Build a privacy-first personal expense tracker that automatically captures bank and UPI financial transactions via SMS and push notifications, categorizes transactions using lightweight local ML and smart NLP rules, provides budgeting and analytics, and never requires company-hosted storage for user financial data.
@@ -18,43 +18,40 @@ Build a privacy-first personal expense tracker that automatically captures bank 
 # 3. Target Users
 Students, salaried employees, families, freelancers, and small business owners seeking automated, private expense tracking.
 
-# 4. Functional Requirements
+# 4. Functional Requirements & Roadmap Phases
 
-## Automated Transaction Reader & Smart NLP Engine
-- Parse transaction amount, merchant/VPA, account/card ending digits, balance, transaction type (DEBIT/CREDIT), and timestamp.
+## Phase 1: Core Automated Ingestion & Parsing (COMPLETED)
+- Parse amount, merchant/VPA, account/card ending digits, balance, transaction type (DEBIT/CREDIT), and timestamp.
 - Exclusion Filter Rules: Rejects non-transaction messages (e.g. account balance inquiries, e-mandates, upcoming bill reminders).
 - Precise Amount Extraction: Isolates actual transaction spend/credit and ignores embedded Available Credit Limits or Current Outstanding balances.
-- Support dual-channel detection: Android SMS Receiver and NotificationListenerService for banking/UPI apps (GPay, PhonePe, Paytm, CRED, HDFC, ICICI, SBI, Axis, BOBCARD, Kotak, etc.).
-- Historical Monthwise & Incremental SMS Scanner: Scans inbox from the 1st of the current month on first run, and incrementally scans only new messages received after lastScanTimestamp on subsequent runs.
+- Dual-channel detection: Android SMS Receiver and NotificationListenerService for banking/UPI apps.
+- Historical Monthwise & Incremental SMS Scanner.
 
-## Transactions Management, Search, Filters & Details
-- Full Manual CRUD: Add, edit, delete, and duplicate transactions via FloatingActionButton (+) dialog.
-- Live Custom Categories: Dynamically populates newly created custom categories in transaction add and edit modals.
-- Edit & Re-Assign Category: Rename merchant titles, edit amounts, and reassign categories for any transaction.
-- Transaction Details Modal: Full-screen modal displaying merchant name, category, exact timestamp, amount, transaction hash, and the raw SMS/statement string.
-- View Original SMS Button: One-tap launcher button inside details modal to open the device native Messages application.
-- Month-Year Filtering: Filter transactions by month and year (e.g., Jul 2026, Jun 2026, All).
-- Sorting Controls: Sort transactions by Newest First, Oldest First, Amount: High to Low, or Amount: Low to High.
+## Phase 2: Navigation, Budgets & Search (COMPLETED)
+- Material3 Bottom Navigation Bar with 5 main tabs (Dashboard, Transactions, Budgets, Analytics, Settings).
+- Category monthly spending caps with animated progress bars & color alerts (Green, Amber, Red).
+- Search transactions by merchant or category.
 
-## Budgets & Spending Caps Engine
-- Category monthly spending caps (e.g., ₹10,000 max for Food & Dining).
-- Color-coded progress bars (Green < 80%, Amber 80-99%, Red >= 100%).
-- Modal dialog to set or update category monthly spending limits.
-
-## Custom Categories & Color Pickers
-- Create, edit, and delete custom expense and income categories.
-- Custom color picker palette selection for visual identification.
-
-## Recurring Subscriptions & Mandates Tracker
-- Autopay & Subscription Detection: Tracks monthly recurring payments (Netflix, Spotify, Rent, Broadband, Mutual Fund SIPs).
-- Total Monthly Recurring Cost Header and due date badges.
-
-## Analytics & Visual Breakdown Charts
-- Cashflow Summary: Total Income vs Total Expenses comparison.
-- Top Spending Category highlight badge.
-- Category spending distribution leaderboard with percentage breakdown bars.
-
-## Security & Backup
-- Biometric App Lock (Fingerprint, Face Unlock) with PIN fallback and FragmentActivity lifecycle handling.
-- Encrypted Backup & Restore: Export/Import JSON backup snapshots via Storage Access Framework (SAF).
+## Phase 3: Privacy, Security & Data Export (COMPLETED)
+- Biometric App Lock (Fingerprint, Face Unlock, PIN).
+- Encrypted JSON Backup & Restore via SAF.
 - CSV Spreadsheet Reports Exporter.
+
+## Phase 4: Customization & Subscriptions (COMPLETED)
+- Custom Category Creator & Color Picker.
+- Recurring Subscriptions & Mandates Tracker (Netflix, Rent, SIP, Autopay).
+
+## Phase 5: Visual Canvas Charts & Quick Stats (COMPLETED)
+- Interactive Jetpack Compose Canvas Donut/Pie Chart for category spending distribution.
+- Interactive Jetpack Compose Canvas Income vs Expense Bar Chart.
+- Today's Spend & This Week's Spend quick summary cards on Dashboard.
+- Category Filter Chips bar on Transactions screen.
+- Undo / Restore Deleted Transaction snackbar functionality.
+
+## Phase 6: Push Reminders & Home Screen Widget (UPCOMING)
+- Bill & EMI Due Date Notification Reminders (scheduled 2 days before due dates via WorkManager).
+- Android Home Screen App Widget for quick balance checking & expense entry.
+
+## Phase 7: PDF Reports & Investments Portfolio (UPCOMING)
+- Formatted PDF Monthly Report Exporter with tables and visual charts.
+- Investments Portfolio Tracker (Mutual Fund SIPs, FDs, and Stocks).

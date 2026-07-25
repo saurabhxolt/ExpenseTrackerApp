@@ -1,9 +1,19 @@
 # Expense Tracker Platform - Product Roadmap
 Version: 2.0 | Multi-Phase Long-Term Product Strategy
 
-# Version 1.0 – Full Release Completed
-- Phase 1: Multi-channel SMS/Notification Auto-Tracking + SQLCipher Room DB.
-- Phase 2: Material3 Bottom Navigation + Budgets Engine + Analytics Charts + Transactions Search.
-- Phase 3: Biometric App Lock + Encrypted Backup/Restore + CSV Reports Exporter + Settings Tab.
-- Phase 4: Custom Category Creator + Color Pickers + Subscriptions & Mandates Tracker.
-- Phase 5: Transaction Details Modal + Raw SMS Text View + Messages App Launcher + Month/Year Filters & Sorting.
+# Development Roadmap Status
+
+- **Phase 1: Ingestion & Storage Core** — ✅ COMPLETED
+  - Multi-channel SMS & Notification Listener + Smart NLP parser + Monthwise Inbox Scanner.
+- **Phase 2: Budgets & Search** — ✅ COMPLETED
+  - Bottom Navigation Bar + Category Budget Caps + Transaction Search & Filter.
+- **Phase 3: Security & Export** — ✅ COMPLETED
+  - Biometric App Lock + Encrypted JSON Backup/Restore + CSV Exporter.
+- **Phase 4: Customization & Subscriptions** — ✅ COMPLETED
+  - Custom Category Creator + Color Pickers + Subscriptions Tracker.
+- **Phase 5: Visual Charts & Quick Stats** — ✅ COMPLETED
+  - Canvas Donut & Bar Charts + Today/Weekly Spending Cards + Category Filter Chips + Undo Delete.
+- **Phase 6: Reminders & Widgets** — ⏳ PLANNED
+  - Bill & EMI Due Date Push Reminders + Android Home Screen Widget.
+- **Phase 7: PDF Export & Investments** — ⏳ PLANNED
+  - Native Formatted PDF Report Exporter + Investment Portfolio Tracker.

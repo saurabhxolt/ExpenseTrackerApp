@@ -55,6 +55,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,6 +68,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +88,7 @@ import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.core.ui.theme.RedExpense
 import com.expensetracker.app.core.ui.theme.TextPrimary
 import com.expensetracker.app.core.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -96,6 +102,8 @@ fun DashboardRoute(
     var selectedTransactionDetails by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -116,6 +124,7 @@ fun DashboardRoute(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
@@ -134,7 +143,19 @@ fun DashboardRoute(
                 onSortOrderSelected = { viewModel.setSortOrder(it) },
                 onTransactionClick = { selectedTransactionDetails = it },
                 onEditTransaction = { editingTransaction = it },
-                onDeleteTransaction = { viewModel.deleteTransaction(it) },
+                onDeleteTransaction = { trx ->
+                    viewModel.deleteTransaction(trx)
+                    scope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Transaction deleted",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            viewModel.restoreLastDeletedTransaction()
+                        }
+                    }
+                },
                 onScanInbox = { viewModel.triggerSmsInboxScan(context) }
             )
 
@@ -160,6 +181,16 @@ fun DashboardRoute(
                     onDelete = {
                         viewModel.deleteTransaction(trx)
                         selectedTransactionDetails = null
+                        scope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Transaction deleted",
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                viewModel.restoreLastDeletedTransaction()
+                            }
+                        }
                     },
                     onOpenSmsApp = {
                         openMessagesApp(context)
@@ -282,6 +313,48 @@ fun DashboardScreen(
                                 color = TextSecondary
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // Quick Stats: Today's Spend & This Week's Spend
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(text = "Today's Spend 📅", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "₹${String.format("%.2f", uiState.todayExpenses)}",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(text = "This Week 📊", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "₹${String.format("%.2f", uiState.thisWeekExpenses)}",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
                     }
                 }
             }
