@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
@@ -38,6 +40,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,11 +51,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.GreenSuccess
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.core.ui.theme.TextPrimary
 import com.expensetracker.app.core.ui.theme.TextSecondary
+import com.expensetracker.app.features.categories.CategoriesRoute
+import com.expensetracker.app.features.categories.CategoriesViewModel
+import com.expensetracker.app.features.subscriptions.SubscriptionsRoute
+import com.expensetracker.app.features.subscriptions.SubscriptionsViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -60,6 +70,7 @@ fun SettingsRoute(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var subScreen by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadInitialState(context)
@@ -82,25 +93,39 @@ fun SettingsRoute(
         }
     }
 
-    SettingsScreen(
-        uiState = uiState,
-        onToggleBiometric = { viewModel.toggleBiometric(context, it) },
-        onExportCsv = {
-            scope.launch {
-                val csv = viewModel.exportCsvData()
-                shareTextFile(context, csv, "expense_report.csv", "text/csv")
-            }
-        },
-        onExportBackup = {
-            scope.launch {
-                val json = viewModel.exportBackupJson()
-                shareTextFile(context, json, "expense_backup.json", "application/json")
-            }
-        },
-        onImportBackup = {
-            importBackupLauncher.launch("*/*")
+    when (subScreen) {
+        "CATEGORIES" -> {
+            val categoriesVm: CategoriesViewModel = hiltViewModel()
+            CategoriesRoute(viewModel = categoriesVm)
         }
-    )
+        "SUBSCRIPTIONS" -> {
+            val subscriptionsVm: SubscriptionsViewModel = hiltViewModel()
+            SubscriptionsRoute(viewModel = subscriptionsVm)
+        }
+        else -> {
+            SettingsScreen(
+                uiState = uiState,
+                onToggleBiometric = { viewModel.toggleBiometric(context, it) },
+                onExportCsv = {
+                    scope.launch {
+                        val csv = viewModel.exportCsvData()
+                        shareTextFile(context, csv, "expense_report.csv", "text/csv")
+                    }
+                },
+                onExportBackup = {
+                    scope.launch {
+                        val json = viewModel.exportBackupJson()
+                        shareTextFile(context, json, "expense_backup.json", "application/json")
+                    }
+                },
+                onImportBackup = {
+                    importBackupLauncher.launch("*/*")
+                },
+                onOpenCategories = { subScreen = "CATEGORIES" },
+                onOpenSubscriptions = { subScreen = "SUBSCRIPTIONS" }
+            )
+        }
+    }
 }
 
 @Composable
@@ -109,7 +134,9 @@ fun SettingsScreen(
     onToggleBiometric: (Boolean) -> Unit = {},
     onExportCsv: () -> Unit = {},
     onExportBackup: () -> Unit = {},
-    onImportBackup: () -> Unit = {}
+    onImportBackup: () -> Unit = {},
+    onOpenCategories: () -> Unit = {},
+    onOpenSubscriptions: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -154,6 +181,29 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+
+        // Management Section
+        item {
+            Text("Management", style = MaterialTheme.typography.titleLarge)
+        }
+
+        item {
+            SettingsActionItem(
+                icon = Icons.Default.Category,
+                title = "Custom Category Manager",
+                subtitle = "Add, edit, or remove expense & income categories",
+                onClick = onOpenCategories
+            )
+        }
+
+        item {
+            SettingsActionItem(
+                icon = Icons.Default.Autorenew,
+                title = "Recurring Mandates & Subscriptions",
+                subtitle = "Track monthly autopays, rent, and subscriptions",
+                onClick = onOpenSubscriptions
+            )
         }
 
         // Security Section
@@ -240,7 +290,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text("Expense Tracker App", fontWeight = FontWeight.Bold)
-                            Text("Version 1.0.0 (Phase 3 Release)", fontSize = 12.sp, color = TextSecondary)
+                            Text("Version 1.0.0 (Phase 4 Release)", fontSize = 12.sp, color = TextSecondary)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
