@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
-import com.expensetracker.app.core.ui.theme.TextPrimary
 import com.expensetracker.app.core.ui.theme.TextSecondary
 import com.expensetracker.app.features.analytics.AnalyticsRoute
 import com.expensetracker.app.features.analytics.AnalyticsViewModel
@@ -31,6 +31,8 @@ import com.expensetracker.app.features.budgets.BudgetsRoute
 import com.expensetracker.app.features.budgets.BudgetsViewModel
 import com.expensetracker.app.features.dashboard.DashboardRoute
 import com.expensetracker.app.features.dashboard.DashboardViewModel
+import com.expensetracker.app.features.settings.SettingsRoute
+import com.expensetracker.app.features.settings.SettingsViewModel
 import com.expensetracker.app.features.transactions.TransactionsRoute
 import com.expensetracker.app.features.transactions.TransactionsViewModel
 
@@ -47,7 +49,8 @@ fun MainScreen() {
         NavItem("Dashboard", Icons.Default.Dashboard),
         NavItem("Transactions", Icons.Default.ReceiptLong),
         NavItem("Budgets", Icons.Default.AccountBalanceWallet),
-        NavItem("Analytics", Icons.Default.PieChart)
+        NavItem("Analytics", Icons.Default.PieChart),
+        NavItem("Settings", Icons.Default.Settings)
     )
 
     Scaffold(
@@ -90,6 +93,10 @@ fun MainScreen() {
                 3 -> {
                     val analyticsVm: AnalyticsViewModel = hiltViewModel()
                     AnalyticsRoute(viewModel = analyticsVm)
+                }
+                4 -> {
+                    val settingsVm: SettingsViewModel = hiltViewModel()
+                    SettingsRoute(viewModel = settingsVm)
                 }
             }
         }
