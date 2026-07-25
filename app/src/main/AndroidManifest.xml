@@ -48,6 +48,18 @@
             </intent-filter>
         </service>
 
+        <!-- Home Screen App Widget Receiver -->
+        <receiver
+            android:name=".widget.ExpenseWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/expense_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

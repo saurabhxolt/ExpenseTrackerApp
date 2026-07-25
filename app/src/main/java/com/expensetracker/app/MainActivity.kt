@@ -35,6 +35,7 @@ import com.expensetracker.app.core.ui.theme.TextPrimary
 import com.expensetracker.app.core.ui.theme.TextSecondary
 import com.expensetracker.app.features.main.MainScreen
 import com.expensetracker.app.features.security.BiometricLockManager
+import com.expensetracker.app.ingestion.worker.BillReminderWorker
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -46,6 +47,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         checkAppLockState()
+
+        // Schedule periodic 24-hour Bill & EMI Due Date Reminder Worker
+        BillReminderWorker.schedulePeriodicReminders(this)
 
         setContent {
             ExpenseTrackerTheme {

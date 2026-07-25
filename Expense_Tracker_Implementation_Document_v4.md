@@ -20,3 +20,5 @@ Version: 4.0 | Technical Stack & Architectural Guidelines
 - features/security/ (BiometricLockManager)
 - features/backup/ (BackupManager)
 - features/reports/ (ReportsExporter)
+- ingestion/worker/ (BillReminderWorker)
+- widget/ (ExpenseWidgetProvider)

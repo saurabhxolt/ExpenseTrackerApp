@@ -13,7 +13,7 @@ Version: 2.0 | Multi-Phase Long-Term Product Strategy
   - Custom Category Creator + Color Pickers + Subscriptions Tracker.
 - **Phase 5: Visual Charts & Quick Stats** — ✅ COMPLETED
   - Canvas Donut & Bar Charts + Today/Weekly Spending Cards + Category Filter Chips + Undo Delete.
-- **Phase 6: Reminders & Widgets** — ⏳ PLANNED
+- **Phase 6: Reminders & Widgets** — ✅ COMPLETED
   - Bill & EMI Due Date Push Reminders + Android Home Screen Widget.
 - **Phase 7: PDF Export & Investments** — ⏳ PLANNED
   - Native Formatted PDF Report Exporter + Investment Portfolio Tracker.

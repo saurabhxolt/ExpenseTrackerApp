@@ -1,7 +1,7 @@
 # Expense Tracker App - Software Requirements Specification (SRS)
 Version: 5.0 | Platform Target: Android Native (Kotlin + Compose)
 
-This document serves as the master blueprint for developing an offline-first, privacy-focused Android expense tracker with automated multi-channel transaction parsing, SQLCipher encryption, on-device machine learning, smart NLP regex engines, monthwise SMS scanning, Budgets Engine, Analytics Charts, Encrypted Backup & Restore, Custom Categories, Subscriptions Tracker, Transaction Details with Original SMS View launcher, Today/Weekly Spending Cards, and Interactive Canvas Charts.
+This document serves as the master blueprint for developing an offline-first, privacy-focused Android expense tracker with automated multi-channel transaction parsing, SQLCipher encryption, on-device machine learning, smart NLP regex engines, monthwise SMS scanning, Budgets Engine, Analytics Charts, Encrypted Backup & Restore, Custom Categories, Subscriptions Tracker, Transaction Details with Original SMS View launcher, Today/Weekly Spending Cards, Interactive Canvas Charts, Bill & EMI Push Notification Reminders, and Home Screen App Widgets.
 
 # 1. Vision
 Build a privacy-first personal expense tracker that automatically captures bank and UPI financial transactions via SMS and push notifications, categorizes transactions using lightweight local ML and smart NLP rules, provides budgeting and analytics, and never requires company-hosted storage for user financial data.
@@ -22,13 +22,13 @@ Students, salaried employees, families, freelancers, and small business owners s
 
 ## Phase 1: Core Automated Ingestion & Parsing (COMPLETED)
 - Parse amount, merchant/VPA, account/card ending digits, balance, transaction type (DEBIT/CREDIT), and timestamp.
-- Exclusion Filter Rules: Rejects non-transaction messages (e.g. account balance inquiries, e-mandates, upcoming bill reminders).
-- Precise Amount Extraction: Isolates actual transaction spend/credit and ignores embedded Available Credit Limits or Current Outstanding balances.
-- Dual-channel detection: Android SMS Receiver and NotificationListenerService for banking/UPI apps.
+- Exclusion Filter Rules: Rejects non-transaction messages.
+- Precise Amount Extraction.
+- Dual-channel detection: Android SMS Receiver and NotificationListenerService.
 - Historical Monthwise & Incremental SMS Scanner.
 
 ## Phase 2: Navigation, Budgets & Search (COMPLETED)
-- Material3 Bottom Navigation Bar with 5 main tabs (Dashboard, Transactions, Budgets, Analytics, Settings).
+- Material3 Bottom Navigation Bar with 5 main tabs.
 - Category monthly spending caps with animated progress bars & color alerts (Green, Amber, Red).
 - Search transactions by merchant or category.
 
@@ -48,9 +48,9 @@ Students, salaried employees, families, freelancers, and small business owners s
 - Category Filter Chips bar on Transactions screen.
 - Undo / Restore Deleted Transaction snackbar functionality.
 
-## Phase 6: Push Reminders & Home Screen Widget (UPCOMING)
-- Bill & EMI Due Date Notification Reminders (scheduled 2 days before due dates via WorkManager).
-- Android Home Screen App Widget for quick balance checking & expense entry.
+## Phase 6: Push Reminders & Home Screen Widget (COMPLETED)
+- Bill & EMI Due Date Notification Reminders (scheduled 24-hourly via WorkManager).
+- Android Home Screen App Widget for quick balance checking & 1-tap app launching.
 
 ## Phase 7: PDF Reports & Investments Portfolio (UPCOMING)
 - Formatted PDF Monthly Report Exporter with tables and visual charts.
