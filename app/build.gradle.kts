@@ -67,6 +67,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
+    // Image Loading Coil
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Room Database + SQLCipher Encryption
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
