@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.expensetracker.app.core.ui.theme.ExpenseTrackerTheme
-import com.expensetracker.app.features.dashboard.DashboardScreen
+import com.expensetracker.app.features.dashboard.DashboardRoute
+import com.expensetracker.app.features.dashboard.DashboardViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -21,7 +23,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DashboardScreen()
+                    val viewModel: DashboardViewModel = hiltViewModel()
+                    DashboardRoute(viewModel = viewModel)
                 }
             }
         }
