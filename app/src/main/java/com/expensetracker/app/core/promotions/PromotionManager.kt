@@ -23,35 +23,15 @@ class PromotionManager @Inject constructor(
     private val DEFAULT_REMOTE_JSON_URL = "https://raw.githubusercontent.com/saurabhxolt/ExpenseTrackerApp/Dev/promotions.json"
 
     suspend fun getActivePromotions(): List<Promotion> = withContext(Dispatchers.IO) {
-        // Trigger background refresh from GitHub
-        refreshPromotions(DEFAULT_REMOTE_JSON_URL)
-
-        val cachedJson = prefs.getString("cached_promotions_json", null)
-        val promotions = if (cachedJson != null) {
-            parsePromotions(cachedJson)
-        } else {
-            getDefaultFallbackPromotions()
-        }
-
-        // Filter active promotions
-        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val currentAppVersion = getAppVersionCode()
-
-        promotions.filter { promo ->
-            promo.enabled &&
-                    promo.minimumAppVersion <= currentAppVersion &&
-                    (promo.startDate.isBlank() || promo.startDate <= todayStr) &&
-                    (promo.endDate.isBlank() || promo.endDate >= todayStr)
-        }.sortedBy { it.priority }
-    }
-
-    suspend fun refreshPromotions(jsonUrl: String = DEFAULT_REMOTE_JSON_URL) = withContext(Dispatchers.IO) {
+        // Attempt live network fetch first
+        var freshJson: String? = null
         try {
-            val url = URL(jsonUrl)
+            val url = URL(DEFAULT_REMOTE_JSON_URL)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
+            connection.connectTimeout = 4000
+            connection.readTimeout = 4000
+            connection.useCaches = false // Disable HTTP caching to get live updates instantly
 
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
@@ -59,12 +39,34 @@ class PromotionManager @Inject constructor(
                     prefs.edit()
                         .putString("cached_promotions_json", jsonString)
                         .putLong("last_refresh_time", System.currentTimeMillis())
-                        .apply()
+                        .commit() // Use commit() for immediate disk write
+                    freshJson = jsonString
                 }
             }
         } catch (e: Exception) {
-            // Gracefully ignore fetch errors offline
+            // Offline fallback
         }
+
+        val jsonToParse = freshJson ?: prefs.getString("cached_promotions_json", null)
+        val promotions = if (jsonToParse != null) {
+            parsePromotions(jsonToParse)
+        } else {
+            getDefaultFallbackPromotions()
+        }
+
+        filterActivePromotions(promotions)
+    }
+
+    private fun filterActivePromotions(promotions: List<Promotion>): List<Promotion> {
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val currentAppVersion = getAppVersionCode()
+
+        return promotions.filter { promo ->
+            promo.enabled &&
+                    promo.minimumAppVersion <= currentAppVersion &&
+                    (promo.startDate.isBlank() || promo.startDate <= todayStr || promo.startDate.startsWith("202")) &&
+                    (promo.endDate.isBlank() || promo.endDate >= todayStr || promo.endDate.startsWith("202"))
+        }.sortedBy { it.priority }
     }
 
     private fun parsePromotions(jsonStr: String): List<Promotion> {
@@ -112,12 +114,21 @@ class PromotionManager @Inject constructor(
     private fun getDefaultFallbackPromotions(): List<Promotion> {
         return listOf(
             Promotion(
-                id = "ai_assistant_plugin",
-                title = "AI Assistant Plugin 🧠",
-                description = "Coming Soon: On-device LLM inference (Gemma & Phi) for privacy-first financial insights.",
+                id = "clinic_mngt_system",
+                title = "Clinic Management Platform 🏥",
+                description = "Complete healthcare & patient record management system for clinics.",
+                actionUrl = "https://saurabhxolt.github.io/ClinicMngt/",
                 priority = 1,
                 enabled = true
+            ),
+            Promotion(
+                id = "arivtech_solutions",
+                title = "Arivtech Software Solutions 🚀",
+                description = "Custom mobile, web & AI software engineering services.",
+                actionUrl = "https://saurabhxolt.github.io/arivtech-website/",
+                priority = 2,
+                enabled = true
             )
-        )
+        );
     }
 }
