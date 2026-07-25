@@ -3,6 +3,7 @@
 *.aab
 *.aar
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 
 # Gradle distribution zips & cached dists
 gradle-8.4-bin.zip
