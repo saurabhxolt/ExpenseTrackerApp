@@ -4,6 +4,10 @@
 *.aar
 *.jar
 
+# Gradle distribution zips & cached dists
+gradle-8.4-bin.zip
+gradle-dist/
+
 # Gradle files
 .gradle/
 build/
