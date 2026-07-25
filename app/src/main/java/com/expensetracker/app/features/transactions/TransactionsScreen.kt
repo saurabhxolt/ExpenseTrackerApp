@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +55,8 @@ import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.core.ui.theme.RedExpense
 import com.expensetracker.app.core.ui.theme.TextSecondary
 import com.expensetracker.app.features.dashboard.EditTransactionDialog
+import com.expensetracker.app.features.dashboard.TransactionDetailsDialog
+import com.expensetracker.app.features.dashboard.openMessagesApp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -63,7 +66,9 @@ fun TransactionsRoute(
     viewModel: TransactionsViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var selectedTransactionDetails by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
+    val context = LocalContext.current
 
     Box {
         TransactionsScreen(
@@ -72,9 +77,28 @@ fun TransactionsRoute(
             onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
             onSortOrderSelected = { viewModel.setSortOrder(it) },
             onSearchQueryChange = { viewModel.setSearchQuery(it) },
+            onTransactionClick = { selectedTransactionDetails = it },
             onEditTransaction = { editingTransaction = it },
             onDeleteTransaction = { viewModel.deleteTransaction(it) }
         )
+
+        selectedTransactionDetails?.let { trx ->
+            TransactionDetailsDialog(
+                transaction = trx,
+                onDismiss = { selectedTransactionDetails = null },
+                onEdit = {
+                    editingTransaction = trx
+                    selectedTransactionDetails = null
+                },
+                onDelete = {
+                    viewModel.deleteTransaction(trx)
+                    selectedTransactionDetails = null
+                },
+                onOpenSmsApp = {
+                    openMessagesApp(context)
+                }
+            )
+        }
 
         editingTransaction?.let { trx ->
             EditTransactionDialog(
@@ -98,6 +122,7 @@ fun TransactionsScreen(
     onMonthYearSelected: (String) -> Unit = {},
     onSortOrderSelected: (String) -> Unit = {},
     onSearchQueryChange: (String) -> Unit = {},
+    onTransactionClick: (TransactionEntity) -> Unit = {},
     onEditTransaction: (TransactionEntity) -> Unit = {},
     onDeleteTransaction: (TransactionEntity) -> Unit = {}
 ) {
@@ -213,6 +238,7 @@ fun TransactionsScreen(
             items(uiState.transactions, key = { it.id }) { transaction ->
                 TransactionHistoryItem(
                     transaction = transaction,
+                    onClick = { onTransactionClick(transaction) },
                     onEdit = { onEditTransaction(transaction) },
                     onDelete = { onDeleteTransaction(transaction) }
                 )
@@ -238,6 +264,7 @@ fun FilterButton(label: String, value: String, selectedValue: String, onClick: (
 @Composable
 fun TransactionHistoryItem(
     transaction: TransactionEntity,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -247,7 +274,7 @@ fun TransactionHistoryItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = DarkCard),
         shape = RoundedCornerShape(12.dp)
     ) {

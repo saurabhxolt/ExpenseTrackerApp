@@ -3,7 +3,9 @@ package com.expensetracker.app.features.dashboard
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -28,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -90,7 +93,9 @@ fun DashboardRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var selectedTransactionDetails by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -127,6 +132,7 @@ fun DashboardRoute(
                 uiState = uiState,
                 onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
                 onSortOrderSelected = { viewModel.setSortOrder(it) },
+                onTransactionClick = { selectedTransactionDetails = it },
                 onEditTransaction = { editingTransaction = it },
                 onDeleteTransaction = { viewModel.deleteTransaction(it) },
                 onScanInbox = { viewModel.triggerSmsInboxScan(context) }
@@ -139,6 +145,24 @@ fun DashboardRoute(
                     onConfirm = { merchant, amount, type, category ->
                         viewModel.addTransaction(merchant, amount, type, category)
                         showAddDialog = false
+                    }
+                )
+            }
+
+            selectedTransactionDetails?.let { trx ->
+                TransactionDetailsDialog(
+                    transaction = trx,
+                    onDismiss = { selectedTransactionDetails = null },
+                    onEdit = {
+                        editingTransaction = trx
+                        selectedTransactionDetails = null
+                    },
+                    onDelete = {
+                        viewModel.deleteTransaction(trx)
+                        selectedTransactionDetails = null
+                    },
+                    onOpenSmsApp = {
+                        openMessagesApp(context)
                     }
                 )
             }
@@ -163,6 +187,7 @@ fun DashboardScreen(
     uiState: DashboardUiState,
     onMonthYearSelected: (String) -> Unit = {},
     onSortOrderSelected: (String) -> Unit = {},
+    onTransactionClick: (TransactionEntity) -> Unit = {},
     onEditTransaction: (TransactionEntity) -> Unit = {},
     onDeleteTransaction: (TransactionEntity) -> Unit = {},
     onScanInbox: () -> Unit = {}
@@ -371,7 +396,7 @@ fun DashboardScreen(
         // Section Title
         item {
             Text(
-                text = "Recent Transactions",
+                text = "Recent Transactions (Tap for details)",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
@@ -409,6 +434,7 @@ fun DashboardScreen(
             items(uiState.transactions, key = { it.id }) { transaction ->
                 TransactionItem(
                     transaction = transaction,
+                    onClick = { onTransactionClick(transaction) },
                     onEdit = { onEditTransaction(transaction) },
                     onDelete = { onDeleteTransaction(transaction) }
                 )
@@ -420,6 +446,7 @@ fun DashboardScreen(
 @Composable
 fun TransactionItem(
     transaction: TransactionEntity,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -429,7 +456,7 @@ fun TransactionItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = DarkCard),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -474,6 +501,133 @@ fun TransactionItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun TransactionDetailsDialog(
+    transaction: TransactionEntity,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onOpenSmsApp: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("dd MMMM yyyy, hh:mm:ss a", Locale.getDefault()) }
+    val fullDateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Transaction Details",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = transaction.merchant,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = transaction.category,
+                            fontSize = 14.sp,
+                            color = PrimaryBlue,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        text = "${if (transaction.type == "CREDIT") "+" else "-"}₹${String.format("%.2f", transaction.amount)}",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (transaction.type == "CREDIT") GreenSuccess else RedExpense
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Date & Time: $fullDateStr",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
+
+                if (transaction.rawText.isNotBlank()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Original SMS / Raw Statement Text:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = transaction.rawText,
+                                fontSize = 12.sp,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+                }
+
+                if (transaction.transactionHash.isNotBlank()) {
+                    Text(
+                        text = "Ref / Hash: ${transaction.transactionHash}",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onOpenSmsApp,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                ) {
+                    Icon(imageVector = Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("View SMS 💬", fontSize = 13.sp)
+                }
+                Button(
+                    onClick = onEdit,
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkCard)
+                ) {
+                    Text("Edit")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+fun openMessagesApp(context: Context) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse("sms:")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Could not open Messages app", Toast.LENGTH_SHORT).show()
     }
 }
 
