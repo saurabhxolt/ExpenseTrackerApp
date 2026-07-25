@@ -10,10 +10,12 @@ Version: 4.0 | Technical Stack & Architectural Guidelines
 
 # 2. Modular Package Structure
 - features/main/ (MainScreen, Bottom NavigationBar)
-- features/dashboard/ (DashboardScreen, DashboardViewModel)
+- features/dashboard/ (DashboardScreen, DashboardViewModel, TransactionDetailsDialog)
 - features/transactions/ (TransactionsScreen, TransactionsViewModel)
 - features/budgets/ (BudgetsScreen, BudgetsViewModel)
 - features/analytics/ (AnalyticsScreen, AnalyticsViewModel)
+- features/categories/ (CategoriesScreen, CategoriesViewModel)
+- features/subscriptions/ (SubscriptionsScreen, SubscriptionsViewModel)
 - features/settings/ (SettingsScreen, SettingsViewModel)
 - features/security/ (BiometricLockManager)
 - features/backup/ (BackupManager)
