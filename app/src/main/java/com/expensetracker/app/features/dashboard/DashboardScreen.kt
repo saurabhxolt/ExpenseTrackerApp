@@ -6,6 +6,7 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,15 +27,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -48,6 +50,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,10 +61,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.expensetracker.app.core.database.entity.TransactionEntity
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.GreenSuccess
@@ -78,6 +85,25 @@ fun DashboardRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Refresh permissions on screen launch & resume
+    LaunchedEffect(Unit) {
+        viewModel.refreshPermissionState(context)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissionState(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -94,7 +120,8 @@ fun DashboardRoute(
         Box(modifier = Modifier.padding(padding)) {
             DashboardScreen(
                 uiState = uiState,
-                onDeleteTransaction = { viewModel.deleteTransaction(it) }
+                onDeleteTransaction = { viewModel.deleteTransaction(it) },
+                onScanInbox = { viewModel.triggerSmsInboxScan(context) }
             )
 
             if (showAddDialog) {
@@ -113,11 +140,11 @@ fun DashboardRoute(
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
-    onDeleteTransaction: (TransactionEntity) -> Unit = {}
+    onDeleteTransaction: (TransactionEntity) -> Unit = {},
+    onScanInbox: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
-    // SMS permission launcher
     val smsPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { _ -> }
@@ -130,56 +157,82 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(
-                text = "Dashboard",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Dashboard",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+
+                if (uiState.isScanning) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = PrimaryBlue,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Scanning...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else if (uiState.isAutoTrackingEnabled) {
+                    IconButton(onClick = onScanInbox) {
+                        Icon(
+                            imageVector = Icons.Default.Sync,
+                            contentDescription = "Scan SMS Inbox",
+                            tint = PrimaryBlue
+                        )
+                    }
+                }
+            }
         }
 
-        // Enable Auto-Tracking Banner Card
+        // Conditionally Hide Banner Card if Auto-Tracking is fully enabled
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        // Request SMS permission & open Notification Listener settings
-                        smsPermissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.RECEIVE_SMS,
-                                Manifest.permission.READ_SMS
+            AnimatedVisibility(visible = !uiState.isAutoTrackingEnabled) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            smsPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.RECEIVE_SMS,
+                                    Manifest.permission.READ_SMS
+                                )
                             )
-                        )
-                        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                    },
-                colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        },
+                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.NotificationsActive,
-                        contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Enable Auto-Tracking ⚡",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = TextPrimary
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(32.dp)
                         )
-                        Text(
-                            text = "Tap to grant SMS & Notification permissions to auto-capture UPI & Bank alerts.",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Enable Auto-Tracking ⚡",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Tap to grant SMS & Notification permissions to auto-scan current month & live alerts.",
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                        }
                     }
                 }
             }
@@ -289,7 +342,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tap 'Enable Auto-Tracking' above or add transactions manually via (+) button.",
+                            text = "Grant permissions above or tap (+) to add transactions.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
                         )
