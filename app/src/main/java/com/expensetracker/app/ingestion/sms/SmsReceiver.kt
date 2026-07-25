@@ -16,12 +16,12 @@ class SmsReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-            val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+            val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
             val pendingResult = goAsync()
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val db = ExpenseDatabase.getInstance(context, "expense_tracker_secret_passphrase_key".toByteArray())
+                    val db = ExpenseDatabase.getInstance(context.applicationContext, "expense_tracker_secret_passphrase_key".toByteArray())
                     for (sms in messages) {
                         val body = sms.messageBody ?: continue
                         val parsed = RegexTransactionParser.parse(body)
@@ -37,11 +37,11 @@ class SmsReceiver : BroadcastReceiver() {
                                 transactionHash = hash
                             )
                             db.transactionDao().insertTransaction(entity)
-                            Log.d("SmsReceiver", "Saved transaction to DB: ${parsed.merchant} ₹${parsed.amount}")
+                            Log.d("SmsReceiver", "Saved SMS transaction: ${parsed.merchant} ₹${parsed.amount}")
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("SmsReceiver", "Error saving transaction", e)
+                    Log.e("SmsReceiver", "Error saving SMS transaction", e)
                 } finally {
                     pendingResult.finish()
                 }
