@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
@@ -36,12 +35,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +61,10 @@ fun SettingsRoute(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadInitialState(context)
+    }
+
     val importBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -81,7 +84,7 @@ fun SettingsRoute(
 
     SettingsScreen(
         uiState = uiState,
-        onToggleBiometric = { viewModel.toggleBiometric(it) },
+        onToggleBiometric = { viewModel.toggleBiometric(context, it) },
         onExportCsv = {
             scope.launch {
                 val csv = viewModel.exportCsvData()

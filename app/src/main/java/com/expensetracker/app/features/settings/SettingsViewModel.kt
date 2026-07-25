@@ -8,6 +8,7 @@ import com.expensetracker.app.core.data.repository.TransactionRepository
 import com.expensetracker.app.core.database.dao.CategoryDao
 import com.expensetracker.app.features.backup.BackupManager
 import com.expensetracker.app.features.reports.ReportsExporter
+import com.expensetracker.app.features.security.BiometricLockManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,7 +50,12 @@ class SettingsViewModel @Inject constructor(
         initialValue = SettingsUiState()
     )
 
-    fun toggleBiometric(enabled: Boolean) {
+    fun loadInitialState(context: Context) {
+        _isBiometricEnabled.value = BiometricLockManager.isBiometricLockEnabled(context)
+    }
+
+    fun toggleBiometric(context: Context, enabled: Boolean) {
+        BiometricLockManager.setBiometricLockEnabled(context, enabled)
         _isBiometricEnabled.value = enabled
     }
 
