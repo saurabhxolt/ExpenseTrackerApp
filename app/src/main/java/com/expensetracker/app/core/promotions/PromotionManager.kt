@@ -23,7 +23,16 @@ class PromotionManager @Inject constructor(
     private val DEFAULT_REMOTE_JSON_URL = "https://raw.githubusercontent.com/saurabhxolt/ExpenseTrackerApp/Dev/promotions.json"
 
     suspend fun getActivePromotions(): List<Promotion> = withContext(Dispatchers.IO) {
-        // Attempt live network fetch first
+        val config = fetchOrReadConfig()
+        filterActivePromotions(config.promotions)
+    }
+
+    suspend fun getActiveAnnouncements(): List<Announcement> = withContext(Dispatchers.IO) {
+        val config = fetchOrReadConfig()
+        config.announcements.filter { it.enabled }
+    }
+
+    private suspend fun fetchOrReadConfig(): PromotionConfig = withContext(Dispatchers.IO) {
         var freshJson: String? = null
         try {
             val url = URL(DEFAULT_REMOTE_JSON_URL)
@@ -31,7 +40,7 @@ class PromotionManager @Inject constructor(
             connection.requestMethod = "GET"
             connection.connectTimeout = 4000
             connection.readTimeout = 4000
-            connection.useCaches = false // Disable HTTP caching to get live updates instantly
+            connection.useCaches = false // Disable HTTP cache for live updates
 
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
@@ -39,7 +48,7 @@ class PromotionManager @Inject constructor(
                     prefs.edit()
                         .putString("cached_promotions_json", jsonString)
                         .putLong("last_refresh_time", System.currentTimeMillis())
-                        .commit() // Use commit() for immediate disk write
+                        .commit()
                     freshJson = jsonString
                 }
             }
@@ -48,13 +57,11 @@ class PromotionManager @Inject constructor(
         }
 
         val jsonToParse = freshJson ?: prefs.getString("cached_promotions_json", null)
-        val promotions = if (jsonToParse != null) {
-            parsePromotions(jsonToParse)
+        if (jsonToParse != null) {
+            parseConfig(jsonToParse)
         } else {
-            getDefaultFallbackPromotions()
+            getDefaultFallbackConfig()
         }
-
-        filterActivePromotions(promotions)
     }
 
     private fun filterActivePromotions(promotions: List<Promotion>): List<Promotion> {
@@ -69,32 +76,52 @@ class PromotionManager @Inject constructor(
         }.sortedBy { it.priority }
     }
 
-    private fun parsePromotions(jsonStr: String): List<Promotion> {
-        val list = mutableListOf<Promotion>()
+    private fun parseConfig(jsonStr: String): PromotionConfig {
+        val promoList = mutableListOf<Promotion>()
+        val announcementList = mutableListOf<Announcement>()
         try {
             val root = JSONObject(jsonStr)
-            val array = root.optJSONArray("promotions") ?: return emptyList()
-            for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                list.add(
-                    Promotion(
-                        id = obj.optString("id", ""),
-                        title = obj.optString("title", ""),
-                        description = obj.optString("description", ""),
-                        imageUrl = obj.optString("imageUrl", ""),
-                        actionUrl = obj.optString("actionUrl", ""),
-                        priority = obj.optInt("priority", 1),
-                        startDate = obj.optString("startDate", ""),
-                        endDate = obj.optString("endDate", ""),
-                        minimumAppVersion = obj.optInt("minimumAppVersion", 1),
-                        enabled = obj.optBoolean("enabled", true)
+            
+            val promoArray = root.optJSONArray("promotions")
+            if (promoArray != null) {
+                for (i in 0 until promoArray.length()) {
+                    val obj = promoArray.getJSONObject(i)
+                    promoList.add(
+                        Promotion(
+                            id = obj.optString("id", ""),
+                            title = obj.optString("title", ""),
+                            description = obj.optString("description", ""),
+                            imageUrl = obj.optString("imageUrl", ""),
+                            actionUrl = obj.optString("actionUrl", ""),
+                            priority = obj.optInt("priority", 1),
+                            startDate = obj.optString("startDate", ""),
+                            endDate = obj.optString("endDate", ""),
+                            minimumAppVersion = obj.optInt("minimumAppVersion", 1),
+                            enabled = obj.optBoolean("enabled", true)
+                        )
                     )
-                )
+                }
+            }
+
+            val annArray = root.optJSONArray("announcements")
+            if (annArray != null) {
+                for (i in 0 until annArray.length()) {
+                    val obj = annArray.getJSONObject(i)
+                    announcementList.add(
+                        Announcement(
+                            id = obj.optString("id", ""),
+                            title = obj.optString("title", ""),
+                            description = obj.optString("description", ""),
+                            actionUrl = obj.optString("actionUrl", ""),
+                            enabled = obj.optBoolean("enabled", true)
+                        )
+                    )
+                }
             }
         } catch (e: Exception) {
-            return getDefaultFallbackPromotions()
+            return getDefaultFallbackConfig()
         }
-        return list
+        return PromotionConfig(promotions = promoList, announcements = announcementList)
     }
 
     private fun getAppVersionCode(): Int {
@@ -111,24 +138,35 @@ class PromotionManager @Inject constructor(
         }
     }
 
-    private fun getDefaultFallbackPromotions(): List<Promotion> {
-        return listOf(
-            Promotion(
-                id = "clinic_mngt_system",
-                title = "Clinic Management Platform 🏥",
-                description = "Complete healthcare & patient record management system for clinics.",
-                actionUrl = "https://saurabhxolt.github.io/ClinicMngt/",
-                priority = 1,
-                enabled = true
+    private fun getDefaultFallbackConfig(): PromotionConfig {
+        return PromotionConfig(
+            promotions = listOf(
+                Promotion(
+                    id = "clinic_mngt_system",
+                    title = "Clinic Management Platform 🏥",
+                    description = "Complete healthcare & patient record management system for clinics.",
+                    actionUrl = "https://saurabhxolt.github.io/ClinicMngt/",
+                    priority = 1,
+                    enabled = true
+                ),
+                Promotion(
+                    id = "arivtech_solutions",
+                    title = "Arivtech Software Solutions 🚀",
+                    description = "Custom mobile, web & AI software engineering services.",
+                    actionUrl = "https://saurabhxolt.github.io/arivtech-website/",
+                    priority = 2,
+                    enabled = true
+                )
             ),
-            Promotion(
-                id = "arivtech_solutions",
-                title = "Arivtech Software Solutions 🚀",
-                description = "Custom mobile, web & AI software engineering services.",
-                actionUrl = "https://saurabhxolt.github.io/arivtech-website/",
-                priority = 2,
-                enabled = true
+            announcements = listOf(
+                Announcement(
+                    id = "v1_release_note",
+                    title = "Expense Tracker v1.0 Live 🎉",
+                    description = "SQLCipher hardware encryption, 1-tap SMS auto-tracking, and Canvas visual analytics are now active.",
+                    actionUrl = "https://github.com/saurabhxolt/ExpenseTrackerApp",
+                    enabled = true
+                )
             )
-        );
+        )
     }
 }

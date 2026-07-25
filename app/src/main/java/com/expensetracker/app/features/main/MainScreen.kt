@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,6 +34,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -100,16 +99,6 @@ fun MainScreen(
     )
 
     Scaffold(
-        topBar = {
-            if (promotions.isNotEmpty()) {
-                GlobalHeaderBannerCarousel(
-                    promotions = promotions,
-                    onPromotionClick = { promo ->
-                        openUrlSafely(context, promo.actionUrl)
-                    }
-                )
-            }
-        },
         bottomBar = {
             NavigationBar(
                 containerColor = DarkCard
@@ -132,27 +121,45 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                0 -> {
-                    val dashboardVm: DashboardViewModel = hiltViewModel()
-                    DashboardRoute(viewModel = dashboardVm)
-                }
-                1 -> {
-                    val transactionsVm: TransactionsViewModel = hiltViewModel()
-                    TransactionsRoute(viewModel = transactionsVm)
-                }
-                2 -> {
-                    val budgetsVm: BudgetsViewModel = hiltViewModel()
-                    BudgetsRoute(viewModel = budgetsVm)
-                }
-                3 -> {
-                    val analyticsVm: AnalyticsViewModel = hiltViewModel()
-                    AnalyticsRoute(viewModel = analyticsVm)
-                }
-                4 -> {
-                    val settingsVm: SettingsViewModel = hiltViewModel()
-                    SettingsRoute(viewModel = settingsVm)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .statusBarsPadding()
+        ) {
+            // Global Header Banner Carousel (Top of Whole App)
+            if (promotions.isNotEmpty()) {
+                GlobalHeaderBannerCarousel(
+                    promotions = promotions,
+                    onPromotionClick = { promo ->
+                        openUrlSafely(context, promo.actionUrl)
+                    }
+                )
+            }
+
+            // Main Tab Content Area
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    0 -> {
+                        val dashboardVm: DashboardViewModel = hiltViewModel()
+                        DashboardRoute(viewModel = dashboardVm)
+                    }
+                    1 -> {
+                        val transactionsVm: TransactionsViewModel = hiltViewModel()
+                        TransactionsRoute(viewModel = transactionsVm)
+                    }
+                    2 -> {
+                        val budgetsVm: BudgetsViewModel = hiltViewModel()
+                        BudgetsRoute(viewModel = budgetsVm)
+                    }
+                    3 -> {
+                        val analyticsVm: AnalyticsViewModel = hiltViewModel()
+                        AnalyticsRoute(viewModel = analyticsVm)
+                    }
+                    4 -> {
+                        val settingsVm: SettingsViewModel = hiltViewModel()
+                        SettingsRoute(viewModel = settingsVm)
+                    }
                 }
             }
         }
@@ -182,7 +189,6 @@ fun GlobalHeaderBannerCarousel(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .statusBarsPadding()
             .padding(horizontal = 12.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.16f)),
         shape = RoundedCornerShape(12.dp)

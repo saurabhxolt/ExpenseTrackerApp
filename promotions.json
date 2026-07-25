@@ -25,17 +25,21 @@
       "endDate": "2026-12-31",
       "minimumAppVersion": 1,
       "enabled": true
+    }
+  ],
+  "announcements": [
+    {
+      "id": "v1_release_note",
+      "title": "Expense Tracker v1.0 Live 🎉",
+      "description": "SQLCipher hardware encryption, 1-tap SMS auto-tracking, and Canvas visual analytics are now active.",
+      "actionUrl": "https://github.com/saurabhxolt/ExpenseTrackerApp",
+      "enabled": true
     },
     {
-      "id": "ai_assistant_plugin",
-      "title": "AI Assistant Plugin 🧠",
-      "description": "On-device LLM financial insights powered by Google Gemma & Microsoft Phi.",
-      "imageUrl": "",
+      "id": "ai_assistant_teaser",
+      "title": "Upcoming: On-Device AI Engine 🧠",
+      "description": "Local LLM inference (Google Gemma & Phi-3) is being integrated for privacy-first financial insights.",
       "actionUrl": "https://github.com/saurabhxolt/ExpenseTrackerApp",
-      "priority": 3,
-      "startDate": "2026-01-01",
-      "endDate": "2026-12-31",
-      "minimumAppVersion": 1,
       "enabled": true
     }
   ]

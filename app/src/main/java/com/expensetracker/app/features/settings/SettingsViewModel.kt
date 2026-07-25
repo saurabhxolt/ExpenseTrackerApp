@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.app.core.data.repository.BudgetRepository
 import com.expensetracker.app.core.data.repository.TransactionRepository
 import com.expensetracker.app.core.database.dao.CategoryDao
-import com.expensetracker.app.core.promotions.Promotion
+import com.expensetracker.app.core.promotions.Announcement
 import com.expensetracker.app.core.promotions.PromotionManager
 import com.expensetracker.app.features.backup.BackupManager
 import com.expensetracker.app.features.reports.ReportsExporter
@@ -25,7 +25,7 @@ data class SettingsUiState(
     val transactionCount: Int = 0,
     val budgetCount: Int = 0,
     val isBiometricEnabled: Boolean = false,
-    val promotions: List<Promotion> = emptyList()
+    val announcements: List<Announcement> = emptyList()
 )
 
 @HiltViewModel
@@ -37,19 +37,19 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _isBiometricEnabled = MutableStateFlow(false)
-    private val _promotions = MutableStateFlow<List<Promotion>>(emptyList())
+    private val _announcements = MutableStateFlow<List<Announcement>>(emptyList())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         transactionRepository.allTransactions,
         budgetRepository.allBudgets,
         _isBiometricEnabled,
-        _promotions
-    ) { transactions, budgets, biometric, promos ->
+        _announcements
+    ) { transactions, budgets, biometric, announcementsList ->
         SettingsUiState(
             transactionCount = transactions.size,
             budgetCount = budgets.size,
             isBiometricEnabled = biometric,
-            promotions = promos
+            announcements = announcementsList
         )
     }.stateIn(
         scope = viewModelScope,
@@ -60,7 +60,7 @@ class SettingsViewModel @Inject constructor(
     fun loadInitialState(context: Context) {
         _isBiometricEnabled.value = BiometricLockManager.isBiometricLockEnabled(context)
         viewModelScope.launch {
-            _promotions.value = promotionManager.getActivePromotions()
+            _announcements.value = promotionManager.getActiveAnnouncements()
         }
     }
 

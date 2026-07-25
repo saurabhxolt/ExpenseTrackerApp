@@ -13,8 +13,17 @@ data class Promotion(
     val enabled: Boolean = true
 )
 
+data class Announcement(
+    val id: String,
+    val title: String,
+    val description: String,
+    val actionUrl: String = "",
+    val enabled: Boolean = true
+)
+
 data class PromotionConfig(
     val version: Int = 1,
     val refreshIntervalHours: Int = 24,
-    val promotions: List<Promotion> = emptyList()
+    val promotions: List<Promotion> = emptyList(),
+    val announcements: List<Announcement> = emptyList()
 )

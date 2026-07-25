@@ -23,11 +23,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
@@ -54,7 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.expensetracker.app.core.promotions.Promotion
+import com.expensetracker.app.core.promotions.Announcement
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.GreenSuccess
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
@@ -186,6 +186,16 @@ fun SettingsScreen(
             }
         }
 
+        // Ecosystem Announcements Section
+        if (uiState.announcements.isNotEmpty()) {
+            item {
+                Text("App Announcements & Release Notes", style = MaterialTheme.typography.titleLarge)
+            }
+            items(uiState.announcements) { ann ->
+                AnnouncementCard(announcement = ann)
+            }
+        }
+
         // Management Section
         item {
             Text("Management", style = MaterialTheme.typography.titleLarge)
@@ -241,16 +251,6 @@ fun SettingsScreen(
                         colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
                     )
                 }
-            }
-        }
-
-        // Ecosystem Features & In-House Announcements
-        if (uiState.promotions.isNotEmpty()) {
-            item {
-                Text("Ecosystem Announcements", style = MaterialTheme.typography.titleLarge)
-            }
-            items(uiState.promotions) { promo ->
-                PromotionCard(promo = promo)
             }
         }
 
@@ -319,15 +319,20 @@ fun SettingsScreen(
 }
 
 @Composable
-fun PromotionCard(promo: Promotion) {
+fun AnnouncementCard(announcement: Announcement) {
     val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                if (promo.actionUrl.isNotBlank()) {
+                if (announcement.actionUrl.isNotBlank()) {
                     try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(promo.actionUrl)).apply {
+                        val formattedUrl = if (!announcement.actionUrl.startsWith("http://") && !announcement.actionUrl.startsWith("https://")) {
+                            "https://${announcement.actionUrl}"
+                        } else {
+                            announcement.actionUrl
+                        }
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(formattedUrl)).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         context.startActivity(intent)
@@ -346,16 +351,16 @@ fun PromotionCard(promo: Promotion) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.RocketLaunch,
+                imageVector = Icons.Default.Campaign,
                 contentDescription = null,
                 tint = PrimaryBlue,
                 modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(promo.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
+                Text(announcement.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(promo.description, fontSize = 12.sp, color = TextSecondary)
+                Text(announcement.description, fontSize = 12.sp, color = TextSecondary)
             }
         }
     }
@@ -400,7 +405,7 @@ private fun shareTextFile(context: Context, content: String, fileName: String, m
         }
         val chooser = Intent.createChooser(intent, "Export $fileName")
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(chooser)
+        context.startActivity(intent)
     } catch (e: Exception) {
         Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
     }
