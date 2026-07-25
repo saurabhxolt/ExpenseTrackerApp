@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import com.expensetracker.app.core.ui.theme.ExpenseTrackerTheme
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
@@ -45,6 +46,9 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Enable Fullscreen Layout
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         checkAppLockState()
 

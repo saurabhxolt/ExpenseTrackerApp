@@ -1,13 +1,39 @@
 package com.expensetracker.app.features.main
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -15,15 +41,25 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.expensetracker.app.core.promotions.Promotion
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
+import com.expensetracker.app.core.ui.theme.TextPrimary
 import com.expensetracker.app.core.ui.theme.TextSecondary
 import com.expensetracker.app.features.analytics.AnalyticsRoute
 import com.expensetracker.app.features.analytics.AnalyticsViewModel
@@ -35,15 +71,21 @@ import com.expensetracker.app.features.settings.SettingsRoute
 import com.expensetracker.app.features.settings.SettingsViewModel
 import com.expensetracker.app.features.transactions.TransactionsRoute
 import com.expensetracker.app.features.transactions.TransactionsViewModel
+import kotlinx.coroutines.delay
 
 data class NavItem(
     val title: String,
     val icon: ImageVector
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    mainViewModel: MainViewModel = hiltViewModel()
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    val promotions by mainViewModel.promotions.collectAsState()
+    val context = LocalContext.current
 
     val navItems = listOf(
         NavItem("Dashboard", Icons.Default.Dashboard),
@@ -54,6 +96,16 @@ fun MainScreen() {
     )
 
     Scaffold(
+        topBar = {
+            if (promotions.isNotEmpty()) {
+                GlobalHeaderBannerCarousel(
+                    promotions = promotions,
+                    onPromotionClick = { promo ->
+                        openUrlSafely(context, promo.actionUrl)
+                    }
+                )
+            }
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = DarkCard
@@ -100,5 +152,114 @@ fun MainScreen() {
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun GlobalHeaderBannerCarousel(
+    promotions: List<Promotion>,
+    onPromotionClick: (Promotion) -> Unit
+) {
+    val pagerState = rememberPagerState(pageCount = { promotions.size })
+
+    // Auto-rotate ads every 4 seconds
+    LaunchedEffect(promotions.size) {
+        if (promotions.size > 1) {
+            while (true) {
+                delay(4000)
+                val nextPage = (pagerState.currentPage + 1) % promotions.size
+                pagerState.animateScrollToPage(nextPage)
+            }
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.16f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
+                val promo = promotions[page]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPromotionClick(promo) },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RocketLaunch,
+                        contentDescription = null,
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = promo.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = promo.description,
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            // Indicator Dots for Multiple Ads
+            if (promotions.size > 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(promotions.size) { index ->
+                        val isSelected = pagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .size(if (isSelected) 6.dp else 4.dp)
+                                .background(
+                                    color = if (isSelected) PrimaryBlue else TextSecondary.copy(alpha = 0.4f),
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun openUrlSafely(context: Context, url: String) {
+    if (url.isBlank()) return
+    try {
+        val formattedUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            "https://$url"
+        } else {
+            url
+        }
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(formattedUrl)).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Cannot open URL: $url", Toast.LENGTH_SHORT).show()
     }
 }
