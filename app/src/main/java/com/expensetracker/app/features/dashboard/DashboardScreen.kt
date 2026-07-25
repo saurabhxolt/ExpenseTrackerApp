@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
@@ -82,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.expensetracker.app.core.database.entity.TransactionEntity
+import com.expensetracker.app.core.promotions.Promotion
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.GreenSuccess
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
@@ -426,6 +428,13 @@ fun DashboardScreen(
             }
         }
 
+        // Ecosystem In-House Announcement Card
+        if (uiState.promotions.isNotEmpty()) {
+            items(uiState.promotions.take(1)) { promo ->
+                DashboardPromotionCard(promo = promo)
+            }
+        }
+
         // Filter & Sorting Bar
         item {
             Row(
@@ -511,6 +520,46 @@ fun DashboardScreen(
                     onEdit = { onEditTransaction(transaction) },
                     onDelete = { onDeleteTransaction(transaction) }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardPromotionCard(promo: Promotion) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                if (promo.actionUrl.isNotBlank()) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(promo.actionUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+        colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.RocketLaunch,
+                contentDescription = null,
+                tint = PrimaryBlue,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = promo.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                Text(text = promo.description, fontSize = 12.sp, color = TextSecondary)
             }
         }
     }

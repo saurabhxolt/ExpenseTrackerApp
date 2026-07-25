@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.app.core.data.repository.CategoryRepository
 import com.expensetracker.app.core.data.repository.TransactionRepository
 import com.expensetracker.app.core.database.entity.TransactionEntity
+import com.expensetracker.app.core.promotions.Promotion
+import com.expensetracker.app.core.promotions.PromotionManager
 import com.expensetracker.app.core.utils.PermissionUtils
 import com.expensetracker.app.ingestion.sms.SmsScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +36,7 @@ data class DashboardUiState(
     val totalIncome: Double = 0.0,
     val netBalance: Double = 0.0,
     val lastDeletedTransaction: TransactionEntity? = null,
+    val promotions: List<Promotion> = emptyList(),
     val isAutoTrackingEnabled: Boolean = false,
     val isScanning: Boolean = false
 )
@@ -41,7 +44,8 @@ data class DashboardUiState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val promotionManager: PromotionManager
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)
@@ -49,6 +53,7 @@ class DashboardViewModel @Inject constructor(
     private val _selectedMonthYear = MutableStateFlow("ALL")
     private val _selectedSortOrder = MutableStateFlow("NEWEST")
     private val _lastDeletedTransaction = MutableStateFlow<TransactionEntity?>(null)
+    private val _promotions = MutableStateFlow<List<Promotion>>(emptyList())
 
     private val _filterState = combine(
         _selectedMonthYear,
@@ -63,8 +68,9 @@ class DashboardViewModel @Inject constructor(
         repository.allTransactions,
         categoryRepository.allCategories,
         _filterState,
-        _lastDeletedTransaction
-    ) { transactions, categoryEntities, filterState, lastDeleted ->
+        _lastDeletedTransaction,
+        _promotions
+    ) { transactions, categoryEntities, filterState, lastDeleted, promos ->
 
         val startOfToday = getStartOfTodayTimestamp()
         val startOf7DaysAgo = getStartOf7DaysAgoTimestamp()
@@ -111,6 +117,7 @@ class DashboardViewModel @Inject constructor(
             totalIncome = totalInc,
             netBalance = totalInc - totalExp,
             lastDeletedTransaction = lastDeleted,
+            promotions = promos,
             isAutoTrackingEnabled = filterState.isAutoTrackingEnabled,
             isScanning = filterState.isScanning
         )
@@ -123,6 +130,10 @@ class DashboardViewModel @Inject constructor(
     fun refreshPermissionState(context: Context) {
         val fullyEnabled = PermissionUtils.isAutoTrackingFullyEnabled(context)
         _isAutoTrackingEnabled.value = fullyEnabled
+
+        viewModelScope.launch {
+            _promotions.value = promotionManager.getActivePromotions()
+        }
 
         if (PermissionUtils.isSmsPermissionGranted(context)) {
             triggerSmsInboxScan(context)
