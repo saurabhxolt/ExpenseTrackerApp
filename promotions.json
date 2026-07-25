@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "refreshIntervalHours": 24,
+  "promotions": [
+    {
+      "id": "ai_assistant_plugin",
+      "title": "AI Assistant Plugin 🧠",
+      "description": "On-device LLM financial insights powered by Google Gemma & Microsoft Phi.",
+      "imageUrl": "https://raw.githubusercontent.com/saurabhxolt/ExpenseTrackerApp/Dev/assets/ai_plugin.png",
+      "actionUrl": "https://github.com/saurabhxolt/ExpenseTrackerApp",
+      "priority": 1,
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31",
+      "minimumAppVersion": 1,
+      "enabled": true
+    },
+    {
+      "id": "desktop_app_release",
+      "title": "Expense Tracker Desktop 💻",
+      "description": "Cross-platform desktop companion with multi-device encrypted sync.",
+      "imageUrl": "",
+      "actionUrl": "https://github.com/saurabhxolt/ExpenseTrackerApp",
+      "priority": 2,
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31",
+      "minimumAppVersion": 1,
+      "enabled": true
+    }
+  ]
+}

@@ -19,7 +19,13 @@ class PromotionManager @Inject constructor(
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("promotions_cache", Context.MODE_PRIVATE)
 
+    // GitHub Raw hosted configuration URL
+    private val DEFAULT_REMOTE_JSON_URL = "https://raw.githubusercontent.com/saurabhxolt/ExpenseTrackerApp/Dev/promotions.json"
+
     suspend fun getActivePromotions(): List<Promotion> = withContext(Dispatchers.IO) {
+        // Trigger background refresh from GitHub
+        refreshPromotions(DEFAULT_REMOTE_JSON_URL)
+
         val cachedJson = prefs.getString("cached_promotions_json", null)
         val promotions = if (cachedJson != null) {
             parsePromotions(cachedJson)
@@ -39,7 +45,7 @@ class PromotionManager @Inject constructor(
         }.sortedBy { it.priority }
     }
 
-    suspend fun refreshPromotions(jsonUrl: String) = withContext(Dispatchers.IO) {
+    suspend fun refreshPromotions(jsonUrl: String = DEFAULT_REMOTE_JSON_URL) = withContext(Dispatchers.IO) {
         try {
             val url = URL(jsonUrl)
             val connection = url.openConnection() as HttpURLConnection
