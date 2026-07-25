@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,8 +29,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -37,10 +40,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,10 +90,10 @@ fun DashboardRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Refresh permissions on screen launch & resume
     LaunchedEffect(Unit) {
         viewModel.refreshPermissionState(context)
     }
@@ -120,16 +125,32 @@ fun DashboardRoute(
         Box(modifier = Modifier.padding(padding)) {
             DashboardScreen(
                 uiState = uiState,
+                onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
+                onSortOrderSelected = { viewModel.setSortOrder(it) },
+                onEditTransaction = { editingTransaction = it },
                 onDeleteTransaction = { viewModel.deleteTransaction(it) },
                 onScanInbox = { viewModel.triggerSmsInboxScan(context) }
             )
 
             if (showAddDialog) {
                 AddTransactionDialog(
+                    availableCategories = uiState.categories,
                     onDismiss = { showAddDialog = false },
                     onConfirm = { merchant, amount, type, category ->
                         viewModel.addTransaction(merchant, amount, type, category)
                         showAddDialog = false
+                    }
+                )
+            }
+
+            editingTransaction?.let { trx ->
+                EditTransactionDialog(
+                    transaction = trx,
+                    availableCategories = uiState.categories,
+                    onDismiss = { editingTransaction = null },
+                    onConfirm = { merchant, category, amount ->
+                        viewModel.updateTransaction(trx, merchant, category, amount)
+                        editingTransaction = null
                     }
                 )
             }
@@ -140,6 +161,9 @@ fun DashboardRoute(
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
+    onMonthYearSelected: (String) -> Unit = {},
+    onSortOrderSelected: (String) -> Unit = {},
+    onEditTransaction: (TransactionEntity) -> Unit = {},
     onDeleteTransaction: (TransactionEntity) -> Unit = {},
     onScanInbox: () -> Unit = {}
 ) {
@@ -189,7 +213,7 @@ fun DashboardScreen(
             }
         }
 
-        // Conditionally Hide Banner Card if Auto-Tracking is fully enabled
+        // Permission Banner
         item {
             AnimatedVisibility(visible = !uiState.isAutoTrackingEnabled) {
                 Card(
@@ -247,7 +271,7 @@ fun DashboardScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Net Balance",
+                        text = "Net Balance (${uiState.selectedMonthYear})",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary
                     )
@@ -268,7 +292,6 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Income Card
                 Card(
                     modifier = Modifier.weight(1f),
                     colors = CardDefaults.cardColors(containerColor = DarkCard),
@@ -286,7 +309,6 @@ fun DashboardScreen(
                     }
                 }
 
-                // Expense Card
                 Card(
                     modifier = Modifier.weight(1f),
                     colors = CardDefaults.cardColors(containerColor = DarkCard),
@@ -306,12 +328,52 @@ fun DashboardScreen(
             }
         }
 
+        // Filter & Sorting Bar
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.monthYearOptions) { monthOption ->
+                        FilterChip(
+                            selected = uiState.selectedMonthYear == monthOption,
+                            onClick = { onMonthYearSelected(monthOption) },
+                            label = { Text(monthOption) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                var sortExpanded by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { sortExpanded = true }) {
+                        Icon(imageVector = Icons.Default.Sort, contentDescription = "Sort", tint = PrimaryBlue)
+                    }
+                    DropdownMenu(
+                        expanded = sortExpanded,
+                        onDismissRequest = { sortExpanded = false }
+                    ) {
+                        DropdownMenuItem(text = { Text("Newest First") }, onClick = { onSortOrderSelected("NEWEST"); sortExpanded = false })
+                        DropdownMenuItem(text = { Text("Oldest First") }, onClick = { onSortOrderSelected("OLDEST"); sortExpanded = false })
+                        DropdownMenuItem(text = { Text("Amount: High to Low") }, onClick = { onSortOrderSelected("HIGH_LOW"); sortExpanded = false })
+                        DropdownMenuItem(text = { Text("Amount: Low to High") }, onClick = { onSortOrderSelected("LOW_HIGH"); sortExpanded = false })
+                    }
+                }
+            }
+        }
+
         // Section Title
         item {
             Text(
                 text = "Recent Transactions",
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
 
@@ -336,15 +398,9 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "No Transactions Yet",
+                            text = "No Transactions Found",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Grant permissions above or tap (+) to add transactions.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
                         )
                     }
                 }
@@ -353,6 +409,7 @@ fun DashboardScreen(
             items(uiState.transactions, key = { it.id }) { transaction ->
                 TransactionItem(
                     transaction = transaction,
+                    onEdit = { onEditTransaction(transaction) },
                     onDelete = { onDeleteTransaction(transaction) }
                 )
             }
@@ -361,12 +418,18 @@ fun DashboardScreen(
 }
 
 @Composable
-fun TransactionItem(transaction: TransactionEntity, onDelete: () -> Unit) {
+fun TransactionItem(
+    transaction: TransactionEntity,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
     val dateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
         colors = CardDefaults.cardColors(containerColor = DarkCard),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -395,6 +458,13 @@ fun TransactionItem(transaction: TransactionEntity, onDelete: () -> Unit) {
                     color = if (transaction.type == "CREDIT") GreenSuccess else RedExpense,
                     fontSize = 16.sp
                 )
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Transaction",
+                        tint = PrimaryBlue
+                    )
+                }
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -410,15 +480,14 @@ fun TransactionItem(transaction: TransactionEntity, onDelete: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionDialog(
+    availableCategories: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (merchant: String, amount: Double, type: String, category: String) -> Unit
 ) {
     var merchant by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("DEBIT") }
-    var selectedCategory by remember { mutableStateOf("Food & Dining") }
-
-    val categories = listOf("Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Entertainment", "Income", "Other")
+    var selectedCategory by remember { mutableStateOf(availableCategories.firstOrNull() ?: "Food & Dining") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -486,7 +555,7 @@ fun AddTransactionDialog(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        categories.forEach { cat ->
+                        availableCategories.forEach { cat ->
                             DropdownMenuItem(
                                 text = { Text(cat) },
                                 onClick = {
@@ -510,6 +579,93 @@ fun AddTransactionDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
                 Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditTransactionDialog(
+    transaction: TransactionEntity,
+    availableCategories: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (merchant: String, category: String, amount: Double) -> Unit
+) {
+    var merchant by remember { mutableStateOf(transaction.merchant) }
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var selectedCategory by remember { mutableStateOf(transaction.category) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Edit Transaction & Category", style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = merchant,
+                    onValueChange = { merchant = it },
+                    label = { Text("Merchant / Title Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount (₹)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                var expanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedCategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Re-Assign Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        availableCategories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat) },
+                                onClick = {
+                                    selectedCategory = cat
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amount = amountText.toDoubleOrNull() ?: transaction.amount
+                    if (merchant.isNotBlank() && amount > 0) {
+                        onConfirm(merchant, selectedCategory, amount)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text("Update")
             }
         },
         dismissButton = {
