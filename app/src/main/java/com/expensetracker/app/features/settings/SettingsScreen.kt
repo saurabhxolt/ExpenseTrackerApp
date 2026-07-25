@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
@@ -42,8 +44,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.expensetracker.app.core.promotions.Promotion
 import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.GreenSuccess
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
@@ -241,6 +244,16 @@ fun SettingsScreen(
             }
         }
 
+        // Ecosystem Features & In-House Announcements
+        if (uiState.promotions.isNotEmpty()) {
+            item {
+                Text("Ecosystem Announcements", style = MaterialTheme.typography.titleLarge)
+            }
+            items(uiState.promotions) { promo ->
+                PromotionCard(promo = promo)
+            }
+        }
+
         // Data Backup & Export Section
         item {
             Text("Backup & Export", style = MaterialTheme.typography.titleLarge)
@@ -290,7 +303,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text("Expense Tracker App", fontWeight = FontWeight.Bold)
-                            Text("Version 1.0.0 (Phase 4 Release)", fontSize = 12.sp, color = TextSecondary)
+                            Text("Version 1.0.0 (Privacy-First In-House System)", fontSize = 12.sp, color = TextSecondary)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -300,6 +313,49 @@ fun SettingsScreen(
                         color = GreenSuccess
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun PromotionCard(promo: Promotion) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                if (promo.actionUrl.isNotBlank()) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(promo.actionUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+        colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.RocketLaunch,
+                contentDescription = null,
+                tint = PrimaryBlue,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(promo.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(promo.description, fontSize = 12.sp, color = TextSecondary)
             }
         }
     }

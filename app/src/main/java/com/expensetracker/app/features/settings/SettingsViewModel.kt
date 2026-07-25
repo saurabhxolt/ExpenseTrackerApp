@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.app.core.data.repository.BudgetRepository
 import com.expensetracker.app.core.data.repository.TransactionRepository
 import com.expensetracker.app.core.database.dao.CategoryDao
+import com.expensetracker.app.core.promotions.Promotion
+import com.expensetracker.app.core.promotions.PromotionManager
 import com.expensetracker.app.features.backup.BackupManager
 import com.expensetracker.app.features.reports.ReportsExporter
 import com.expensetracker.app.features.security.BiometricLockManager
@@ -22,27 +24,32 @@ import javax.inject.Inject
 data class SettingsUiState(
     val transactionCount: Int = 0,
     val budgetCount: Int = 0,
-    val isBiometricEnabled: Boolean = false
+    val isBiometricEnabled: Boolean = false,
+    val promotions: List<Promotion> = emptyList()
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
-    private val categoryDao: CategoryDao
+    private val categoryDao: CategoryDao,
+    private val promotionManager: PromotionManager
 ) : ViewModel() {
 
     private val _isBiometricEnabled = MutableStateFlow(false)
+    private val _promotions = MutableStateFlow<List<Promotion>>(emptyList())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         transactionRepository.allTransactions,
         budgetRepository.allBudgets,
-        _isBiometricEnabled
-    ) { transactions, budgets, biometric ->
+        _isBiometricEnabled,
+        _promotions
+    ) { transactions, budgets, biometric, promos ->
         SettingsUiState(
             transactionCount = transactions.size,
             budgetCount = budgets.size,
-            isBiometricEnabled = biometric
+            isBiometricEnabled = biometric,
+            promotions = promos
         )
     }.stateIn(
         scope = viewModelScope,
@@ -52,6 +59,9 @@ class SettingsViewModel @Inject constructor(
 
     fun loadInitialState(context: Context) {
         _isBiometricEnabled.value = BiometricLockManager.isBiometricLockEnabled(context)
+        viewModelScope.launch {
+            _promotions.value = promotionManager.getActivePromotions()
+        }
     }
 
     fun toggleBiometric(context: Context, enabled: Boolean) {
