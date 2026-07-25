@@ -10,7 +10,7 @@ import com.expensetracker.app.core.database.dao.TransactionDao
 import com.expensetracker.app.core.database.entity.BudgetEntity
 import com.expensetracker.app.core.database.entity.CategoryEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
-import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [TransactionEntity::class, CategoryEntity::class, BudgetEntity::class],
@@ -28,7 +28,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
 
         fun getInstance(context: Context, passphrase: ByteArray): ExpenseDatabase {
             return INSTANCE ?: synchronized(this) {
-                val factory = SupportOpenHelperFactory(passphrase)
+                val factory = SupportFactory(passphrase)
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     ExpenseDatabase::class.java,
