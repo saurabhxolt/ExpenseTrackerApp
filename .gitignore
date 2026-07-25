@@ -3,6 +3,17 @@
 *.aab
 *.aar
 *.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local Android SDK & OpenJDK binaries
+android-sdk/
+android-sdk-tmp/
+cmdline-tools.zip
+jdk-tmp/
+jdk17.zip
+gradle-8.4-bin.zip
+gradle-dist/
 
 # Gradle files
 .gradle/
