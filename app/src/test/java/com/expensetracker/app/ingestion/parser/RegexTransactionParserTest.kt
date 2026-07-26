@@ -228,4 +228,33 @@ class RegexTransactionParserTest {
         assertEquals("ARCHIS KISHORRAO SONWAL", result.merchant)
         assertEquals("Income", result.category)
     }
+
+    @Test
+    fun testInitiatedRefundIsIgnored() {
+        val sms = "Dear user, refund of Rs 45.92 for your Zepto order UHISJBLBL99775 has been initiated. It should reflect in your account within 5-7 business days!"
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Initiated refund notification must be ignored until actually processed", result)
+    }
+
+    @Test
+    fun testAirtelBlackBillPaymentReceiptIsDebit() {
+        val sms = "Hi Saurabh Kishor Sonwal, we have received a payment of Rs. 347.16 for your Airtel Black ID 10101029041868. To download the payment receipt, click https://digi-api.airtel.in/..."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(347.16, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Airtel Black", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testAirtelWifiBillPaymentReceiptIsDebit() {
+        val sms = "Hi Saurabh Kishor Sonwal, we have received a payment of Rs. 370.52 for your Airtel Wi-Fi ID 07214505992. To download the payment receipt, click https://digi-api.airtel.in/..."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(370.52, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Airtel Wi-Fi", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
 }

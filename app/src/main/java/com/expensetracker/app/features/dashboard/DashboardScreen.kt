@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Sort
@@ -604,12 +605,14 @@ fun TransactionDetailsDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         Text(
                             text = transaction.merchant,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = TextPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = transaction.category,
@@ -620,9 +623,11 @@ fun TransactionDetailsDialog(
                     }
                     Text(
                         text = "${if (transaction.type == "CREDIT") "+" else "-"}₹${String.format("%.2f", transaction.amount)}",
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (transaction.type == "CREDIT") GreenSuccess else RedExpense
+                        color = if (transaction.type == "CREDIT") GreenSuccess else RedExpense,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 

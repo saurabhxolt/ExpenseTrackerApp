@@ -25,11 +25,12 @@ Students, salaried employees, families, freelancers, and small business owners s
   1. Real Outgoing Expense (`DEBIT`)
   2. Genuine External Income (`CREDIT`)
   3. Internal Account Transfers (`TRANSFER`)
-  4. Informational Statement Alerts (Rejection Filter: statement sent, min due)
+  4. Informational Statement & Initiated Refund Alerts (Rejection Filter: statement sent, min due, has been initiated)
   5. Promotional Loan / Disbursement Consent Alerts (Rejection Filter: require consent, disbursement, pre-approved)
-- Payment Receipt Detection: Merchant/service/insurance/government fee payment confirmations ("We received payment for your bike insurance", "Received Rs X against registration fee") are categorized as `DEBIT` / Expense.
-- Beneficiary & Entity Extraction: Strips `HH:MM:SS` timestamps to prevent time strings from becoming merchant names, extracting true payee/beneficiary names (e.g. `ARCHIS KISHORRAO SONWAL`).
+- Payment Receipt Detection: Merchant/utility/insurance/government fee payment confirmations ("we have received a payment of Rs 347.16 for your Airtel Black ID", "We received payment for your bike insurance") are categorized as `DEBIT` / Expense.
+- Beneficiary & Entity Extraction: Strips `HH:MM:SS` timestamps to prevent time strings from becoming merchant names, extracting true payee/beneficiary names (e.g. `ARCHIS KISHORRAO SONWAL`, `Airtel Black`, `Airtel Wi-Fi`).
 - Timeless Anti-Duplication Engine (`TransactionDeduplicator.kt`) preventing double-counting of Credit Card bill payments across bank debit SMS and card issuer confirmation notifications regardless of days delayed, while allowing distinct same-amount transactions for different merchants.
+- Responsive UI Layout (`DashboardScreen.kt`): Added flex weights and vertical wrapping prevention (`maxLines = 1, softWrap = false`) for transaction amounts in `TransactionDetailsDialog`.
 - Precise Amount Extraction ignoring trailing available balance and credit limit clauses.
 - Dual-channel detection: Android SMS Receiver and NotificationListenerService.
 - Historical Monthwise & Incremental SMS Scanner.

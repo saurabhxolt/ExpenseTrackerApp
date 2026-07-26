@@ -1,41 +1,29 @@
-# Semantic NLP Financial Message Classifier Engine - Walkthrough
+# Semantic NLP Financial Message Classifier & UI Layout Fixes - Walkthrough
 
-## Overview of Implemented Intelligent Engine
+## Summary of Refinements (Fixing 8 New Screenshots)
 
-We built a **Semantic NLP Financial Message Classifier Engine** (`RegexTransactionParser.kt`) that analyzes the true intent of every financial message received via SMS or Push Notifications.
+### 1. Initiated Refund Rejection (`RegexTransactionParser.kt`)
+- **Screenshots 161107, 161111, 161115**: `"Dear user, refund of Rs 45.92 for your Zepto order UHISJBLBL99775 has been initiated. It should reflect in your account within 5-7 business days!"`
+- **Behavior**: Filtered out by `INFORMATIONAL_STATEMENT_PATTERNS` (`has been initiated`, `refund.*initiated`).
+- **Result**: Initiated refund alerts are **ignored / rejected**, preventing premature or triple-counting of uncredited refunds.
 
----
-
-## The 5 Semantic Message Categories & Behaviors
-
-### 1. Informational Statement Alerts (Category 4 -> REJECTED)
-- **Screenshot 154708**: `"ICICI Bank Credit Card XX9000 Statement is sent to sa*******lt@gmail.com. Total of Rs 2,408.71 or minimum of Rs 130.00 is due by 03-AUG-26."`
-- **Behavior**: Filtered out by `INFORMATIONAL_STATEMENT_PATTERNS` (`statement is sent`, `minimum ... is due`).
-- **Result**: **Null / Ignored** (no false Income created).
-
-### 2. Promotional Loan / Disbursement Consent Alerts (Category 5 -> REJECTED)
-- **Screenshot 154723**: `"Service Alert: Funds of INR 4,67,000.00 on YES BANK Credit Card ending 0570 are available and require consent to continue disbursement..."`
-- **Behavior**: Filtered out by `PROMOTIONAL_OFFER_PATTERNS` (`funds ... are available`, `require consent`, `disbursement`).
-- **Result**: **Null / Ignored** (no false Income created).
-
-### 3. Payment Confirmation Receipts for Expenses (Category 1 -> DEBIT / EXPENSE)
-- **Screenshot 154735**: `"Received Rs.14099/- against new registration fee vide receipt no KA51D26070003689 . MoRTH."`
-  - **Behavior**: Categorized as `DEBIT` / Expense (Merchant: `MoRTH`, Category: `Government & Fees`).
-- **Screenshot 154753**: `"You're covered! Hi Saurabh Kishor Sonwal, we have received payment of Rs 5080.0 for your bike insurance NA..."`
-  - **Behavior**: Categorized as `DEBIT` / Expense (Merchant: `ACKO Insurance`, Category: `Insurance`).
+### 2. Bill Payment Receipts Classified as Expenses (`RegexTransactionParser.kt`)
+- **Screenshot 161120**: `"Hi Saurabh Kishor Sonwal, we have received a payment of Rs. 347.16 for your Airtel Black ID 10101029041868..."`
+  - **Behavior**: Categorized as `DEBIT` / Expense (Merchant: `Airtel Black`, Category: `Bills & Utilities`).
+- **Screenshot 161125**: `"Hi Saurabh Kishor Sonwal, we have received a payment of Rs. 370.52 for your Airtel Wi-Fi ID 07214505992..."`
+  - **Behavior**: Categorized as `DEBIT` / Expense (Merchant: `Airtel Wi-Fi`, Category: `Bills & Utilities`).
 - **Result**: Correctly recorded as **Expenses**, **NEVER Income**.
 
-### 4. Timestamp Merchant Name Stripping (Category 2 -> Genuine Beneficiary Extraction)
-- **Screenshots 154822, 154836, 154841**: `"HDFC Bank : NEFT money transfer Txn No HDFCH01108338271 for Rs INR 3,400.00 has been credited to ARCHIS KISHORRAO SONWAL on 07-07-2026 at 02:40:16"`
-- **Behavior**: Strips `at 02:40:16` time strings before merchant matching; extracts beneficiary name `ARCHIS KISHORRAO SONWAL` from `credited to <Name>`.
-- **Result**: Clean Merchant Name: **ARCHIS KISHORRAO SONWAL** (not `02:40:16`!).
+### 3. Dialog Amount Text Vertical Wrapping UI Fix (`DashboardScreen.kt`)
+- **Screenshots 161212, 161217, 161222**: Long merchant names (e.g. `SAURABH KISHOR SONWAL`, `Airtel Black ID 10101029041868`) were squeezing the amount text `+₹23224.00` / `+₹1500.00` to the far right, causing it to wrap vertically letter-by-letter down 9 lines.
+- **Fix**: Applied `Modifier.weight(1f)` to the merchant title column and `maxLines = 1, softWrap = false` to `Text(amount)`, guaranteeing clean single-line amount rendering regardless of merchant name length.
 
 ---
 
 ## Verification Results
 
 ### Automated Unit Tests
-- `RegexTransactionParserTest`: PASS (covers all 5 screenshot test cases).
+- `RegexTransactionParserTest`: PASS (31 test cases executed).
 - `TransactionDeduplicatorTest`: PASS.
 - `gradlew test`: SUCCESSFUL.
 

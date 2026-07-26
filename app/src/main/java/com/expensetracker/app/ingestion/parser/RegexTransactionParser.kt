@@ -30,6 +30,8 @@ object RegexTransactionParser {
         Pattern.compile("(?i)total\\s+amount\\s+due"),
         Pattern.compile("(?i)will\\s+be\\s+deducted"),
         Pattern.compile("(?i)will\\s+be\\s+debited"),
+        Pattern.compile("(?i)has\\s+been\\s+initiated"),
+        Pattern.compile("(?i)refund.*initiated"),
         Pattern.compile("(?i)available\\s+bal.*is\\s+inr"),
         Pattern.compile("(?i)available\\s+bal.*is\\s+rs"),
         Pattern.compile("(?i)for\\s+updated\\s+a/c\\s+bal"),
@@ -214,8 +216,8 @@ object RegexTransactionParser {
 
     private fun isPaymentReceiptForExpense(text: String): Boolean {
         val lower = text.lowercase()
-        return (lower.contains("received payment") || lower.contains("received rs") || lower.contains("received inr") || lower.contains("payment received")) &&
-               (lower.contains("for your") || lower.contains("against") || lower.contains("fee") || lower.contains("insurance") || lower.contains("morth") || lower.contains("policy") || lower.contains("acko") || lower.contains("receipt no"))
+        return (lower.contains("received payment") || lower.contains("received a payment") || lower.contains("received rs") || lower.contains("received inr") || lower.contains("payment received") || lower.contains("payment of")) &&
+               (lower.contains("for your") || lower.contains("against") || lower.contains("fee") || lower.contains("insurance") || lower.contains("morth") || lower.contains("policy") || lower.contains("acko") || lower.contains("receipt no") || lower.contains("airtel") || lower.contains("bill"))
     }
 
     private fun isCreditCardBillPayment(text: String): Boolean {
@@ -263,6 +265,10 @@ object RegexTransactionParser {
 
     private fun extractMerchant(text: String, type: String): String {
         val lowerFull = text.lowercase()
+        if (lowerFull.contains("airtel black")) return "Airtel Black"
+        if (lowerFull.contains("airtel wi-fi") || lowerFull.contains("airtel wifi")) return "Airtel Wi-Fi"
+        if (lowerFull.contains("zepto cash")) return "Zepto Cash"
+        if (lowerFull.contains("zepto")) return "Zepto"
         if (lowerFull.contains("acko")) return "ACKO Insurance"
         if (lowerFull.contains("morth")) return "MoRTH"
 
