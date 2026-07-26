@@ -131,8 +131,13 @@ class DashboardViewModel @Inject constructor(
         val fullyEnabled = PermissionUtils.isAutoTrackingFullyEnabled(context)
         _isAutoTrackingEnabled.value = fullyEnabled
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _promotions.value = promotionManager.getActivePromotions()
+            val db = com.expensetracker.app.core.database.ExpenseDatabase.getInstance(
+                context.applicationContext,
+                "expense_tracker_secret_passphrase_key".toByteArray()
+            )
+            com.expensetracker.app.ingestion.deduplication.TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
         }
 
         if (PermissionUtils.isSmsPermissionGranted(context)) {

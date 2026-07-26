@@ -14,6 +14,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun getAllTransactions(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    suspend fun getAllTransactionsList(): List<TransactionEntity>
+
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT'")
     fun getTotalExpenses(): Flow<Double?>
 

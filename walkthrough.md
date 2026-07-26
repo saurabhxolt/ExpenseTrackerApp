@@ -1,30 +1,24 @@
-# Semantic NLP Financial Message Classifier & UI Layout Fixes - Walkthrough
+# Fuzzy Brand Deduplication & Automated Database Cleanup - Walkthrough
 
-## Summary of Refinements (Fixing 8 New Screenshots)
+## Summary of Enhanced Deduplication Infrastructure
 
-### 1. Initiated Refund Rejection (`RegexTransactionParser.kt`)
-- **Screenshots 161107, 161111, 161115**: `"Dear user, refund of Rs 45.92 for your Zepto order UHISJBLBL99775 has been initiated. It should reflect in your account within 5-7 business days!"`
-- **Behavior**: Filtered out by `INFORMATIONAL_STATEMENT_PATTERNS` (`has been initiated`, `refund.*initiated`).
-- **Result**: Initiated refund alerts are **ignored / rejected**, preventing premature or triple-counting of uncredited refunds.
+### 1. Fuzzy Brand Merchant Deduplication (`TransactionDeduplicator.kt`)
+- **Problem**: When Zepto sent `"Refund of Rs 45.92 for your Zepto order has been processed"` and `"Rs.45.92 has been refunded to your Zepto Cash"`, the deduplicator normalized the merchant names as `"zepto"` and `"zeptocash"`. Because exact string equality failed, both transactions were saved as separate records.
+- **Fix**: Added `isBrandMatch(m1, m2)` and `areMerchantsMatchingOrRelated(m1, m2)` in `TransactionDeduplicator.kt`.
+- **Behavior**: Recognizes that `"zeptocash"` contains `"zepto"` (or `"amazonpay"` contains `"amazon"`, `"swiggyinstamart"` contains `"swiggy"`). Deduplicates variant merchant names for the same amount/type within the 10-minute window, enriches the merchant title to `"Zepto Cash"`, and **suppresses the duplicate**.
 
-### 2. Bill Payment Receipts Classified as Expenses (`RegexTransactionParser.kt`)
-- **Screenshot 161120**: `"Hi Saurabh Kishor Sonwal, we have received a payment of Rs. 347.16 for your Airtel Black ID 10101029041868..."`
-  - **Behavior**: Categorized as `DEBIT` / Expense (Merchant: `Airtel Black`, Category: `Bills & Utilities`).
-- **Screenshot 161125**: `"Hi Saurabh Kishor Sonwal, we have received a payment of Rs. 370.52 for your Airtel Wi-Fi ID 07214505992..."`
-  - **Behavior**: Categorized as `DEBIT` / Expense (Merchant: `Airtel Wi-Fi`, Category: `Bills & Utilities`).
-- **Result**: Correctly recorded as **Expenses**, **NEVER Income**.
-
-### 3. Dialog Amount Text Vertical Wrapping UI Fix (`DashboardScreen.kt`)
-- **Screenshots 161212, 161217, 161222**: Long merchant names (e.g. `SAURABH KISHOR SONWAL`, `Airtel Black ID 10101029041868`) were squeezing the amount text `+₹23224.00` / `+₹1500.00` to the far right, causing it to wrap vertically letter-by-letter down 9 lines.
-- **Fix**: Applied `Modifier.weight(1f)` to the merchant title column and `maxLines = 1, softWrap = false` to `Text(amount)`, guaranteeing clean single-line amount rendering regardless of merchant name length.
+### 2. Automated Legacy Database Duplicate Cleanup (`cleanupExistingDuplicates`)
+- **Problem**: Legacy duplicate records created during previous SMS scans prior to our fixes remained present in the local database.
+- **Fix**: Added `cleanupExistingDuplicates(dao)` routine in `TransactionDeduplicator.kt`, invoked automatically on app startup in `DashboardViewModel` and after inbox scans in `SmsScanner`.
+- **Behavior**: Scans local SQLite DB, detects duplicate transactions of the same amount/type within 10 minutes sharing related brand names or refund keywords, and deletes redundant duplicate entries.
 
 ---
 
 ## Verification Results
 
 ### Automated Unit Tests
-- `RegexTransactionParserTest`: PASS (31 test cases executed).
-- `TransactionDeduplicatorTest`: PASS.
+- `TransactionDeduplicatorTest`: PASS (includes `testFuzzyBrandMerchantDeduplicationZeptoVsZeptoCash` and `testDatabaseCleanupExistingDuplicates`).
+- `RegexTransactionParserTest`: PASS (33 test cases).
 - `gradlew test`: SUCCESSFUL.
 
 ### APK Package Output

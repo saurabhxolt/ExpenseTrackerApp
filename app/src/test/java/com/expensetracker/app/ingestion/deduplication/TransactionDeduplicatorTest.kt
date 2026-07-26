@@ -14,6 +14,7 @@ class TransactionDeduplicatorTest {
         val storedTransactions = mutableListOf<TransactionEntity>()
 
         override fun getAllTransactions(): Flow<List<TransactionEntity>> = flowOf(storedTransactions)
+        override suspend fun getAllTransactionsList(): List<TransactionEntity> = storedTransactions.toList()
         override fun getTotalExpenses(): Flow<Double?> = flowOf(storedTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount })
         override fun getTotalIncome(): Flow<Double?> = flowOf(storedTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount })
 
@@ -146,5 +147,78 @@ class TransactionDeduplicatorTest {
         assertEquals("First bank debit must be inserted", 1L, id1)
         assertEquals("Delayed credit card payment confirmation must be suppressed (-1)", -1L, id2)
         assertEquals("Database should contain exactly 1 transaction record", 1, dao.storedTransactions.size)
+    }
+
+    @Test
+    fun testFuzzyBrandMerchantDeduplicationZeptoVsZeptoCash() = runBlocking {
+        val dao = FakeTransactionDao()
+        val timestamp = System.currentTimeMillis()
+
+        val entity1 = TransactionEntity(
+            amount = 45.92,
+            type = "CREDIT",
+            merchant = "Zepto",
+            rawText = "Good news! Refund of Rs 45.92 for your Zepto order has been processed.",
+            category = "Income",
+            timestamp = timestamp,
+            transactionHash = "hash-zepto-1"
+        )
+
+        val entity2 = TransactionEntity(
+            amount = 45.92,
+            type = "CREDIT",
+            merchant = "Zepto Cash",
+            rawText = "Dear Customer, Rs.45.92 has been refunded to your Zepto Cash.",
+            category = "Income",
+            timestamp = timestamp + 2000L, // 2 seconds later
+            transactionHash = "hash-zepto-2"
+        )
+
+        val id1 = TransactionDeduplicator.insertWithDeduplication(dao, entity1)
+        val id2 = TransactionDeduplicator.insertWithDeduplication(dao, entity2)
+
+        assertEquals("First Zepto refund inserted", 1L, id1)
+        assertEquals("Second Zepto Cash refund suppressed as duplicate (-1)", -1L, id2)
+        assertEquals("Database should contain 1 transaction record", 1, dao.storedTransactions.size)
+        assertEquals("Merchant should be enriched to Zepto Cash", "Zepto Cash", dao.storedTransactions[0].merchant)
+    }
+
+    @Test
+    fun testDatabaseCleanupExistingDuplicates() = runBlocking {
+        val dao = FakeTransactionDao()
+        val timestamp = System.currentTimeMillis()
+
+        // Manually populate duplicates into DB
+        dao.insertTransaction(
+            TransactionEntity(
+                id = 1,
+                amount = 45.92,
+                type = "CREDIT",
+                merchant = "Zepto",
+                rawText = "Refund of Rs 45.92 processed",
+                category = "Income",
+                timestamp = timestamp,
+                transactionHash = "hash-clean-1"
+            )
+        )
+        dao.insertTransaction(
+            TransactionEntity(
+                id = 2,
+                amount = 45.92,
+                type = "CREDIT",
+                merchant = "Zepto Cash",
+                rawText = "Rs.45.92 refunded to Zepto Cash",
+                category = "Income",
+                timestamp = timestamp + 2000L,
+                transactionHash = "hash-clean-2"
+            )
+        )
+
+        assertEquals("Initially 2 transactions in DB", 2, dao.storedTransactions.size)
+
+        val deletedCount = TransactionDeduplicator.cleanupExistingDuplicates(dao)
+
+        assertEquals("1 duplicate deleted during cleanup", 1, deletedCount)
+        assertEquals("Database cleaned down to 1 transaction record", 1, dao.storedTransactions.size)
     }
 }

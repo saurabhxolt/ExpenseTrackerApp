@@ -44,11 +44,11 @@ object SmsScanner {
                 sortOrder
             )
 
+            val db = ExpenseDatabase.getInstance(context.applicationContext, "expense_tracker_secret_passphrase_key".toByteArray())
+
             cursor?.use { c ->
                 val bodyIndex = c.getColumnIndex(Telephony.Sms.BODY)
                 val dateIndex = c.getColumnIndex(Telephony.Sms.DATE)
-
-                val db = ExpenseDatabase.getInstance(context.applicationContext, "expense_tracker_secret_passphrase_key".toByteArray())
 
                 while (c.moveToNext()) {
                     val body = c.getString(bodyIndex) ?: continue
@@ -79,9 +79,13 @@ object SmsScanner {
                 }
             }
 
+            val cleanedCount = kotlinx.coroutines.runBlocking {
+                TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
+            }
+
             // Save new last scan timestamp
             prefs.edit().putLong(KEY_LAST_SCAN_TIME, System.currentTimeMillis()).apply()
-            Log.d("SmsScanner", "SMS Scan complete! Found $newTransactionsCount new transactions.")
+            Log.d("SmsScanner", "SMS Scan complete! Found $newTransactionsCount new transactions, cleaned $cleanedCount existing duplicates.")
 
         } catch (e: Exception) {
             Log.e("SmsScanner", "Error scanning SMS inbox", e)

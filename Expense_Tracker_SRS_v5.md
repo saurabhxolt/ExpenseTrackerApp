@@ -29,7 +29,7 @@ Students, salaried employees, families, freelancers, and small business owners s
   5. Promotional Loan / Disbursement Consent Alerts (Rejection Filter: require consent, disbursement, pre-approved)
 - Payment Receipt Detection: Merchant/utility/insurance/government fee payment confirmations ("we have received a payment of Rs 347.16 for your Airtel Black ID", "We received payment for your bike insurance") are categorized as `DEBIT` / Expense.
 - Beneficiary & Entity Extraction: Strips `HH:MM:SS` timestamps to prevent time strings from becoming merchant names, extracting true payee/beneficiary names (e.g. `ARCHIS KISHORRAO SONWAL`, `Airtel Black`, `Airtel Wi-Fi`).
-- Timeless Anti-Duplication Engine (`TransactionDeduplicator.kt`) preventing double-counting of Credit Card bill payments across bank debit SMS and card issuer confirmation notifications regardless of days delayed, while allowing distinct same-amount transactions for different merchants.
+- Fuzzy Brand Anti-Duplication Engine (`TransactionDeduplicator.kt`): Brand-aware containment matching (e.g. `Zepto` vs `Zepto Cash`, `Amazon` vs `Amazon Pay`, `Swiggy` vs `Swiggy Instamart`) preventing duplicate insertions across variant merchant names, and automated database cleanup (`cleanupExistingDuplicates`) removing legacy duplicate records on app launch.
 - Responsive UI Layout (`DashboardScreen.kt`): Added flex weights and vertical wrapping prevention (`maxLines = 1, softWrap = false`) for transaction amounts in `TransactionDetailsDialog`.
 - Precise Amount Extraction ignoring trailing available balance and credit limit clauses.
 - Dual-channel detection: Android SMS Receiver and NotificationListenerService.

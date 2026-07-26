@@ -16,7 +16,6 @@ object TransactionDeduplicator {
         if (isCreditCardPayment) {
             val existingCardPayment = dao.findExistingCreditCardPayment(entity.amount)
             if (existingCardPayment != null) {
-                // If existing record had generic info and new entity has specific card info, enrich it
                 if (isGenericMerchant(existingCardPayment.merchant) && !isGenericMerchant(entity.merchant)) {
                     val updated = existingCardPayment.copy(
                         merchant = entity.merchant,
@@ -41,13 +40,22 @@ object TransactionDeduplicator {
 
         if (existing != null) {
             val sameRawText = existing.rawText.trim().equals(entity.rawText.trim(), ignoreCase = true)
-            val sameMerchant = normalizeMerchant(existing.merchant) == normalizeMerchant(entity.merchant)
+            val merchantsMatchOrRelated = areMerchantsMatchingOrRelated(existing.merchant, entity.merchant)
+            val bothAreRefunds = existing.rawText.lowercase().contains("refund") && entity.rawText.lowercase().contains("refund")
+            val bothAreCashback = existing.rawText.lowercase().contains("cashback") && entity.rawText.lowercase().contains("cashback")
             val isExistingGeneric = isGenericMerchant(existing.merchant)
             val isNewGeneric = isGenericMerchant(entity.merchant)
 
-            // Suppress duplicate only if raw text matches, merchants match, or one is generic
-            if (sameRawText || sameMerchant || isExistingGeneric || isNewGeneric) {
+            // Suppress duplicate if raw text matches, merchants match/related, both are refunds, both are cashbacks, or one is generic
+            if (sameRawText || merchantsMatchOrRelated || bothAreRefunds || bothAreCashback || isExistingGeneric || isNewGeneric) {
+                // Enrich existing record with richer merchant name if applicable
                 if (isExistingGeneric && !isNewGeneric) {
+                    val updated = existing.copy(
+                        merchant = entity.merchant,
+                        category = entity.category
+                    )
+                    dao.updateTransaction(updated)
+                } else if (entity.merchant.length > existing.merchant.length && isBrandMatch(existing.merchant, entity.merchant)) {
                     val updated = existing.copy(
                         merchant = entity.merchant,
                         category = entity.category
@@ -60,6 +68,64 @@ object TransactionDeduplicator {
         }
 
         return dao.insertTransaction(entity)
+    }
+
+    suspend fun cleanupExistingDuplicates(dao: TransactionDao): Int {
+        val allTxns = dao.getAllTransactionsList()
+        val toDelete = mutableSetOf<TransactionEntity>()
+
+        for (i in 0 until allTxns.size) {
+            val current = allTxns[i]
+            if (toDelete.contains(current)) continue
+
+            for (j in i + 1 until allTxns.size) {
+                val candidate = allTxns[j]
+                if (toDelete.contains(candidate)) continue
+
+                val sameType = current.type == candidate.type
+                val sameAmount = Math.abs(current.amount - candidate.amount) < 0.01
+                val withinWindow = Math.abs(current.timestamp - candidate.timestamp) <= DEDUPLICATION_WINDOW_MS
+
+                if (sameType && sameAmount && withinWindow) {
+                    val sameRawText = current.rawText.trim().equals(candidate.rawText.trim(), ignoreCase = true)
+                    val relatedMerchants = areMerchantsMatchingOrRelated(current.merchant, candidate.merchant)
+                    val bothRefunds = current.rawText.lowercase().contains("refund") && candidate.rawText.lowercase().contains("refund")
+                    val bothCashback = current.rawText.lowercase().contains("cashback") && candidate.rawText.lowercase().contains("cashback")
+
+                    if (sameRawText || relatedMerchants || bothRefunds || bothCashback) {
+                        toDelete.add(candidate)
+                    }
+                }
+            }
+        }
+
+        var deletedCount = 0
+        for (duplicate in toDelete) {
+            dao.deleteTransaction(duplicate)
+            deletedCount++
+        }
+
+        return deletedCount
+    }
+
+    private fun areMerchantsMatchingOrRelated(m1: String, m2: String): Boolean {
+        val norm1 = normalizeMerchant(m1)
+        val norm2 = normalizeMerchant(m2)
+
+        if (norm1 == norm2) return true
+        if (isGenericMerchant(m1) || isGenericMerchant(m2)) return true
+
+        return isBrandMatch(m1, m2)
+    }
+
+    private fun isBrandMatch(m1: String, m2: String): Boolean {
+        val norm1 = normalizeMerchant(m1)
+        val norm2 = normalizeMerchant(m2)
+
+        if (norm1.length >= 3 && norm2.length >= 3) {
+            if (norm1.contains(norm2) || norm2.contains(norm1)) return true
+        }
+        return false
     }
 
     private fun normalizeMerchant(merchant: String): String {
