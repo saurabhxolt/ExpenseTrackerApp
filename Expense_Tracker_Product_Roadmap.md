@@ -3,8 +3,8 @@ Version: 2.0 | Multi-Phase Long-Term Product Strategy
 
 # Development Roadmap Status
 
-- **Phase 1: Ingestion & Storage Core** — ✅ COMPLETED
-  - Multi-channel SMS & Notification Listener + Smart NLP parser + Monthwise Inbox Scanner.
+- **Phase 1: Ingestion & Storage Core** — ✅ COMPLETED & ENHANCED
+  - Multi-channel SMS & Notification Listener + Generic Multi-Stage NLP Parser + Window-based Anti-Duplication Engine + Monthwise Inbox Scanner.
 - **Phase 2: Budgets & Search** — ✅ COMPLETED
   - Bottom Navigation Bar + Category Budget Caps + Transaction Search & Filter.
 - **Phase 3: Security & Export** — ✅ COMPLETED

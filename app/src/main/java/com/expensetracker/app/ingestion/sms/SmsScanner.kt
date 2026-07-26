@@ -5,6 +5,7 @@ import android.provider.Telephony
 import android.util.Log
 import com.expensetracker.app.core.database.ExpenseDatabase
 import com.expensetracker.app.core.database.entity.TransactionEntity
+import com.expensetracker.app.ingestion.deduplication.TransactionDeduplicator
 import com.expensetracker.app.ingestion.parser.RegexTransactionParser
 import java.util.Calendar
 import java.util.TimeZone
@@ -68,9 +69,8 @@ object SmsScanner {
                             transactionHash = hash
                         )
 
-                        // Run blocking insertion on background thread
                         val rowId = kotlinx.coroutines.runBlocking {
-                            db.transactionDao().insertTransaction(entity)
+                            TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
                         }
                         if (rowId > 0) {
                             newTransactionsCount++

@@ -20,10 +20,11 @@ Students, salaried employees, families, freelancers, and small business owners s
 
 # 4. Functional Requirements & Roadmap Phases
 
-## Phase 1: Core Automated Ingestion & Parsing (COMPLETED)
-- Parse amount, merchant/VPA, account/card ending digits, balance, transaction type (DEBIT/CREDIT), and timestamp.
-- Exclusion Filter Rules: Rejects non-transaction messages.
-- Precise Amount Extraction.
+## Phase 1: Core Automated Ingestion & Parsing (COMPLETED & REFINED)
+- Generic Multi-Stage NLP Transaction Parsing Engine (`RegexTransactionParser.kt`) recognizing all financial transactions across all Indian and international banks/payment apps.
+- Non-Income Credit Card & Self-Transfer Classification: Credit Card bill payment confirmations and self-transfers are categorized as `DEBIT` / `Bills & Utilities` or `TRANSFER`, never added to Income.
+- Timeless Anti-Duplication Engine (`TransactionDeduplicator.kt`) preventing double-counting of Credit Card bill payments across bank debit SMS and card issuer confirmation notifications regardless of days delayed, while allowing distinct same-amount transactions for different merchants.
+- Precise Amount Extraction ignoring trailing available balance and credit limit clauses.
 - Dual-channel detection: Android SMS Receiver and NotificationListenerService.
 - Historical Monthwise & Incremental SMS Scanner.
 

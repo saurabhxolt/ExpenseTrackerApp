@@ -10,11 +10,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+import com.expensetracker.app.ingestion.deduplication.TransactionDeduplicator
+
 class ExpenseNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try {
-            val packageName = sbn.packageName ?: return
+            if (sbn.packageName.isNullOrBlank()) return
             val extras = sbn.notification?.extras ?: return
             val title = extras.getCharSequence("android.title")?.toString() ?: ""
             val text = extras.getCharSequence("android.text")?.toString() ?: ""
@@ -25,7 +27,8 @@ class ExpenseNotificationListenerService : NotificationListenerService() {
             val lowerText = combined.lowercase()
             // Check if notification contains transaction triggers
             if (lowerText.contains("rs") || lowerText.contains("inr") || lowerText.contains("₹") ||
-                lowerText.contains("debited") || lowerText.contains("credited") || lowerText.contains("paid") || lowerText.contains("sent")
+                lowerText.contains("debited") || lowerText.contains("credited") || lowerText.contains("paid") || lowerText.contains("sent") ||
+                lowerText.contains("spent") || lowerText.contains("received") || lowerText.contains("withdrawn") || lowerText.contains("deducted")
             ) {
                 val parsed = RegexTransactionParser.parse(combined)
                 if (parsed != null) {
@@ -42,8 +45,12 @@ class ExpenseNotificationListenerService : NotificationListenerService() {
                                 timestamp = parsed.timestamp,
                                 transactionHash = hash
                             )
-                            db.transactionDao().insertTransaction(entity)
-                            Log.d("NotificationService", "Saved notification transaction: ${parsed.merchant} ₹${parsed.amount}")
+                            val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
+                            if (rowId > 0) {
+                                Log.d("NotificationService", "Saved notification transaction: ${parsed.merchant} ₹${parsed.amount}")
+                            } else {
+                                Log.d("NotificationService", "Duplicate notification transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")
+                            }
                         } catch (e: Exception) {
                             Log.e("NotificationService", "Error saving notification transaction", e)
                         }

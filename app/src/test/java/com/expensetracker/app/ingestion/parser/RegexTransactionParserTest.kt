@@ -99,4 +99,86 @@ class RegexTransactionParserTest {
         assertEquals("CREDIT", result.type)
         assertEquals("Income", result.category)
     }
+
+    @Test
+    fun testGenericAxisBankDebit() {
+        val sms = "Your A/C XX1234 was debited by Rs 1,450.00 for Swiggy order on 25-07-26. Avl Bal is Rs 45,000.00."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(1450.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Swiggy", result.merchant)
+        assertEquals("Food & Dining", result.category)
+        assertEquals("1234", result.accountDigits)
+    }
+
+    @Test
+    fun testGenericPnbCreditSalary() {
+        val sms = "A/C ending 5678 credited with Rs 55,000.00 on 24-Jul-26 by NEFT salary deposit. Avl Bal Rs 82,100.00."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(55000.00, result!!.amount, 0.01)
+        assertEquals("CREDIT", result.type)
+        assertEquals("Income", result.category)
+        assertEquals("5678", result.accountDigits)
+    }
+
+    @Test
+    fun testGenericGPayPaidNotification() {
+        val notification = "Paid ₹320.00 to Uber Premier"
+        val result = RegexTransactionParser.parse(notification)
+        assertNotNull(result)
+        assertEquals(320.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Uber Premier", result.merchant)
+        assertEquals("Transportation", result.category)
+    }
+
+    @Test
+    fun testGenericPhonePeReceivedNotification() {
+        val notification = "Received ₹500.00 from Ramesh Kumar"
+        val result = RegexTransactionParser.parse(notification)
+        assertNotNull(result)
+        assertEquals(500.00, result!!.amount, 0.01)
+        assertEquals("CREDIT", result.type)
+        assertEquals("Income", result.category)
+    }
+
+    @Test
+    fun testCashbackCredit() {
+        val sms = "Cashback of Rs 40.00 credited to your A/c XX9000 on 26-07-26. Enjoy Paytm rewards!"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(40.00, result!!.amount, 0.01)
+        assertEquals("CREDIT", result.type)
+        assertEquals("Income", result.category)
+    }
+
+    @Test
+    fun testOtpMessageRejection() {
+        val sms = "Your OTP is 482910 for transaction of Rs 500.00 at Amazon. Do not share code with anyone."
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("OTP message must be rejected", result)
+    }
+
+    @Test
+    fun testCreditCardBillPaymentConfirmationNotIncome() {
+        val sms = "Payment of Rs.15,000.00 received towards your HDFC Bank Credit Card XX7478 on 24-JUL-26."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(15000.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testSelfTransferNotIncome() {
+        val sms = "Rs 20,000.00 transferred to your A/c XX8194 from A/c XX3856"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(20000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Transfer", result.category)
+    }
 }

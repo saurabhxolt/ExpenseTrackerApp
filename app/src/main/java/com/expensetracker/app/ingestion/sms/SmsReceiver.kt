@@ -12,6 +12,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+import com.expensetracker.app.ingestion.deduplication.TransactionDeduplicator
+
 class SmsReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,8 +38,12 @@ class SmsReceiver : BroadcastReceiver() {
                                 timestamp = parsed.timestamp,
                                 transactionHash = hash
                             )
-                            db.transactionDao().insertTransaction(entity)
-                            Log.d("SmsReceiver", "Saved SMS transaction: ${parsed.merchant} ₹${parsed.amount}")
+                            val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
+                            if (rowId > 0) {
+                                Log.d("SmsReceiver", "Saved SMS transaction: ${parsed.merchant} ₹${parsed.amount}")
+                            } else {
+                                Log.d("SmsReceiver", "Duplicate SMS transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")
+                            }
                         }
                     }
                 } catch (e: Exception) {

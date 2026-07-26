@@ -667,21 +667,11 @@ fun TransactionDetailsDialog(
             }
         },
         confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onOpenSmsApp,
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-                ) {
-                    Icon(imageVector = Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("View SMS 💬", fontSize = 13.sp)
-                }
-                Button(
-                    onClick = onEdit,
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkCard)
-                ) {
-                    Text("Edit")
-                }
+            Button(
+                onClick = onEdit,
+                colors = ButtonDefaults.buttonColors(containerColor = DarkCard)
+            ) {
+                Text("Edit")
             }
         },
         dismissButton = {

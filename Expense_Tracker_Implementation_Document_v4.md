@@ -22,5 +22,7 @@ Version: 4.0 | Technical Stack & Architectural Guidelines
 - features/backup/ (BackupManager)
 - features/reports/ (ReportsExporter)
 - core/promotions/ (PromotionModel, PromotionManager)
+- ingestion/parser/ (RegexTransactionParser, ParsedTransaction)
+- ingestion/deduplication/ (TransactionDeduplicator)
 - ingestion/worker/ (BillReminderWorker)
 - widget/ (ExpenseWidgetProvider)
