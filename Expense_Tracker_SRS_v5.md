@@ -21,8 +21,14 @@ Students, salaried employees, families, freelancers, and small business owners s
 # 4. Functional Requirements & Roadmap Phases
 
 ## Phase 1: Core Automated Ingestion & Parsing (COMPLETED & REFINED)
-- Generic Multi-Stage NLP Transaction Parsing Engine (`RegexTransactionParser.kt`) recognizing all financial transactions across all Indian and international banks/payment apps.
-- Non-Income Credit Card & Self-Transfer Classification: Credit Card bill payment confirmations and self-transfers are categorized as `DEBIT` / `Bills & Utilities` or `TRANSFER`, never added to Income.
+- Multi-Stage Semantic NLP Financial Message Classifier Engine (`RegexTransactionParser.kt`) recognizing 5 message categories:
+  1. Real Outgoing Expense (`DEBIT`)
+  2. Genuine External Income (`CREDIT`)
+  3. Internal Account Transfers (`TRANSFER`)
+  4. Informational Statement Alerts (Rejection Filter: statement sent, min due)
+  5. Promotional Loan / Disbursement Consent Alerts (Rejection Filter: require consent, disbursement, pre-approved)
+- Payment Receipt Detection: Merchant/service/insurance/government fee payment confirmations ("We received payment for your bike insurance", "Received Rs X against registration fee") are categorized as `DEBIT` / Expense.
+- Beneficiary & Entity Extraction: Strips `HH:MM:SS` timestamps to prevent time strings from becoming merchant names, extracting true payee/beneficiary names (e.g. `ARCHIS KISHORRAO SONWAL`).
 - Timeless Anti-Duplication Engine (`TransactionDeduplicator.kt`) preventing double-counting of Credit Card bill payments across bank debit SMS and card issuer confirmation notifications regardless of days delayed, while allowing distinct same-amount transactions for different merchants.
 - Precise Amount Extraction ignoring trailing available balance and credit limit clauses.
 - Dual-channel detection: Android SMS Receiver and NotificationListenerService.

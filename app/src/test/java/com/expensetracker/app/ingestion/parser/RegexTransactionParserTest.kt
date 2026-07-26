@@ -181,4 +181,51 @@ class RegexTransactionParserTest {
         assertEquals("TRANSFER", result.type)
         assertEquals("Transfer", result.category)
     }
+
+    @Test
+    fun testIciciCreditCardStatementAlertIgnored() {
+        val sms = "ICICI Bank Credit Card XX9000 Statement is sent to sa*******lt@gmail.com. Total of Rs 2,408.71 or minimum of Rs 130.00 is due by 03-AUG-26."
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Statement generation notice must be ignored", result)
+    }
+
+    @Test
+    fun testYesBankPromotionalDisbursementAlertIgnored() {
+        val sms = "Service Alert: Funds of INR 4,67,000.00 on YES BANK Credit Card ending 0570 are available and require consent to continue disbursement. ccybl.in/YESBNK/M4fcHDxn5U -YES BANK LTD"
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Promotional consent alert must be ignored", result)
+    }
+
+    @Test
+    fun testMorthRegistrationFeePaymentReceiptIsDebit() {
+        val sms = "Received Rs.14099/- against new registration fee vide receipt no KA51D26070003689 . MoRTH."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(14099.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("MoRTH", result.merchant)
+        assertEquals("Government & Fees", result.category)
+    }
+
+    @Test
+    fun testAckoInsurancePaymentReceiptIsDebit() {
+        val sms = "You're covered! Hi Saurabh Kishor Sonwal, we have received payment of Rs 5080.0 for your bike insurance NA. Download the ACKO app now to access your policy..."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(5080.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("ACKO Insurance", result.merchant)
+        assertEquals("Insurance", result.category)
+    }
+
+    @Test
+    fun testNeftMoneyTransferCreditedToPersonName() {
+        val sms = "HDFC Bank : NEFT money transfer Txn No HDFCH01108338271 for Rs INR 3,400.00 has been credited to ARCHIS KISHORRAO SONWAL on 07-07-2026 at 02:40:16"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(3400.00, result!!.amount, 0.01)
+        assertEquals("CREDIT", result.type)
+        assertEquals("ARCHIS KISHORRAO SONWAL", result.merchant)
+        assertEquals("Income", result.category)
+    }
 }
