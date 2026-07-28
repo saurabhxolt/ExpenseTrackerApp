@@ -19,8 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -53,12 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.expensetracker.app.core.ui.theme.DarkCard
 import com.expensetracker.app.core.ui.theme.GreenSuccess
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.core.ui.theme.RedExpense
-import com.expensetracker.app.core.ui.theme.TextPrimary
-import com.expensetracker.app.core.ui.theme.TextSecondary
 
 @Composable
 fun BudgetsRoute(
@@ -113,13 +110,15 @@ fun BudgetsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
             Text(
                 text = "Budgets & Spending Caps",
                 style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
@@ -128,14 +127,14 @@ fun BudgetsScreen(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Monthly Budget Summary",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -147,12 +146,12 @@ fun BudgetsScreen(
                             text = "₹${String.format("%.2f", uiState.totalSpent)}",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "of ₹${String.format("%.2f", uiState.totalBudgetLimit)}",
                             fontSize = 16.sp,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -162,7 +161,7 @@ fun BudgetsScreen(
                             .fillMaxWidth()
                             .height(8.dp),
                         color = if (overallPercentage >= 1.0f) RedExpense else if (overallPercentage >= 0.8f) Color(0xFFF59E0B) else GreenSuccess,
-                        trackColor = Color.White.copy(alpha = 0.1f)
+                        trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                     )
                 }
             }
@@ -173,6 +172,7 @@ fun BudgetsScreen(
             Text(
                 text = "Category Budgets",
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
@@ -181,7 +181,7 @@ fun BudgetsScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
@@ -193,20 +193,21 @@ fun BudgetsScreen(
                         Icon(
                             imageVector = Icons.Default.AccountBalanceWallet,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "No Budgets Set",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Tap (+) to set category spending caps and track monthly limits.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -231,7 +232,7 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -241,15 +242,25 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = item.categoryName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val catColor = com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(item.categoryName)
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(catColor, androidx.compose.foundation.shape.CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = item.categoryName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     Text(
                         text = "₹${String.format("%.2f", item.spentAmount)} spent of ₹${String.format("%.2f", item.limitAmount)}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -264,7 +275,7 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Budget",
-                            tint = TextSecondary.copy(alpha = 0.6f)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -277,7 +288,7 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
                     .fillMaxWidth()
                     .height(6.dp),
                 color = progressColor,
-                trackColor = Color.White.copy(alpha = 0.1f)
+                trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
             )
         }
     }
@@ -293,7 +304,7 @@ fun AddBudgetDialog(
     var limitText by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    val categories = listOf("Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Entertainment", "Other")
+    val categories = listOf("General Expense", "Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Rent", "EMI", "Groceries & Vegetables", "Subscriptions", "Entertainment", "Fuel", "Health & Medical", "Insurance", "Government & Fees", "Investments", "Other")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -320,7 +331,7 @@ fun AddBudgetDialog(
                     ) {
                         categories.forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text(cat) },
+                                text = { Text(cat, color = MaterialTheme.colorScheme.onSurface) },
                                 onClick = {
                                     selectedCategory = cat
                                     expanded = false

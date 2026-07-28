@@ -1,25 +1,35 @@
-# Fuzzy Brand Deduplication & Automated Database Cleanup - Walkthrough
+# Walkthrough - UI Bug Fixes, Custom Transaction Date Selection & Subscriptions Overhaul
 
-## Summary of Enhanced Deduplication Infrastructure
+## 1. Key Accomplishments
 
-### 1. Fuzzy Brand Merchant Deduplication (`TransactionDeduplicator.kt`)
-- **Problem**: When Zepto sent `"Refund of Rs 45.92 for your Zepto order has been processed"` and `"Rs.45.92 has been refunded to your Zepto Cash"`, the deduplicator normalized the merchant names as `"zepto"` and `"zeptocash"`. Because exact string equality failed, both transactions were saved as separate records.
-- **Fix**: Added `isBrandMatch(m1, m2)` and `areMerchantsMatchingOrRelated(m1, m2)` in `TransactionDeduplicator.kt`.
-- **Behavior**: Recognizes that `"zeptocash"` contains `"zepto"` (or `"amazonpay"` contains `"amazon"`, `"swiggyinstamart"` contains `"swiggy"`). Deduplicates variant merchant names for the same amount/type within the 10-minute window, enriches the merchant title to `"Zepto Cash"`, and **suppresses the duplicate**.
+### 🐛 1. UI Bug Fixes (from `bugs/` Screenshots)
+- **Bug 1 (`BudgetsScreen.kt`)**: Added `contentPadding = PaddingValues(bottom = 88.dp)` to `LazyColumn` in [BudgetsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/budgets/BudgetsScreen.kt#L110-L115), ensuring bottom category cards and delete icons clear the floating action button (`+`).
+- **Bug 2 (`AnalyticsScreen.kt`)**: Replaced legacy text input date range dialog in [AnalyticsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/AnalyticsScreen.kt#L80-L88) with the unified 2-step `CustomDateRangePickerDialog` (using Material3 `DatePickerDialog` & `DatePicker`) matching the History page.
+- **Bug 3 (`SplitScreen.kt`)**: Updated Create Split Group dialog caption in [SplitScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/SplitScreen.kt#L442-L446) to clear, professional phrasing: `"Note: You are automatically included as group creator."`
 
-### 2. Automated Legacy Database Duplicate Cleanup (`cleanupExistingDuplicates`)
-- **Problem**: Legacy duplicate records created during previous SMS scans prior to our fixes remained present in the local database.
-- **Fix**: Added `cleanupExistingDuplicates(dao)` routine in `TransactionDeduplicator.kt`, invoked automatically on app startup in `DashboardViewModel` and after inbox scans in `SmsScanner`.
-- **Behavior**: Scans local SQLite DB, detects duplicate transactions of the same amount/type within 10 minutes sharing related brand names or refund keywords, and deletes redundant duplicate entries.
+### 📅 2. Custom Transaction Addition Date Selection Field
+- Updated `AddTransactionDialog` in [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L700-L775) with an interactive **Date Picker field** (defaulting to Today's date, but allowing any historical or custom date/time selection).
+- Updated `addTransaction()` in [DashboardViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardViewModel.kt#L180-L185) to persist custom timestamps.
+
+### 🔄 3. Complete Subscriptions & Recurring Mandates Overhaul
+- **Database Architecture**: Created [SubscriptionEntity.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/entity/SubscriptionEntity.kt), [SubscriptionDao.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/dao/SubscriptionDao.kt), and registered in [ExpenseDatabase.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/ExpenseDatabase.kt#L25-L35).
+- **Automated Mandate Detector**: Built [SubscriptionDetector.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/SubscriptionDetector.kt) to auto-detect recurring SMS/Notifications (`autopay`, `e-mandate`, `recurring`, `standing instruction`, `netflix`, `spotify`, `rent`, `sip`, etc.).
+- **Manual Management & Real Due Dates**: Built FAB `+ Add Subscription / Mandate` and `AddEditSubscriptionDialog` in [SubscriptionsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt) supporting billing cycles (Monthly, Yearly, Weekly, Quarterly), pause/resume toggles, edit/delete actions, and live due date countdown badges (*"Due Today"*, *"Overdue by X days"*, *"Due in X days"*).
+
+### 📝 4. Documentation Synchronization (Compulsory Rule)
+Updated all specification documents to reflect the latest codebase state:
+- [Expense_Tracker_SRS_v5.md](file:///e:/ExpenseTrackerApp/Expense_Tracker_SRS_v5.md)
+- [Expense_Tracker_Implementation_Document_v4.md](file:///e:/ExpenseTrackerApp/Expense_Tracker_Implementation_Document_v4.md)
+- [Expense_Tracker_Idea_Document_v4.md](file:///e:/ExpenseTrackerApp/Expense_Tracker_Idea_Document_v4.md)
+- [Expense_Tracker_Product_Roadmap.md](file:///e:/ExpenseTrackerApp/Expense_Tracker_Product_Roadmap.md)
+- [walkthrough.md](file:///e:/ExpenseTrackerApp/walkthrough.md)
 
 ---
 
-## Verification Results
+## 2. Automated Test Verification
 
-### Automated Unit Tests
-- `TransactionDeduplicatorTest`: PASS (includes `testFuzzyBrandMerchantDeduplicationZeptoVsZeptoCash` and `testDatabaseCleanupExistingDuplicates`).
-- `RegexTransactionParserTest`: PASS (33 test cases).
-- `gradlew test`: SUCCESSFUL.
-
-### APK Package Output
-- Debug APK compiled successfully: `app-debug.apk` (117 MB).
+Executed Gradle unit test suite:
+```cmd
+cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
+```
+All unit tests and builds compiled and passed cleanly with zero errors!

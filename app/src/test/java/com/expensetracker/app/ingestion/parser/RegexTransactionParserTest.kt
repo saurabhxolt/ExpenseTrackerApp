@@ -167,7 +167,18 @@ class RegexTransactionParserTest {
         val result = RegexTransactionParser.parse(sms)
         assertNotNull(result)
         assertEquals(15000.00, result!!.amount, 0.01)
-        assertEquals("DEBIT", result.type)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testCreditCardPaymentReceivedTowardsCardIsDebit() {
+        val sms = "Credit Card ending 1234 credited with Rs 15,000.00 towards bill payment"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(15000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
         assertEquals("Credit Card Bill", result.merchant)
         assertEquals("Bills & Utilities", result.category)
     }
@@ -256,5 +267,69 @@ class RegexTransactionParserTest {
         assertEquals("DEBIT", result.type)
         assertEquals("Airtel Wi-Fi", result.merchant)
         assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testFederalBankMarketingSmsIsIgnored() {
+        val sms = "Federal Bank Absolutely zero effort What if saving money on your next Swiggy order required absolutely zero effort? Now, pay with your Scapia Federal Credit Card at checkout on Swiggy or Instamart and get 10% off - up to Rs 100. No code to hunt for, no cashback to chase. That's your groceries, your late-night orders, your 'it's been a week' treat - all a little more affordable. Just select your Scapia Federal Credit Card. The rest takes care of itself Federal Bank"
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Marketing / Promotional Credit Card SMS promoting discount must be ignored", result)
+    }
+
+    @Test
+    fun testSbiCreditCardAmazonFlexipaySms() {
+        val sms = "Dear Cardholder, trxn. of Rs.6430, done with your SBI Credit Card on 28-SEP, at #AMAZON PAY INDIA PR, is eligible for conversion to Flexipay EMIs. Click sbicard.com/Flexipay. T&C"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(6430.0, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Amazon", result.merchant)
+        assertEquals("Shopping", result.category)
+    }
+
+    @Test
+    fun testZerodhaSipInvestmentSms() {
+        val sms = "Rs 5000.00 debited from A/c XX4321 on 26-Jul-26 for SIP investment at Zerodha Broking. Ref: 6207182910."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(5000.0, result!!.amount, 0.01)
+        assertEquals("INVESTMENT", result.type)
+        assertEquals("Zerodha Broking", result.merchant)
+        assertEquals("Investments", result.category)
+    }
+
+    @Test
+    fun testGrowwNewsDigestIsIgnored() {
+        val sms = "Groww Digest $32 billion foreign capital inflow, L&T's Rs 5,000 cr - 10,000 cr order & more - Groww Digest"
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Groww News Digest / Market update articles must be ignored as non-transactions", result)
+    }
+
+    @Test
+    fun testPaytmBillDueReminderIsIgnored() {
+        val sms = "Paytm Bill Payments Credit Card Bill Due in 3 days! Your Axis Bank - 4827 Credit Card Bill is due. Amount: ₹4,963.35 Due Date: 30th Jul Pay instantly on Paytm to avoid late payment charges."
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Bill due payment reminders must be ignored as non-transactions", result)
+    }
+
+    @Test
+    fun testThirdPartyVpaCredCardBillPayment() {
+        val sms = "Txn Rs.12500.00 debited from A/c XX5678 on 26-Jul-26 for payment to paytm.cred@icici via UPI. Ref: 6207182910."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(12500.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testThirdPartyVpaBbpsBillDeskPayment() {
+        val sms = "INR 8400.00 debited from A/c XX1234 on 27-Jul-26 towards cardbill@billdesk via UPI. Ref 9081726354."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(8400.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
     }
 }

@@ -4,6 +4,8 @@ import android.content.Context
 import com.expensetracker.app.core.database.ExpenseDatabase
 import com.expensetracker.app.core.database.dao.BudgetDao
 import com.expensetracker.app.core.database.dao.CategoryDao
+import com.expensetracker.app.core.database.dao.SplitDao
+import com.expensetracker.app.core.database.dao.SubscriptionDao
 import com.expensetracker.app.core.database.dao.TransactionDao
 import dagger.Module
 import dagger.Provides
@@ -32,4 +34,10 @@ object DatabaseModule {
 
     @Provides
     fun provideBudgetDao(db: ExpenseDatabase): BudgetDao = db.budgetDao()
+
+    @Provides
+    fun provideSplitDao(db: ExpenseDatabase): SplitDao = db.splitDao()
+
+    @Provides
+    fun provideSubscriptionDao(db: ExpenseDatabase): SubscriptionDao = db.subscriptionDao()
 }

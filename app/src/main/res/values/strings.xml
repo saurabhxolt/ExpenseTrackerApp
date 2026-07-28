@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">Expense Tracker</string>
+    <string name="app_name">VaultExpense</string>
+    <string name="app_tagline">Private. Smart. Offline Expense Vault.</string>
 </resources>

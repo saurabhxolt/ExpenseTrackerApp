@@ -10,25 +10,21 @@ val Typography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        color = TextPrimary
+        fontSize = 28.sp
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        color = TextPrimary
+        fontSize = 20.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        color = TextPrimary
+        fontSize = 16.sp
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        color = TextSecondary
+        fontSize = 14.sp
     )
 )

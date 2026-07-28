@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -44,9 +46,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
@@ -164,8 +169,8 @@ fun DashboardRoute(
                 AddTransactionDialog(
                     availableCategories = uiState.categories,
                     onDismiss = { showAddDialog = false },
-                    onConfirm = { merchant, amount, type, category ->
-                        viewModel.addTransaction(merchant, amount, type, category)
+                    onConfirm = { merchant, amount, type, category, timestamp ->
+                        viewModel.addTransaction(merchant, amount, type, category, timestamp = timestamp)
                         showAddDialog = false
                     }
                 )
@@ -204,8 +209,8 @@ fun DashboardRoute(
                     transaction = trx,
                     availableCategories = uiState.categories,
                     onDismiss = { editingTransaction = null },
-                    onConfirm = { merchant, category, amount ->
-                        viewModel.updateTransaction(trx, merchant, category, amount)
+                    onConfirm = { merchant, category, amount, type ->
+                        viewModel.updateTransaction(trx, merchant, category, amount, type)
                         editingTransaction = null
                     }
                 )
@@ -306,12 +311,12 @@ fun DashboardScreen(
                                 text = "Enable Auto-Tracking ⚡",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Tap to grant SMS & Notification permissions to auto-scan current month & live alerts.",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -327,7 +332,7 @@ fun DashboardScreen(
             ) {
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
@@ -337,14 +342,14 @@ fun DashboardScreen(
                             text = "₹${String.format("%.2f", uiState.todayExpenses)}",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
@@ -354,7 +359,7 @@ fun DashboardScreen(
                             text = "₹${String.format("%.2f", uiState.thisWeekExpenses)}",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -365,113 +370,91 @@ fun DashboardScreen(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Net Balance (${uiState.selectedMonthYear})",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "₹${String.format("%.2f", uiState.netBalance)}",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
         }
 
-        // Income vs Expense Cards
+        // Incomes vs Expenses vs Investments Cards
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = "Income", style = MaterialTheme.typography.bodyMedium)
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Incomes 💰", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "₹${String.format("%.2f", uiState.totalIncome)}",
-                            fontSize = 18.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = GreenSuccess
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = "Expenses", style = MaterialTheme.typography.bodyMedium)
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Expenses 💸", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "₹${String.format("%.2f", uiState.totalExpenses)}",
-                            fontSize = 18.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = RedExpense
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
-            }
-        }
 
-        // Filter & Sorting Bar
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LazyRow(
+                Card(
                     modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    items(uiState.monthYearOptions) { monthOption ->
-                        FilterChip(
-                            selected = uiState.selectedMonthYear == monthOption,
-                            onClick = { onMonthYearSelected(monthOption) },
-                            label = { Text(monthOption) }
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Investments 📈", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "₹${String.format("%.2f", uiState.totalInvestments)}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryBlue
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                var sortExpanded by remember { mutableStateOf(false) }
-                Box {
-                    IconButton(onClick = { sortExpanded = true }) {
-                        Icon(imageVector = Icons.Default.Sort, contentDescription = "Sort", tint = PrimaryBlue)
-                    }
-                    DropdownMenu(
-                        expanded = sortExpanded,
-                        onDismissRequest = { sortExpanded = false }
-                    ) {
-                        DropdownMenuItem(text = { Text("Newest First") }, onClick = { onSortOrderSelected("NEWEST"); sortExpanded = false })
-                        DropdownMenuItem(text = { Text("Oldest First") }, onClick = { onSortOrderSelected("OLDEST"); sortExpanded = false })
-                        DropdownMenuItem(text = { Text("Amount: High to Low") }, onClick = { onSortOrderSelected("HIGH_LOW"); sortExpanded = false })
-                        DropdownMenuItem(text = { Text("Amount: Low to High") }, onClick = { onSortOrderSelected("LOW_HIGH"); sortExpanded = false })
                     }
                 }
             }
         }
 
-        // Section Title
+        // Section Title (Only Last 5 Days on Dashboard)
         item {
             Text(
-                text = "Recent Transactions (Tap for details)",
+                text = "Recent Transactions (Last 5 Days)",
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
         }
@@ -480,7 +463,7 @@ fun DashboardScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
@@ -492,14 +475,15 @@ fun DashboardScreen(
                         Icon(
                             imageVector = Icons.Default.ReceiptLong,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "No Transactions Found",
+                            text = "No Transactions in Last 5 Days",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -531,7 +515,7 @@ fun TransactionItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -545,18 +529,33 @@ fun TransactionItem(
                 Text(
                     text = transaction.merchant,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${transaction.category} • $dateStr",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val isCredit = transaction.type == "CREDIT"
+                val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)
+                val amountPrefix = when {
+                    isCredit -> "+"
+                    isInvestment -> ""
+                    else -> "-"
+                }
+                val amountColor = when {
+                    isCredit -> MaterialTheme.colorScheme.tertiary
+                    isInvestment -> PrimaryBlue
+                    else -> MaterialTheme.colorScheme.error
+                }
+
                 Text(
-                    text = "${if (transaction.type == "CREDIT") "+" else "-"}₹${String.format("%.2f", transaction.amount)}",
+                    text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
                     fontWeight = FontWeight.Bold,
-                    color = if (transaction.type == "CREDIT") GreenSuccess else RedExpense,
+                    color = amountColor,
                     fontSize = 16.sp
                 )
                 IconButton(onClick = onEdit) {
@@ -570,7 +569,7 @@ fun TransactionItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = TextSecondary.copy(alpha = 0.6f)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -610,7 +609,7 @@ fun TransactionDetailsDialog(
                             text = transaction.merchant,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -625,7 +624,7 @@ fun TransactionDetailsDialog(
                         text = "${if (transaction.type == "CREDIT") "+" else "-"}₹${String.format("%.2f", transaction.amount)}",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (transaction.type == "CREDIT") GreenSuccess else RedExpense,
+                        color = if (transaction.type == "CREDIT") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -636,7 +635,7 @@ fun TransactionDetailsDialog(
                 Text(
                     text = "Date & Time: $fullDateStr",
                     fontSize = 13.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (transaction.rawText.isNotBlank()) {
@@ -656,7 +655,7 @@ fun TransactionDetailsDialog(
                             Text(
                                 text = transaction.rawText,
                                 fontSize = 12.sp,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -666,7 +665,7 @@ fun TransactionDetailsDialog(
                     Text(
                         text = "Ref / Hash: ${transaction.transactionHash}",
                         fontSize = 11.sp,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -704,29 +703,57 @@ fun openMessagesApp(context: Context) {
 fun AddTransactionDialog(
     availableCategories: List<String>,
     onDismiss: () -> Unit,
-    onConfirm: (merchant: String, amount: Double, type: String, category: String) -> Unit
+    onConfirm: (merchant: String, amount: Double, type: String, category: String, timestamp: Long) -> Unit
 ) {
     var merchant by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("DEBIT") }
     var selectedCategory by remember { mutableStateOf(availableCategories.firstOrNull() ?: "Food & Dining") }
+    var selectedTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedTimestamp)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { ms ->
+                            selectedTimestamp = ms
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Add Transaction", style = MaterialTheme.typography.titleLarge) },
+        title = { Text(text = "Add Transaction", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(
                         onClick = { selectedType = "DEBIT" },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedType == "DEBIT") RedExpense else DarkCard
+                            containerColor = if (selectedType == "DEBIT") RedExpense else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "DEBIT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("Expense")
+                        Text("Expense", fontSize = 11.sp)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             selectedType = "CREDIT"
@@ -734,10 +761,24 @@ fun AddTransactionDialog(
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedType == "CREDIT") GreenSuccess else DarkCard
+                            containerColor = if (selectedType == "CREDIT") GreenSuccess else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "CREDIT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("Income")
+                        Text("Income", fontSize = 11.sp)
+                    }
+                    Button(
+                        onClick = {
+                            selectedType = "INVESTMENT"
+                            selectedCategory = "Investments"
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedType == "INVESTMENT") PrimaryBlue else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "INVESTMENT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("Investment", fontSize = 11.sp)
                     }
                 }
 
@@ -745,6 +786,161 @@ fun AddTransactionDialog(
                     value = merchant,
                     onValueChange = { merchant = it },
                     label = { Text("Merchant / Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount (₹)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = dateFormat.format(Date(selectedTimestamp)),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Transaction Date 📅") },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(imageVector = Icons.Default.CalendarToday, contentDescription = "Pick Date", tint = PrimaryBlue)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                )
+
+                var expanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedCategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        availableCategories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat) },
+                                onClick = {
+                                    selectedCategory = cat
+                                    if (cat.equals("Investments", ignoreCase = true) || cat.equals("Investment", ignoreCase = true)) {
+                                        selectedType = "INVESTMENT"
+                                    } else if (cat.equals("Income", ignoreCase = true)) {
+                                        selectedType = "CREDIT"
+                                    }
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amount = amountText.toDoubleOrNull() ?: 0.0
+                    val finalType = if (selectedCategory.equals("Investments", ignoreCase = true) || selectedCategory.equals("Investment", ignoreCase = true)) "INVESTMENT" else selectedType
+                    if (merchant.isNotBlank() && amount > 0) {
+                        onConfirm(merchant, amount, finalType, selectedCategory, selectedTimestamp)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditTransactionDialog(
+    transaction: TransactionEntity,
+    availableCategories: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (merchant: String, category: String, amount: Double, type: String) -> Unit
+) {
+    var merchant by remember { mutableStateOf(transaction.merchant) }
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var selectedType by remember { mutableStateOf(transaction.type) }
+    var selectedCategory by remember { mutableStateOf(transaction.category) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Edit Transaction & Type", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Re-Assign Transaction Type (Expense vs Income vs Investment)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Button(
+                        onClick = {
+                            selectedType = "DEBIT"
+                            if (selectedCategory == "Income" || selectedCategory == "Investments") selectedCategory = "General Expense"
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedType == "DEBIT") RedExpense else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "DEBIT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("Expense", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                    }
+                    Button(
+                        onClick = {
+                            selectedType = "CREDIT"
+                            selectedCategory = "Income"
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedType == "CREDIT") GreenSuccess else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "CREDIT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("Income", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                    }
+                    Button(
+                        onClick = {
+                            selectedType = "INVESTMENT"
+                            selectedCategory = "Investments"
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedType == "INVESTMENT") PrimaryBlue else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "INVESTMENT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("Investment", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                    }
+                }
+
+                OutlinedTextField(
+                    value = merchant,
+                    onValueChange = { merchant = it },
+                    label = { Text("Merchant / Title Name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -782,93 +978,11 @@ fun AddTransactionDialog(
                                 text = { Text(cat) },
                                 onClick = {
                                     selectedCategory = cat
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amount = amountText.toDoubleOrNull() ?: 0.0
-                    if (merchant.isNotBlank() && amount > 0) {
-                        onConfirm(merchant, amount, selectedType, selectedCategory)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditTransactionDialog(
-    transaction: TransactionEntity,
-    availableCategories: List<String>,
-    onDismiss: () -> Unit,
-    onConfirm: (merchant: String, category: String, amount: Double) -> Unit
-) {
-    var merchant by remember { mutableStateOf(transaction.merchant) }
-    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
-    var selectedCategory by remember { mutableStateOf(transaction.category) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = "Edit Transaction & Category", style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = merchant,
-                    onValueChange = { merchant = it },
-                    label = { Text("Merchant / Title Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Amount (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedCategory,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Re-Assign Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        availableCategories.forEach { cat ->
-                            DropdownMenuItem(
-                                text = { Text(cat) },
-                                onClick = {
-                                    selectedCategory = cat
+                                    if (cat.equals("Investments", ignoreCase = true) || cat.equals("Investment", ignoreCase = true)) {
+                                        selectedType = "INVESTMENT"
+                                    } else if (cat.equals("Income", ignoreCase = true)) {
+                                        selectedType = "CREDIT"
+                                    }
                                     expanded = false
                                 }
                             )
@@ -881,8 +995,9 @@ fun EditTransactionDialog(
             Button(
                 onClick = {
                     val amount = amountText.toDoubleOrNull() ?: transaction.amount
+                    val finalType = if (selectedCategory.equals("Investments", ignoreCase = true) || selectedCategory.equals("Investment", ignoreCase = true)) "INVESTMENT" else selectedType
                     if (merchant.isNotBlank() && amount > 0) {
-                        onConfirm(merchant, selectedCategory, amount)
+                        onConfirm(merchant, selectedCategory, amount, finalType)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)

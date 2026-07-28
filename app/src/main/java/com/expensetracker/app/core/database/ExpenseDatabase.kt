@@ -6,21 +6,41 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.expensetracker.app.core.database.dao.BudgetDao
 import com.expensetracker.app.core.database.dao.CategoryDao
+import com.expensetracker.app.core.database.dao.SplitDao
+import com.expensetracker.app.core.database.dao.SubscriptionDao
 import com.expensetracker.app.core.database.dao.TransactionDao
 import com.expensetracker.app.core.database.entity.BudgetEntity
 import com.expensetracker.app.core.database.entity.CategoryEntity
+import com.expensetracker.app.core.database.entity.ExpenseSplitShareEntity
+import com.expensetracker.app.core.database.entity.GroupEntity
+import com.expensetracker.app.core.database.entity.GroupMemberEntity
+import com.expensetracker.app.core.database.entity.GroupSettlementEntity
+import com.expensetracker.app.core.database.entity.SplitExpenseEntity
+import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
 import net.sqlcipher.database.SupportFactory
 
 @Database(
-    entities = [TransactionEntity::class, CategoryEntity::class, BudgetEntity::class],
-    version = 1,
+    entities = [
+        TransactionEntity::class,
+        CategoryEntity::class,
+        BudgetEntity::class,
+        GroupEntity::class,
+        GroupMemberEntity::class,
+        SplitExpenseEntity::class,
+        ExpenseSplitShareEntity::class,
+        GroupSettlementEntity::class,
+        SubscriptionEntity::class
+    ],
+    version = 3,
     exportSchema = false
 )
 abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun categoryDao(): CategoryDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun splitDao(): SplitDao
+    abstract fun subscriptionDao(): SubscriptionDao
 
     companion object {
         @Volatile

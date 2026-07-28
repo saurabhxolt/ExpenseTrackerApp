@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -120,17 +121,17 @@ fun CategoriesScreen(
 
 @Composable
 fun CategoryItem(category: CategoryEntity, onDelete: () -> Unit) {
-    val parsedColor = remember(category.colorHex) {
+    val parsedColor = remember(category.colorHex, category.name) {
         try {
             Color(android.graphics.Color.parseColor(category.colorHex))
         } catch (e: Exception) {
-            PrimaryBlue
+            com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(category.name)
         }
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -148,8 +149,8 @@ fun CategoryItem(category: CategoryEntity, onDelete: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(text = category.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    Text(text = category.type, fontSize = 12.sp, color = TextSecondary)
+                    Text(text = category.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = category.type, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -157,7 +158,7 @@ fun CategoryItem(category: CategoryEntity, onDelete: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Delete Category",
-                    tint = TextSecondary.copy(alpha = 0.6f)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
         }
@@ -171,34 +172,42 @@ fun AddCategoryDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("EXPENSE") }
-    var selectedColor by remember { mutableStateOf("#2563EB") }
-
-    val colors = listOf("#2563EB", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6")
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Add Custom Category", style = MaterialTheme.typography.titleLarge) },
+        title = { Text(text = "Add Custom Category", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(
                         onClick = { selectedType = "EXPENSE" },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedType == "EXPENSE") RedExpense else DarkCard
+                            containerColor = if (selectedType == "EXPENSE") RedExpense else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "EXPENSE") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("Expense")
+                        Text("Expense", fontSize = 11.sp)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { selectedType = "INCOME" },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedType == "INCOME") GreenSuccess else DarkCard
+                            containerColor = if (selectedType == "INCOME") GreenSuccess else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "INCOME") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("Income")
+                        Text("Income", fontSize = 11.sp)
+                    }
+                    Button(
+                        onClick = { selectedType = "INVESTMENT" },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedType == "INVESTMENT") PrimaryBlue else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "INVESTMENT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("Investment", fontSize = 11.sp)
                     }
                 }
 
@@ -210,20 +219,22 @@ fun AddCategoryDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Select Category Color", fontSize = 12.sp, color = TextSecondary)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    colors.forEach { hex ->
-                        val c = remember(hex) { Color(android.graphics.Color.parseColor(hex)) }
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .background(c, CircleShape)
-                                .clickable { selectedColor = hex }
-                        )
-                    }
+                val systemAssignedColor = remember(name) {
+                    com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(name)
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(systemAssignedColor, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "System-Assigned Unique Color",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         },
@@ -231,12 +242,15 @@ fun AddCategoryDialog(
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onConfirm(name, selectedType, selectedColor)
+                        val assignedColor = com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(name)
+                        val argb = assignedColor.toArgb()
+                        val colorHex = String.format("#%06X", 0xFFFFFF and argb)
+                        onConfirm(name, selectedType, colorHex)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
-                Text("Save")
+                Text("Save Category")
             }
         },
         dismissButton = {

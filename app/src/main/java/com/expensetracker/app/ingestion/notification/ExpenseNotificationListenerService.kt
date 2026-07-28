@@ -48,6 +48,8 @@ class ExpenseNotificationListenerService : NotificationListenerService() {
                             val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
                             if (rowId > 0) {
                                 Log.d("NotificationService", "Saved notification transaction: ${parsed.merchant} ₹${parsed.amount}")
+                                val subRepo = com.expensetracker.app.core.data.repository.SubscriptionRepository(db.subscriptionDao())
+                                com.expensetracker.app.ingestion.parser.SubscriptionDetector.autoDetectAndSave(subRepo, parsed)
                             } else {
                                 Log.d("NotificationService", "Duplicate notification transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")
                             }

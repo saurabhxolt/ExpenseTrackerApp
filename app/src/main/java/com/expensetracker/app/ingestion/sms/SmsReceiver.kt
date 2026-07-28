@@ -41,6 +41,8 @@ class SmsReceiver : BroadcastReceiver() {
                             val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
                             if (rowId > 0) {
                                 Log.d("SmsReceiver", "Saved SMS transaction: ${parsed.merchant} ₹${parsed.amount}")
+                                val subRepo = com.expensetracker.app.core.data.repository.SubscriptionRepository(db.subscriptionDao())
+                                com.expensetracker.app.ingestion.parser.SubscriptionDetector.autoDetectAndSave(subRepo, parsed)
                             } else {
                                 Log.d("SmsReceiver", "Duplicate SMS transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")
                             }

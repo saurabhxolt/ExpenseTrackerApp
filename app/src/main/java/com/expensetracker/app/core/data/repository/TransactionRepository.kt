@@ -3,6 +3,7 @@ package com.expensetracker.app.core.data.repository
 import com.expensetracker.app.core.database.dao.TransactionDao
 import com.expensetracker.app.core.database.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -10,16 +11,34 @@ import javax.inject.Singleton
 class TransactionRepository @Inject constructor(
     private val transactionDao: TransactionDao
 ) {
-    val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllTransactions()
+    val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllTransactions().map { list ->
+        list.map { item ->
+            if ((item.category.equals("Investments", ignoreCase = true) || item.category.equals("Investment", ignoreCase = true)) && item.type != "INVESTMENT") {
+                item.copy(type = "INVESTMENT")
+            } else {
+                item
+            }
+        }
+    }
     val totalExpenses: Flow<Double?> = transactionDao.getTotalExpenses()
     val totalIncome: Flow<Double?> = transactionDao.getTotalIncome()
 
     suspend fun insertTransaction(transaction: TransactionEntity): Long {
-        return transactionDao.insertTransaction(transaction)
+        val sanitized = if (transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)) {
+            transaction.copy(type = "INVESTMENT")
+        } else {
+            transaction
+        }
+        return transactionDao.insertTransaction(sanitized)
     }
 
     suspend fun updateTransaction(transaction: TransactionEntity) {
-        transactionDao.updateTransaction(transaction)
+        val sanitized = if (transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)) {
+            transaction.copy(type = "INVESTMENT")
+        } else {
+            transaction
+        }
+        transactionDao.updateTransaction(sanitized)
     }
 
     suspend fun deleteTransaction(transaction: TransactionEntity) {

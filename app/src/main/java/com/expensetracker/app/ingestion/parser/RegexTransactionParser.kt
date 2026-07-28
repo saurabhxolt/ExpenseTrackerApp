@@ -10,15 +10,27 @@ object RegexTransactionParser {
     )
 
     private val PROMOTIONAL_OFFER_PATTERNS = listOf(
+        Pattern.compile("(?i)up\\s+to\\s+(?:rs\\.?|inr|₹)"),
+        Pattern.compile("(?i)(?:get|save|enjoy|avail)\\s+(?:up\\s+to|flat)?\\s*\\d+%(?:\\s+off)?"),
+        Pattern.compile("(?i)\\d+%(?:\\s+off)?"),
+        Pattern.compile("(?i)no\\s+code\\s+to\\s+hunt"),
+        Pattern.compile("(?i)no\\s+cashback\\s+to\\s+chase"),
+        Pattern.compile("(?i)saving\\s+money"),
+        Pattern.compile("(?i)what\\s+if"),
+        Pattern.compile("(?i)use\\s+promo\\s+code"),
+        Pattern.compile("(?i)apply\\s+coupon"),
         Pattern.compile("(?i)require\\s+consent"),
         Pattern.compile("(?i)disbursement"),
         Pattern.compile("(?i)funds.*are\\s+available"),
         Pattern.compile("(?i)service\\s+alert:"),
-        Pattern.compile("(?i)eligible\\s+for"),
         Pattern.compile("(?i)pre-approved"),
         Pattern.compile("(?i)apply\\s+now"),
         Pattern.compile("(?i)upgrade\\s+your\\s+limit"),
         Pattern.compile("(?i)instant\\s+loan")
+    )
+
+    private val CC_UPI_VPA_PATTERN = Pattern.compile(
+        "(?i)\\b[a-z0-9._-]*?(ccpay|cardpay|cardbill|billdesk|bbps|cred|cheq)[a-z0-9._-]*?@[a-z]+\\b"
     )
 
     private val INFORMATIONAL_STATEMENT_PATTERNS = listOf(
@@ -39,7 +51,39 @@ object RegexTransactionParser {
         Pattern.compile("(?i)e-mandate"),
         Pattern.compile("(?i)due\\s+on"),
         Pattern.compile("(?i)reminder\\s+to\\s+pay"),
-        Pattern.compile("(?i)reward\\s+points")
+        Pattern.compile("(?i)reward\\s+points"),
+        Pattern.compile("(?i)due\\s+in\\s+\\d+\\s+days"),
+        Pattern.compile("(?i)is\\s+due"),
+        Pattern.compile("(?i)due\\s+date"),
+        Pattern.compile("(?i)bill\\s+due"),
+        Pattern.compile("(?i)pay\\s+instantly"),
+        Pattern.compile("(?i)avoid\\s+late"),
+        Pattern.compile("(?i)upcoming\\s+(?:bill|payment)"),
+        Pattern.compile("(?i)due\\s+by"),
+        Pattern.compile("(?i)pay\\s+before"),
+        Pattern.compile("(?i)overdue"),
+        Pattern.compile("(?i)pay\\s+now\\s+to"),
+        Pattern.compile("(?i)to\\s+avoid\\s+late"),
+        Pattern.compile("(?i)bill\\s+(?:is\\s+)?generated")
+    )
+
+    private val NEWS_DIGEST_PATTERNS = listOf(
+        Pattern.compile("(?i)\\bdigest\\b"),
+        Pattern.compile("(?i)\\bnewsletter\\b"),
+        Pattern.compile("(?i)\\bmarket update\\b"),
+        Pattern.compile("(?i)\\bcapital inflow\\b"),
+        Pattern.compile("(?i)\\bforeign capital\\b"),
+        Pattern.compile("(?i)\\border & more\\b"),
+        Pattern.compile("(?i)\\bcr order\\b"),
+        Pattern.compile("(?i)\\bcrore order\\b"),
+        Pattern.compile("(?i)\\bbillion\\b"),
+        Pattern.compile("(?i)\\btrillion\\b"),
+        Pattern.compile("(?i)\\bsensex\\b"),
+        Pattern.compile("(?i)\\bnifty\\b"),
+        Pattern.compile("(?i)\\bstock alert\\b"),
+        Pattern.compile("(?i)\\bmarket wrap\\b"),
+        Pattern.compile("(?i)\\bheadline\\b"),
+        Pattern.compile("(?i)\\bnews update\\b")
     )
 
     // Debit action triggers - mandatory currency symbol or explicit debit phrase
@@ -57,6 +101,7 @@ object RegexTransactionParser {
         Pattern.compile("(?i)deducted\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)txn\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)dr\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
+        Pattern.compile("(?i)(?:trxn|txn|transaction)\\.?\\s+(?:of\\s+)?(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)purchase\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)")
     )
 
@@ -86,6 +131,9 @@ object RegexTransactionParser {
         for (pattern in PROMOTIONAL_OFFER_PATTERNS) {
             if (pattern.matcher(text).find()) return null
         }
+        for (pattern in NEWS_DIGEST_PATTERNS) {
+            if (pattern.matcher(text).find()) return null
+        }
         val cleanText = text.replace("\n", " ").trim()
         for (pattern in INFORMATIONAL_STATEMENT_PATTERNS) {
             if (pattern.matcher(cleanText).find()) return null
@@ -96,7 +144,39 @@ object RegexTransactionParser {
 
         // 3. STAGE 3: SEMANTIC ACTION CLASSIFICATION
 
-        // 3.1 Check Merchant/Service Payment Receipts (e.g., Insurance, MoRTH Fee, Order Receipts)
+        // 3.1 Check Credit Card Bill Payment confirmation (MUST run before generic payment receipts!)
+        if (isCreditCardBillPayment(cleanText)) {
+            val amount = extractGenericAmount(textWithoutBalance)
+            if (amount > 0.0) {
+                val accountDigits = extractAccountDigits(cleanText)
+                return ParsedTransaction(
+                    amount = amount,
+                    type = "TRANSFER",
+                    merchant = "Credit Card Bill",
+                    accountDigits = accountDigits,
+                    category = "Bills & Utilities",
+                    rawText = text
+                )
+            }
+        }
+
+        // 3.2 Check Self Transfer
+        if (isSelfTransfer(cleanText)) {
+            val amount = extractGenericAmount(textWithoutBalance)
+            if (amount > 0.0) {
+                val accountDigits = extractAccountDigits(cleanText)
+                return ParsedTransaction(
+                    amount = amount,
+                    type = "TRANSFER",
+                    merchant = "Self Transfer",
+                    accountDigits = accountDigits,
+                    category = "Transfer",
+                    rawText = text
+                )
+            }
+        }
+
+        // 3.3 Check Merchant/Service Payment Receipts (e.g., Insurance, MoRTH Fee, Airtel Bills)
         if (isPaymentReceiptForExpense(cleanText)) {
             val amount = extractGenericAmount(textWithoutBalance)
             if (amount > 0.0) {
@@ -116,33 +196,18 @@ object RegexTransactionParser {
             }
         }
 
-        // 3.2 Check Credit Card Bill Payment confirmation
-        if (isCreditCardBillPayment(cleanText)) {
+        // 3.3.5 Check Investment Transactions (SIP, Mutual Funds, Stocks, Zerodha, Groww, INDmoney, NPS, PPF, FD)
+        if (isInvestmentTransaction(cleanText)) {
             val amount = extractGenericAmount(textWithoutBalance)
             if (amount > 0.0) {
+                val merchant = extractMerchant(cleanText, "INVESTMENT")
                 val accountDigits = extractAccountDigits(cleanText)
                 return ParsedTransaction(
                     amount = amount,
-                    type = "DEBIT",
-                    merchant = "Credit Card Bill",
+                    type = "INVESTMENT",
+                    merchant = if (merchant.isNotBlank() && merchant != "Unknown Merchant") merchant else "Investment",
                     accountDigits = accountDigits,
-                    category = "Bills & Utilities",
-                    rawText = text
-                )
-            }
-        }
-
-        // 3.3 Check Self Transfer
-        if (isSelfTransfer(cleanText)) {
-            val amount = extractGenericAmount(textWithoutBalance)
-            if (amount > 0.0) {
-                val accountDigits = extractAccountDigits(cleanText)
-                return ParsedTransaction(
-                    amount = amount,
-                    type = "TRANSFER",
-                    merchant = "Self Transfer",
-                    accountDigits = accountDigits,
-                    category = "Transfer",
+                    category = "Investments",
                     rawText = text
                 )
             }
@@ -192,25 +257,6 @@ object RegexTransactionParser {
             }
         }
 
-        // 3.6 Generic Fallback
-        if (containsTransactionKeyword(cleanText)) {
-            val genericAmount = extractGenericAmount(textWithoutBalance)
-            if (genericAmount > 0.0) {
-                val type = if (cleanText.contains("credit", ignoreCase = true) || cleanText.contains("received", ignoreCase = true) || cleanText.contains("refund", ignoreCase = true)) "CREDIT" else "DEBIT"
-                val merchant = extractMerchant(cleanText, type)
-                val category = predictCategory(merchant, cleanText, type)
-                val accountDigits = extractAccountDigits(cleanText)
-                return ParsedTransaction(
-                    amount = genericAmount,
-                    type = type,
-                    merchant = merchant,
-                    accountDigits = accountDigits,
-                    category = category,
-                    rawText = text
-                )
-            }
-        }
-
         return null
     }
 
@@ -222,8 +268,13 @@ object RegexTransactionParser {
 
     private fun isCreditCardBillPayment(text: String): Boolean {
         val lower = text.lowercase()
-        return (lower.contains("credit card") || lower.contains("bobcard") || lower.contains("card xx") || lower.contains("card ending")) &&
-               (lower.contains("payment received") || lower.contains("credited towards") || lower.contains("payment of") || lower.contains("bill payment") || lower.contains("received towards") || lower.contains("thank you for paying"))
+        // Reject bill due reminders or upcoming payment notices
+        if (lower.contains("due in") || lower.contains("is due") || lower.contains("due date") || lower.contains("pay instantly") || lower.contains("reminder")) return false
+        if (CC_UPI_VPA_PATTERN.matcher(text).find()) return true
+        if (lower.contains("cheq") || lower.contains("cred.club") || lower.contains("cred app") || lower.contains("billdesk") || lower.contains("bbps")) return true
+        val hasCardKeyword = lower.contains("credit card") || lower.contains("bobcard") || lower.contains("card xx") || lower.contains("card ending") || lower.contains("card no") || lower.contains("card ending in") || lower.contains("cc payment") || lower.contains("card bill")
+        val hasPaymentKeyword = lower.contains("payment received") || lower.contains("credited towards") || lower.contains("credited with") || lower.contains("payment of") || lower.contains("bill payment") || lower.contains("received towards") || lower.contains("thank you for paying") || lower.contains("received payment") || lower.contains("towards your credit card") || lower.contains("towards credit card") || lower.contains("towards your card") || lower.contains("towards card") || lower.contains("paid") || lower.contains("debited")
+        return hasCardKeyword && hasPaymentKeyword
     }
 
     private fun isSelfTransfer(text: String): Boolean {
@@ -250,12 +301,16 @@ object RegexTransactionParser {
     }
 
     private fun extractGenericAmount(text: String): Double {
-        val pattern = Pattern.compile("(?i)(?:rs\\.?|inr|₹|amt|amount|usd|\\$)\\s*:?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)")
+        val lower = text.lowercase()
+        // Reject news/market magnitude scales like $32 billion, 5000 cr, 30 days
+        if (lower.contains("billion") || lower.contains("million") || lower.contains("trillion") || lower.contains("crore") || lower.contains("cr order")) return 0.0
+
+        val pattern = Pattern.compile("(?i)(?:rs\\.?|inr|₹|amt|amount|usd|\\$)\\s*:?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s*(?!billion|million|trillion|crore|cr|lakh|points|%|percent|days|hrs|hours|min|mins)")
         val matcher = pattern.matcher(text)
         if (matcher.find()) {
             return matcher.group(1)?.replace(",", "")?.toDoubleOrNull() ?: 0.0
         }
-        val patternSuffix = Pattern.compile("(?i)([0-9,]+(?:\\.[0-9]{1,2})?)\\s*(?:rs\\.?|inr|₹|usd|\\$)")
+        val patternSuffix = Pattern.compile("(?i)([0-9,]+(?:\\.[0-9]{1,2})?)\\s*(?:rs\\.?|inr|₹|usd|\\$)\\s*(?!billion|million|trillion|crore|cr|lakh|points|%|percent|days|hrs|hours|min|mins)")
         val matcherSuffix = patternSuffix.matcher(text)
         if (matcherSuffix.find()) {
             return matcherSuffix.group(1)?.replace(",", "")?.toDoubleOrNull() ?: 0.0
@@ -265,8 +320,11 @@ object RegexTransactionParser {
 
     private fun extractMerchant(text: String, type: String): String {
         val lowerFull = text.lowercase()
-        if (lowerFull.contains("airtel black")) return "Airtel Black"
-        if (lowerFull.contains("airtel wi-fi") || lowerFull.contains("airtel wifi")) return "Airtel Wi-Fi"
+        if (lowerFull.contains("airtel")) {
+            if (lowerFull.contains("black")) return "Airtel Black"
+            if (lowerFull.contains("wi-fi") || lowerFull.contains("wifi")) return "Airtel Wi-Fi"
+            return "Airtel"
+        }
         if (lowerFull.contains("zepto cash")) return "Zepto Cash"
         if (lowerFull.contains("zepto")) return "Zepto"
         if (lowerFull.contains("acko")) return "ACKO Insurance"
@@ -297,7 +355,7 @@ object RegexTransactionParser {
         if (onDateOnMerchant.find()) return cleanMerchantName(onDateOnMerchant.group(1) ?: "")
 
         // Pattern 4: at <Merchant> (excluding timestamps)
-        val atMerchant = Pattern.compile("(?i)\\s+at\\s+([A-Za-z0-9._\\-@\\s]+?)(?:\\s+on\\s+[0-9]{2}-[0-9]{2}|\\s+by\\s+upi|\\.\\s*available|\\.\\s*avl|\\.|$)").matcher(cleanText)
+        val atMerchant = Pattern.compile("(?i)\\s+at\\s+([A-Za-z0-9._\\-@#\\s]+?)(?:,?\\s+is\\s+eligible|,?\\s+on\\s+[0-9]{2}-[0-9]{2}|\\s+by\\s+upi|\\.\\s*available|\\.\\s*avl|\\.|$)").matcher(cleanText)
         if (atMerchant.find()) {
             val candidate = atMerchant.group(1) ?: ""
             if (!candidate.trim().matches(Regex("^[0-9:]+$"))) {
@@ -351,21 +409,18 @@ object RegexTransactionParser {
         var clean = raw.trim()
 
         val lowerRaw = raw.lowercase()
+        if (lowerRaw.contains("amazon pay wall")) return "AMAZON PAY WALL"
+        if (lowerRaw.contains("amazon")) return "Amazon"
         if (lowerRaw.contains("acko")) return "ACKO Insurance"
         if (lowerRaw.contains("morth")) return "MoRTH"
 
         if (clean.contains("@")) {
-            val parts = clean.split("@")[0].trim()
-            clean = when {
-                parts.contains("airtel", ignoreCase = true) -> "Airtel"
-                parts.contains("swiggy", ignoreCase = true) -> "Swiggy"
-                parts.contains("zomato", ignoreCase = true) -> "Zomato"
-                parts.contains("uber", ignoreCase = true) -> "Uber"
-                parts.contains("paytm", ignoreCase = true) -> "Paytm"
-                parts.contains("acko", ignoreCase = true) -> "ACKO Insurance"
-                parts.startsWith("upi-m", ignoreCase = true) -> parts.substring(5).trim()
-                parts.length > 15 -> parts
-                else -> parts
+            var handlePrefix = clean.split("@")[0].trim()
+            handlePrefix = handlePrefix
+                .replace(Regex("(?i)^upi-m\\s*|-upi$|^upi-|paytm$|ybl$|icici$"), "")
+                .trim()
+            if (handlePrefix.isNotBlank()) {
+                clean = handlePrefix
             }
         }
 
@@ -389,8 +444,35 @@ object RegexTransactionParser {
         return if (clean.isBlank()) "Bank Transaction" else clean
     }
 
+    private fun isInvestmentTransaction(text: String): Boolean {
+        val lower = text.lowercase()
+        val investmentKeywords = listOf(
+            "\\bsip\\b", "\\bmutual fund\\b", "\\bzerodha\\b", "\\bgroww\\b", "\\bindmoney\\b",
+            "\\bupstox\\b", "\\bangel one\\b", "\\bsmallcase\\b", "\\bnps\\b", "\\bppf\\b",
+            "\\bfixed deposit\\b", "\\bfd\\b", "\\blic\\b", "\\bmotilal oswal\\b",
+            "\\bcoinswitch\\b", "\\bwazirx\\b", "\\bsharekhan\\b"
+        )
+        val matchesBrand = investmentKeywords.any { Regex(it).containsMatchIn(lower) }
+        if (!matchesBrand) return false
+
+        // Mandatory check: Investment message must contain transaction execution action verbs
+        val executionKeywords = listOf(
+            "debited", "spent", "invested", "purchased", "bought", "units allocated",
+            "order executed", "autopay executed", "deducted", "credited", "payment of", "paid"
+        )
+        val hasExecution = executionKeywords.any { lower.contains(it) }
+
+        // Reject news/market article terms
+        val hasNews = lower.contains("billion") || lower.contains("trillion") || lower.contains("digest") ||
+                lower.contains("inflow") || lower.contains("sensex") || lower.contains("nifty") ||
+                lower.contains("cr order") || lower.contains("crore order")
+
+        return hasExecution && !hasNews
+    }
+
     private fun predictCategory(merchant: String, rawText: String, type: String): String {
         if (type == "CREDIT") return "Income"
+        if (type == "INVESTMENT") return "Investments"
 
         val lower = "$merchant $rawText".lowercase()
         return when {

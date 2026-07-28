@@ -34,6 +34,7 @@ data class DashboardUiState(
     val thisWeekExpenses: Double = 0.0,
     val totalExpenses: Double = 0.0,
     val totalIncome: Double = 0.0,
+    val totalInvestments: Double = 0.0,
     val netBalance: Double = 0.0,
     val lastDeletedTransaction: TransactionEntity? = null,
     val promotions: List<Promotion> = emptyList(),
@@ -98,15 +99,26 @@ class DashboardViewModel @Inject constructor(
             else -> monthFiltered.sortedByDescending { it.timestamp }
         }
 
+        val startOf5DaysAgo = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -5)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val recent5DaysTransactions = sortedTransactions.filter { it.timestamp >= startOf5DaysAgo }
+
         val totalExp = monthFiltered.filter { it.type == "DEBIT" }.sumOf { it.amount }
         val totalInc = monthFiltered.filter { it.type == "CREDIT" }.sumOf { it.amount }
+        val totalInv = monthFiltered.filter { it.type == "INVESTMENT" }.sumOf { it.amount }
 
-        val defaultCats = listOf("Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Investments", "Income", "Other")
+        val defaultCats = listOf("General Expense", "Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Rent", "EMI", "Groceries & Vegetables", "Subscriptions", "Entertainment", "Fuel", "Health & Medical", "Insurance", "Government & Fees", "Investments", "Income", "Transfer", "Other")
         val customCatNames = categoryEntities.map { it.name }
         val combinedCategories = (defaultCats + customCatNames).distinct()
 
         DashboardUiState(
-            transactions = sortedTransactions,
+            transactions = recent5DaysTransactions,
             categories = combinedCategories,
             monthYearOptions = allMonthOptions,
             selectedMonthYear = filterState.monthYear,
@@ -115,7 +127,8 @@ class DashboardViewModel @Inject constructor(
             thisWeekExpenses = weekExp,
             totalExpenses = totalExp,
             totalIncome = totalInc,
-            netBalance = totalInc - totalExp,
+            totalInvestments = totalInv,
+            netBalance = totalInc - totalExp - totalInv,
             lastDeletedTransaction = lastDeleted,
             promotions = promos,
             isAutoTrackingEnabled = filterState.isAutoTrackingEnabled,
@@ -164,9 +177,8 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun addTransaction(merchant: String, amount: Double, type: String, category: String, note: String = "") {
+    fun addTransaction(merchant: String, amount: Double, type: String, category: String, note: String = "", timestamp: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
-            val timestamp = System.currentTimeMillis()
             val hash = "$merchant-$amount-$timestamp-${(0..9999).random()}"
             val entity = TransactionEntity(
                 amount = amount,
@@ -183,12 +195,13 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun updateTransaction(transaction: TransactionEntity, newMerchant: String, newCategory: String, newAmount: Double) {
+    fun updateTransaction(transaction: TransactionEntity, newMerchant: String, newCategory: String, newAmount: Double, newType: String = transaction.type) {
         viewModelScope.launch {
             val updated = transaction.copy(
                 merchant = newMerchant,
                 category = newCategory,
-                amount = newAmount
+                amount = newAmount,
+                type = newType
             )
             repository.updateTransaction(updated)
         }

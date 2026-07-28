@@ -18,16 +18,16 @@ class TransactionDeduplicatorTest {
         override fun getTotalExpenses(): Flow<Double?> = flowOf(storedTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount })
         override fun getTotalIncome(): Flow<Double?> = flowOf(storedTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount })
 
-        override suspend fun findCandidateDuplicate(type: String, amount: Double, minTimestamp: Long, maxTimestamp: Long): TransactionEntity? {
+        override suspend fun findCandidateDuplicate(type: String, amount: Double): TransactionEntity? {
             return storedTransactions.firstOrNull {
-                it.type == type && Math.abs(it.amount - amount) < 0.01 && it.timestamp in minTimestamp..maxTimestamp
+                it.type == type && Math.abs(it.amount - amount) < 0.01
             }
         }
 
         override suspend fun findExistingCreditCardPayment(amount: Double): TransactionEntity? {
             return storedTransactions.firstOrNull {
                 Math.abs(it.amount - amount) < 0.01 &&
-                (it.merchant.contains("Credit Card", ignoreCase = true) || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true))
+                (it.merchant.contains("Credit Card", ignoreCase = true) || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
             }
         }
 
@@ -220,5 +220,104 @@ class TransactionDeduplicatorTest {
 
         assertEquals("1 duplicate deleted during cleanup", 1, deletedCount)
         assertEquals("Database cleaned down to 1 transaction record", 1, dao.storedTransactions.size)
+    }
+
+    @Test
+    fun testCheQVsCreditCardBillDeduplication() = runBlocking {
+        val dao = FakeTransactionDao()
+        val timestamp = System.currentTimeMillis()
+
+        val entity1 = TransactionEntity(
+            amount = 18681.0,
+            type = "DEBIT",
+            merchant = "CheQ",
+            rawText = "Rs 18681.00 debited for payment to CheQ",
+            category = "General Expense",
+            timestamp = timestamp,
+            transactionHash = "hash-cheq-1"
+        )
+
+        val entity2 = TransactionEntity(
+            amount = 18681.0,
+            type = "DEBIT",
+            merchant = "Credit Card Bill",
+            rawText = "Payment of Rs 18681.00 received towards your Credit Card",
+            category = "Bills & Utilities",
+            timestamp = timestamp + 20 * 60 * 1000L, // 20 minutes later
+            transactionHash = "hash-card-2"
+        )
+
+        val id1 = TransactionDeduplicator.insertWithDeduplication(dao, entity1)
+        val id2 = TransactionDeduplicator.insertWithDeduplication(dao, entity2)
+
+        assertEquals("First CheQ payment inserted", 1L, id1)
+        assertEquals("Second Credit Card Bill payment suppressed as duplicate (-1)", -1L, id2)
+        assertEquals("Database should contain 1 transaction record", 1, dao.storedTransactions.size)
+    }
+
+    @Test
+    fun testAckoInsurance12MinWindowDeduplication() = runBlocking {
+        val dao = FakeTransactionDao()
+        val timestamp = System.currentTimeMillis()
+
+        val entity1 = TransactionEntity(
+            amount = 5080.0,
+            type = "DEBIT",
+            merchant = "ACKO Insurance",
+            rawText = "Paid Rs 5080 to ACKO Insurance",
+            category = "Insurance",
+            timestamp = timestamp,
+            transactionHash = "hash-acko-1"
+        )
+
+        val entity2 = TransactionEntity(
+            amount = 5080.0,
+            type = "DEBIT",
+            merchant = "ACKO Insurance",
+            rawText = "We received payment of Rs 5080 for your bike insurance policy",
+            category = "Insurance",
+            timestamp = timestamp + 12 * 60 * 1000L, // 12 minutes later
+            transactionHash = "hash-acko-2"
+        )
+
+        val id1 = TransactionDeduplicator.insertWithDeduplication(dao, entity1)
+        val id2 = TransactionDeduplicator.insertWithDeduplication(dao, entity2)
+
+        assertEquals("First ACKO payment inserted", 1L, id1)
+        assertEquals("Second ACKO receipt 12 minutes later suppressed as duplicate (-1)", -1L, id2)
+        assertEquals("Database should contain 1 transaction record", 1, dao.storedTransactions.size)
+    }
+
+    @Test
+    fun testAirtelUpiVsAirtelBlackDeduplication() = runBlocking {
+        val dao = FakeTransactionDao()
+        val timestamp = System.currentTimeMillis()
+
+        val entity1 = TransactionEntity(
+            amount = 347.16,
+            type = "DEBIT",
+            merchant = "Airtel",
+            rawText = "Paid Rs 347.16 via UPI to Upi-airtel Payments Bank",
+            category = "Bills & Utilities",
+            timestamp = timestamp,
+            transactionHash = "hash-airtel-1"
+        )
+
+        val entity2 = TransactionEntity(
+            amount = 347.16,
+            type = "DEBIT",
+            merchant = "Airtel Black",
+            rawText = "Hi Saurabh, we have received a payment of Rs. 347.16 for your Airtel Black ID",
+            category = "Bills & Utilities",
+            timestamp = timestamp + 4 * 60 * 1000L, // 4 minutes later
+            transactionHash = "hash-airtel-2"
+        )
+
+        val id1 = TransactionDeduplicator.insertWithDeduplication(dao, entity1)
+        val id2 = TransactionDeduplicator.insertWithDeduplication(dao, entity2)
+
+        assertEquals("First Airtel UPI payment inserted", 1L, id1)
+        assertEquals("Second Airtel Black receipt suppressed as duplicate (-1)", -1L, id2)
+        assertEquals("Database should contain 1 transaction record", 1, dao.storedTransactions.size)
     }
 }

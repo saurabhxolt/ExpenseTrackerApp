@@ -5,17 +5,18 @@ import com.expensetracker.app.core.database.entity.TransactionEntity
 
 object TransactionDeduplicator {
 
-    private const val DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000L
+    private val GENERIC_MERCHANT_TOKENS = setOf(
+        "bank", "transaction", "payment", "online", "deposit", "transfer", "upi", "vpa",
+        "dr", "cr", "inr", "rs", "amt", "amount", "paid", "debited", "credited", "store", "shop", "at"
+    )
 
     suspend fun insertWithDeduplication(dao: TransactionDao, entity: TransactionEntity): Long {
-        // 1. Timeless Credit Card Payment Deduplication
-        val isCreditCardPayment = entity.merchant.contains("Credit Card", ignoreCase = true) ||
-                                 entity.rawText.contains("credit card", ignoreCase = true) ||
-                                 entity.rawText.contains("bobcard", ignoreCase = true)
+        // 1. Generic Timeless Credit Card Payment Deduplication
+        val isCreditCardPayment = isCreditCardRelated(entity)
 
         if (isCreditCardPayment) {
             val existingCardPayment = dao.findExistingCreditCardPayment(entity.amount)
-            if (existingCardPayment != null) {
+            if (existingCardPayment != null && existingCardPayment.transactionHash != entity.transactionHash) {
                 if (isGenericMerchant(existingCardPayment.merchant) && !isGenericMerchant(entity.merchant)) {
                     val updated = existingCardPayment.copy(
                         merchant = entity.merchant,
@@ -23,32 +24,27 @@ object TransactionDeduplicator {
                     )
                     dao.updateTransaction(updated)
                 }
-                return -1L // Suppress duplicate credit card payment confirmation regardless of time delay
+                return -1L // Suppress duplicate credit card payment confirmation timelessly
             }
         }
 
-        // 2. Candidate Duplicate Search within ±10 minutes window
-        val minTime = entity.timestamp - DEDUPLICATION_WINDOW_MS
-        val maxTime = entity.timestamp + DEDUPLICATION_WINDOW_MS
-
+        // 2. Generic Timeless Candidate Duplicate Search (No time bound)
         val existing = dao.findCandidateDuplicate(
             type = entity.type,
-            amount = entity.amount,
-            minTimestamp = minTime,
-            maxTimestamp = maxTime
+            amount = entity.amount
         )
 
-        if (existing != null) {
+        if (existing != null && existing.transactionHash != entity.transactionHash) {
             val sameRawText = existing.rawText.trim().equals(entity.rawText.trim(), ignoreCase = true)
             val merchantsMatchOrRelated = areMerchantsMatchingOrRelated(existing.merchant, entity.merchant)
             val bothAreRefunds = existing.rawText.lowercase().contains("refund") && entity.rawText.lowercase().contains("refund")
             val bothAreCashback = existing.rawText.lowercase().contains("cashback") && entity.rawText.lowercase().contains("cashback")
+            val bothAreBillPaymentConfirmations = isBillOrPolicyReceipt(existing.rawText) && isBillOrPolicyReceipt(entity.rawText)
             val isExistingGeneric = isGenericMerchant(existing.merchant)
             val isNewGeneric = isGenericMerchant(entity.merchant)
 
-            // Suppress duplicate if raw text matches, merchants match/related, both are refunds, both are cashbacks, or one is generic
-            if (sameRawText || merchantsMatchOrRelated || bothAreRefunds || bothAreCashback || isExistingGeneric || isNewGeneric) {
-                // Enrich existing record with richer merchant name if applicable
+            // Suppress duplicate timelessly if raw text matches, merchants match/related, both are refunds, both are bill receipts, or one is generic
+            if (sameRawText || merchantsMatchOrRelated || bothAreRefunds || bothAreCashback || bothAreBillPaymentConfirmations || isExistingGeneric || isNewGeneric) {
                 if (isExistingGeneric && !isNewGeneric) {
                     val updated = existing.copy(
                         merchant = entity.merchant,
@@ -62,9 +58,8 @@ object TransactionDeduplicator {
                     )
                     dao.updateTransaction(updated)
                 }
-                return -1L // Duplicate suppressed
+                return -1L // Duplicate suppressed timelessly
             }
-            // If merchants are distinct (e.g. Swiggy vs Zomato), proceed with insertion below
         }
 
         return dao.insertTransaction(entity)
@@ -78,21 +73,42 @@ object TransactionDeduplicator {
             val current = allTxns[i]
             if (toDelete.contains(current)) continue
 
+            if (isPromotionalOrInvalid(current)) {
+                toDelete.add(current)
+                continue
+            }
+
+            // Retroactive migration for historical Credit Card Bill Payments logged before update
+            if (current.type != "TRANSFER" && isCreditCardPaymentText(current.rawText, current.merchant)) {
+                val updated = current.copy(type = "TRANSFER", category = "Bills & Utilities")
+                dao.updateTransaction(updated)
+            }
+
+            val isCurrentCC = isCreditCardRelated(current)
+
             for (j in i + 1 until allTxns.size) {
                 val candidate = allTxns[j]
                 if (toDelete.contains(candidate)) continue
 
+                val isCandidateCC = isCreditCardRelated(candidate)
                 val sameType = current.type == candidate.type
                 val sameAmount = Math.abs(current.amount - candidate.amount) < 0.01
-                val withinWindow = Math.abs(current.timestamp - candidate.timestamp) <= DEDUPLICATION_WINDOW_MS
 
-                if (sameType && sameAmount && withinWindow) {
+                // 1. Generic Timeless Credit Card / Payment App Cleanup
+                if (isCurrentCC && isCandidateCC && sameAmount) {
+                    toDelete.add(candidate)
+                    continue
+                }
+
+                // 2. Generic Timeless Duplicate Cleanup (No time bound)
+                if (sameType && sameAmount) {
                     val sameRawText = current.rawText.trim().equals(candidate.rawText.trim(), ignoreCase = true)
                     val relatedMerchants = areMerchantsMatchingOrRelated(current.merchant, candidate.merchant)
                     val bothRefunds = current.rawText.lowercase().contains("refund") && candidate.rawText.lowercase().contains("refund")
                     val bothCashback = current.rawText.lowercase().contains("cashback") && candidate.rawText.lowercase().contains("cashback")
+                    val bothBillReceipts = isBillOrPolicyReceipt(current.rawText) && isBillOrPolicyReceipt(candidate.rawText)
 
-                    if (sameRawText || relatedMerchants || bothRefunds || bothCashback) {
+                    if (sameRawText || relatedMerchants || bothRefunds || bothCashback || bothBillReceipts) {
                         toDelete.add(candidate)
                     }
                 }
@@ -108,6 +124,21 @@ object TransactionDeduplicator {
         return deletedCount
     }
 
+    private fun isCreditCardRelated(entity: TransactionEntity): Boolean {
+        val lowerMerchant = entity.merchant.lowercase()
+        val lowerText = entity.rawText.lowercase()
+        return lowerMerchant.contains("credit card") || lowerMerchant.contains("cheq") || lowerMerchant.contains("cred") || lowerMerchant.contains("billdesk") || lowerMerchant.contains("bbps") ||
+               lowerText.contains("credit card") || lowerText.contains("cheq") || lowerText.contains("cred") || lowerText.contains("bobcard") || lowerText.contains("card xx") || lowerText.contains("card ending") || lowerText.contains("billdesk") || lowerText.contains("bbps") ||
+               ((entity.type == "DEBIT" || entity.type == "TRANSFER") && entity.category == "Bills & Utilities" && (lowerText.contains("card") || lowerText.contains("bill")))
+    }
+
+    private fun isBillOrPolicyReceipt(text: String): Boolean {
+        val lower = text.lowercase()
+        val hasAction = lower.contains("paid") || lower.contains("debited") || lower.contains("received") || lower.contains("credited") || lower.contains("payment")
+        val hasContext = lower.contains("towards") || lower.contains("for your") || lower.contains("bill") || lower.contains("policy") || lower.contains("statement")
+        return hasAction && hasContext
+    }
+
     private fun areMerchantsMatchingOrRelated(m1: String, m2: String): Boolean {
         val norm1 = normalizeMerchant(m1)
         val norm2 = normalizeMerchant(m2)
@@ -115,7 +146,21 @@ object TransactionDeduplicator {
         if (norm1 == norm2) return true
         if (isGenericMerchant(m1) || isGenericMerchant(m2)) return true
 
+        // Generic Brand Token Overlap Matching (Extracts significant brand keywords)
+        val tokens1 = extractBrandTokens(m1)
+        val tokens2 = extractBrandTokens(m2)
+
+        val commonBrandTokens = tokens1.intersect(tokens2)
+        if (commonBrandTokens.isNotEmpty()) return true
+
         return isBrandMatch(m1, m2)
+    }
+
+    private fun extractBrandTokens(merchant: String): Set<String> {
+        return merchant.lowercase()
+            .split(Regex("[^a-z0-9]"))
+            .filter { it.length >= 3 && !GENERIC_MERCHANT_TOKENS.contains(it) }
+            .toSet()
     }
 
     private fun isBrandMatch(m1: String, m2: String): Boolean {
@@ -132,8 +177,28 @@ object TransactionDeduplicator {
         return merchant.lowercase().replace(Regex("[^a-z0-9]"), "").trim()
     }
 
+    private fun isPromotionalOrInvalid(entity: TransactionEntity): Boolean {
+        val lowerText = entity.rawText.lowercase()
+        return lowerText.contains("up to ₹") || lowerText.contains("up to rs") || lowerText.contains("10% off") ||
+               lowerText.contains("no code to hunt") || lowerText.contains("no cashback to chase") ||
+               lowerText.contains("what if saving money") || lowerText.contains("scapia federal credit card") ||
+               lowerText.contains("apply coupon") || lowerText.contains("use promo code") || lowerText.contains("discount") ||
+               lowerText.contains("digest") || lowerText.contains("billion") || lowerText.contains("trillion") ||
+               lowerText.contains("cr order") || lowerText.contains("due in") || lowerText.contains("is due") ||
+               lowerText.contains("due date") || lowerText.contains("pay instantly") || lowerText.contains("avoid late")
+    }
+
     private fun isGenericMerchant(merchant: String): Boolean {
         val lower = merchant.lowercase().trim()
         return lower == "bank transaction" || lower == "deposit / transfer" || lower == "online payment" || lower == "merchant payment" || lower.isBlank()
+    }
+
+    private fun isCreditCardPaymentText(rawText: String, merchant: String): Boolean {
+        val lowerText = rawText.lowercase()
+        val lowerMerchant = merchant.lowercase()
+        return lowerMerchant.contains("credit card bill") ||
+               lowerText.contains("towards your credit card") || lowerText.contains("towards credit card") ||
+               lowerText.contains("towards card") || lowerText.contains("cred.club") || lowerText.contains("cheq") ||
+               lowerText.contains("cardbill@") || lowerText.contains("ccpay@") || lowerText.contains("billdesk") || lowerText.contains("bbps")
     }
 }

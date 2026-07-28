@@ -22,9 +22,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("${rootDir}/vault_release_key.jks")
+            storePassword = "VaultExpenseSecretPass2026!"
+            keyAlias = "vaultexpense"
+            keyPassword = "VaultExpenseSecretPass2026!"
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

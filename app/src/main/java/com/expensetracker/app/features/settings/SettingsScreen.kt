@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -175,11 +176,11 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("Privacy-First Guarantee 🔒", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
+                        Text("Privacy-First Guarantee 🔒", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             text = "100% Offline • Zero Company Storage • SQLCipher Hardware Encryption",
                             fontSize = 12.sp,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -221,13 +222,13 @@ fun SettingsScreen(
 
         // Security Section
         item {
-            Text("Security", style = MaterialTheme.typography.titleLarge)
+            Text("Security", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         }
 
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
@@ -241,8 +242,8 @@ fun SettingsScreen(
                         Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = PrimaryBlue)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Biometric / PIN App Lock", fontWeight = FontWeight.SemiBold)
-                            Text("Require fingerprint or PIN on app open", fontSize = 12.sp, color = TextSecondary)
+                            Text("Biometric / PIN App Lock", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Require fingerprint or PIN on app open", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Switch(
@@ -256,7 +257,7 @@ fun SettingsScreen(
 
         // Data Backup & Export Section
         item {
-            Text("Backup & Export", style = MaterialTheme.typography.titleLarge)
+            Text("Backup & Export", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         }
 
         item {
@@ -286,32 +287,135 @@ fun SettingsScreen(
             )
         }
 
-        // App Information Section
+        // App Information & About Us Section
         item {
-            Text("App Info", style = MaterialTheme.typography.titleLarge)
+            Text("About VaultExpense & ArivTek LLP", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         }
 
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = TextSecondary)
+                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = PrimaryBlue)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Expense Tracker App", fontWeight = FontWeight.Bold)
-                            Text("Version 1.0.0 (Privacy-First In-House System)", fontSize = 12.sp, color = TextSecondary)
+                            Text("VaultExpense", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Private. Smart. Offline Expense Vault.", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                            Text("Version 1.0.0 • 100% Offline & SQLCipher Encrypted", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Total Records in Local DB: ${uiState.transactionCount} Transactions, ${uiState.budgetCount} Budgets",
                         fontSize = 12.sp,
-                        color = GreenSuccess
+                        color = MaterialTheme.colorScheme.tertiary
                     )
+                }
+            }
+        }
+
+        item {
+            ArivTekAboutUsCard()
+        }
+    }
+}
+
+@Composable
+fun ArivTekAboutUsCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(PrimaryBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = PrimaryBlue)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Designed & Developed by ArivTek LLP",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Building the Next Era of Digital Ventures",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = PrimaryBlue
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = "ArivTek LLP was established to bridge the gap between premium enterprise consulting and the agile product building of a startup. Under a single parent ecosystem, we act as both a technical execution studio for corporate clients and an active builder of tech ventures.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 16.sp
+            )
+
+            Text(
+                text = "Our Mission",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "To empower companies and startups to launch reliable, secure, and highly scalable technologies without the friction of fractured engineering coordination. We make elite software execution accessible.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 16.sp
+            )
+
+            Text(
+                text = "Our Vision",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "To become a globally recognized venture incubator, driving technical innovations and building an interconnected digital suite of software startups that enhance MSME and enterprise workflows.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 16.sp
+            )
+
+            Text(
+                text = "Core Values - The Principles Guarding Our Code",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            val values = listOf(
+                "🚀 Innovation" to "Constantly challenging boundaries to invent and re-engineer digital frameworks.",
+                "✨ Simplicity" to "Distilling complex computational backends into intuitive interfaces.",
+                "🛡️ Transparency" to "Uncompromising open logs, clear pricing schemas, and direct technical consultations.",
+                "📈 Customer Success" to "Aligning our service outputs directly with our clients balance sheet metrics.",
+                "💡 Continuous Learning" to "Dedicating engineering hours to research emerging technologies, LLMs, and rust frameworks."
+            )
+
+            values.forEach { (title, desc) ->
+                Column(modifier = Modifier.padding(start = 4.dp)) {
+                    Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                    Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
         }
@@ -358,9 +462,9 @@ fun AnnouncementCard(announcement: Announcement) {
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(announcement.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
+                Text(announcement.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(announcement.description, fontSize = 12.sp, color = TextSecondary)
+                Text(announcement.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -377,7 +481,7 @@ fun SettingsActionItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -389,8 +493,8 @@ fun SettingsActionItem(
             Icon(imageVector = icon, contentDescription = null, tint = PrimaryBlue)
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
