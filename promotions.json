@@ -3,18 +3,6 @@
   "refreshIntervalHours": 24,
   "promotions": [
     {
-      "id": "clinic_mngt_system",
-      "title": "Clinic Management Platform 🏥",
-      "description": "Complete healthcare & patient record management system for clinics.",
-      "imageUrl": "https://raw.githubusercontent.com/saurabhxolt/ExpenseTrackerApp/Dev/assets/clinic_banner.png",
-      "actionUrl": "https://saurabhxolt.github.io/ClinicMngt/",
-      "priority": 1,
-      "startDate": "2026-01-01",
-      "endDate": "2026-12-31",
-      "minimumAppVersion": 1,
-      "enabled": true
-    },
-    {
       "id": "arivtech_solutions",
       "title": "Arivtech Software Solutions 🚀",
       "description": "Custom mobile, web & AI software engineering services.",
