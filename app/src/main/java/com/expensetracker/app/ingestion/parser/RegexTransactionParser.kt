@@ -5,8 +5,15 @@ import java.util.regex.Pattern
 object RegexTransactionParser {
 
     private val OTP_PATTERNS = listOf(
-        Pattern.compile("(?i)\\b(otp|verification code|one time password|secret code)\\b"),
+        Pattern.compile("(?i)\\b(otp|verification code|one time password|secret code|otac)\\b"),
         Pattern.compile("(?i)\\buse code\\b")
+    )
+
+    private val FAILED_TRANSACTION_PATTERNS = listOf(
+        Pattern.compile("(?i)\\bfailed\\b"),
+        Pattern.compile("(?i)\\bunsuccessful\\b"),
+        Pattern.compile("(?i)\\bdeclined\\b"),
+        Pattern.compile("(?i)payment of .* failed")
     )
 
     private val PROMOTIONAL_OFFER_PATTERNS = listOf(
@@ -22,11 +29,20 @@ object RegexTransactionParser {
         Pattern.compile("(?i)require\\s+consent"),
         Pattern.compile("(?i)disbursement"),
         Pattern.compile("(?i)funds.*are\\s+available"),
+        Pattern.compile("(?i)funds\\s+ready\\s+for\\s+disbursal"),
         Pattern.compile("(?i)service\\s+alert:"),
         Pattern.compile("(?i)pre-approved"),
         Pattern.compile("(?i)apply\\s+now"),
         Pattern.compile("(?i)upgrade\\s+your\\s+limit"),
-        Pattern.compile("(?i)instant\\s+loan")
+        Pattern.compile("(?i)instant\\s+loan"),
+        Pattern.compile("(?i)personal\\s+loan\\s+offer"),
+        Pattern.compile("(?i)monthly\\s+update"),
+        Pattern.compile("(?i)will\\s+expire\\s+on"),
+        Pattern.compile("(?i)will\\s+expire\\s+in"),
+        Pattern.compile("(?i)premium\\s+starts"),
+        Pattern.compile("(?i)reminder\\s+for\\s+appointment"),
+        Pattern.compile("(?i)missed\\s+call\\s+from"),
+        Pattern.compile("(?i)limit.*cannot\\s+be\\s+increased")
     )
 
     private val CC_UPI_VPA_PATTERN = Pattern.compile(
@@ -42,13 +58,28 @@ object RegexTransactionParser {
         Pattern.compile("(?i)total\\s+amount\\s+due"),
         Pattern.compile("(?i)will\\s+be\\s+deducted"),
         Pattern.compile("(?i)will\\s+be\\s+debited"),
+        Pattern.compile("(?i)is\\s+due\\s+on"),
+        Pattern.compile("(?i)is\\s+due\\s+for\\s+debit"),
+        Pattern.compile("(?i)due\\s+for\\s+debit"),
+        Pattern.compile("(?i)has\\s+due\\s+of"),
+        Pattern.compile("(?i)pay\\s+at\\s+[a-z0-9._/-]+"),
+        Pattern.compile("(?i)to\\s+view/download\\s+statement"),
+        Pattern.compile("(?i)view\\s+soa\\s+for\\s+recent"),
+        Pattern.compile("(?i)fingerprint\\s+login"),
+        Pattern.compile("(?i)biometric\\s+authentication"),
+        Pattern.compile("(?i)card\\s+usage\\s+settings"),
+        Pattern.compile("(?i)deregistered\\s+from"),
+        Pattern.compile("(?i)modification\\s+success"),
+        Pattern.compile("(?i)deleted\\s+standing\\s+instruction"),
+        Pattern.compile("(?i)customer\\s+care"),
+        Pattern.compile("(?i)धोखाधड़ी\\s+से\\s+खुद\\s+को\\s+सुरक्षित"),
         Pattern.compile("(?i)has\\s+been\\s+initiated"),
         Pattern.compile("(?i)refund.*initiated"),
         Pattern.compile("(?i)available\\s+bal.*is\\s+inr"),
         Pattern.compile("(?i)available\\s+bal.*is\\s+rs"),
         Pattern.compile("(?i)for\\s+updated\\s+a/c\\s+bal"),
         Pattern.compile("(?i)cheques\\s+are\\s+subject\\s+to\\s+clearing"),
-        Pattern.compile("(?i)e-mandate"),
+        Pattern.compile("(?i)maintain\\s+balance"),
         Pattern.compile("(?i)due\\s+on"),
         Pattern.compile("(?i)reminder\\s+to\\s+pay"),
         Pattern.compile("(?i)reward\\s+points"),
@@ -94,26 +125,31 @@ object RegexTransactionParser {
         Pattern.compile("(?i)(?:inr|rs\\.?|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s+(?:has\\s+been|was|is)?\\s*debited"),
         Pattern.compile("(?i)(?:inr|rs\\.?|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s+(?:is|was)?\\s*spent"),
         Pattern.compile("(?i)spent\\s+using\\s+.*?\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
+        Pattern.compile("(?i)spent\\s+at\\s+.*?\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)spent\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
-        Pattern.compile("(?i)paid\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
+        Pattern.compile("(?i)spent\\s+(?:inr|rs\\.?|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
+        Pattern.compile("(?i)paid\\s+(?:inr|rs\\.?|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)sent\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)withdrawn\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)deducted\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)txn\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)dr\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)(?:trxn|txn|transaction)\\.?\\s+(?:of\\s+)?(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
-        Pattern.compile("(?i)purchase\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)")
+        Pattern.compile("(?i)purchase\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
+        Pattern.compile("(?i)payment\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s+using.*successful")
     )
 
     // Credit action triggers
     private val CREDIT_PATTERNS = listOf(
+        Pattern.compile("(?i)cashback\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
+        Pattern.compile("(?i)(?:inr|rs\\.?|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s+cashback\\s+received"),
+        Pattern.compile("(?i)refund\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s+has\\s+been\\s+processed"),
+        Pattern.compile("(?i)refund\\s+from\\s+.*?amount:\\s*(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)has\\s+credit\\s+for\\s+.*?of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)credited\\s+by\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)credited\\s+with\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)credited\\s+to\\s+.*?\\s*(?:rs\\.?|inr|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)(?:inr|rs\\.?|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s+(?:has\\s+been|was|is)?\\s*credited"),
-        Pattern.compile("(?i)refund\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
-        Pattern.compile("(?i)cashback\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)salary\\s+of\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)received\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
         Pattern.compile("(?i)deposited\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)"),
@@ -126,6 +162,9 @@ object RegexTransactionParser {
 
         // 1. STAGE 1: NON-TRANSACTION REJECTION FILTER
         for (pattern in OTP_PATTERNS) {
+            if (pattern.matcher(text).find()) return null
+        }
+        for (pattern in FAILED_TRANSACTION_PATTERNS) {
             if (pattern.matcher(text).find()) return null
         }
         for (pattern in PROMOTIONAL_OFFER_PATTERNS) {
@@ -148,11 +187,15 @@ object RegexTransactionParser {
         if (isCreditCardBillPayment(cleanText)) {
             val amount = extractGenericAmount(textWithoutBalance)
             if (amount > 0.0) {
+                val lower = cleanText.lowercase()
+                val merchant = if (lower.contains("cred club") || lower.contains("to cred")) "CRED Club"
+                               else if (lower.contains("cheq")) "CheQ"
+                               else "Credit Card Bill"
                 val accountDigits = extractAccountDigits(cleanText)
                 return ParsedTransaction(
                     amount = amount,
                     type = "TRANSFER",
-                    merchant = "Credit Card Bill",
+                    merchant = merchant,
                     accountDigits = accountDigits,
                     category = "Bills & Utilities",
                     rawText = text
@@ -176,7 +219,42 @@ object RegexTransactionParser {
             }
         }
 
-        // 3.3 Check Merchant/Service Payment Receipts (e.g., Insurance, MoRTH Fee, Airtel Bills)
+        // 3.3 Check Investment Transactions (SIP, Mutual Funds, Stocks, Zerodha, Groww, INDmoney, NPS, PPF, FD)
+        if (isInvestmentTransaction(cleanText)) {
+            val amount = extractGenericAmount(textWithoutBalance)
+            if (amount > 0.0) {
+                val merchant = extractMerchant(cleanText, "INVESTMENT")
+                val accountDigits = extractAccountDigits(cleanText)
+                return ParsedTransaction(
+                    amount = amount,
+                    type = "INVESTMENT",
+                    merchant = if (merchant.isNotBlank() && merchant != "Unknown Merchant") merchant else "Investment",
+                    accountDigits = accountDigits,
+                    category = "Investments",
+                    rawText = text
+                )
+            }
+        }
+
+        // 3.4 Check Outbound NEFT Transfer (e.g. NEFT transfer credited to <Beneficiary Name>)
+        if (isOutboundNeftTransfer(cleanText)) {
+            val amount = extractGenericAmount(textWithoutBalance)
+            if (amount > 0.0) {
+                val merchant = extractMerchant(cleanText, "DEBIT")
+                val accountDigits = extractAccountDigits(cleanText)
+                val category = predictCategory(merchant, cleanText, "DEBIT")
+                return ParsedTransaction(
+                    amount = amount,
+                    type = "DEBIT",
+                    merchant = merchant,
+                    accountDigits = accountDigits,
+                    category = category,
+                    rawText = text
+                )
+            }
+        }
+
+        // 3.5 Check Merchant/Service Payment Receipts (e.g., Insurance, MoRTH Fee, Airtel Bills, ACT Fibernet)
         if (isPaymentReceiptForExpense(cleanText)) {
             val amount = extractGenericAmount(textWithoutBalance)
             if (amount > 0.0) {
@@ -196,46 +274,7 @@ object RegexTransactionParser {
             }
         }
 
-        // 3.3.5 Check Investment Transactions (SIP, Mutual Funds, Stocks, Zerodha, Groww, INDmoney, NPS, PPF, FD)
-        if (isInvestmentTransaction(cleanText)) {
-            val amount = extractGenericAmount(textWithoutBalance)
-            if (amount > 0.0) {
-                val merchant = extractMerchant(cleanText, "INVESTMENT")
-                val accountDigits = extractAccountDigits(cleanText)
-                return ParsedTransaction(
-                    amount = amount,
-                    type = "INVESTMENT",
-                    merchant = if (merchant.isNotBlank() && merchant != "Unknown Merchant") merchant else "Investment",
-                    accountDigits = accountDigits,
-                    category = "Investments",
-                    rawText = text
-                )
-            }
-        }
-
-        // 3.4 Check DEBIT patterns
-        for (pattern in DEBIT_PATTERNS) {
-            val matcher = pattern.matcher(textWithoutBalance)
-            if (matcher.find()) {
-                val amountStr = matcher.group(1)?.replace(",", "")
-                val amount = amountStr?.toDoubleOrNull() ?: 0.0
-                if (amount > 0.0) {
-                    val merchant = extractMerchant(cleanText, "DEBIT")
-                    val category = predictCategory(merchant, cleanText, "DEBIT")
-                    val accountDigits = extractAccountDigits(cleanText)
-                    return ParsedTransaction(
-                        amount = amount,
-                        type = "DEBIT",
-                        merchant = merchant,
-                        accountDigits = accountDigits,
-                        category = category,
-                        rawText = text
-                    )
-                }
-            }
-        }
-
-        // 3.5 Check CREDIT patterns (Genuine External Income)
+        // 3.6 Check CREDIT patterns (Genuine External Income, Cashbacks, Processed Refunds)
         for (pattern in CREDIT_PATTERNS) {
             val matcher = pattern.matcher(textWithoutBalance)
             if (matcher.find()) {
@@ -257,24 +296,61 @@ object RegexTransactionParser {
             }
         }
 
+        // 3.7 Check DEBIT patterns
+        for (pattern in DEBIT_PATTERNS) {
+            val matcher = pattern.matcher(textWithoutBalance)
+            if (matcher.find()) {
+                val amountStr = matcher.group(1)?.replace(",", "")
+                val amount = amountStr?.toDoubleOrNull() ?: 0.0
+                if (amount > 0.0) {
+                    val merchant = extractMerchant(cleanText, "DEBIT")
+                    val category = predictCategory(merchant, cleanText, "DEBIT")
+                    val accountDigits = extractAccountDigits(cleanText)
+                    return ParsedTransaction(
+                        amount = amount,
+                        type = "DEBIT",
+                        merchant = merchant,
+                        accountDigits = accountDigits,
+                        category = category,
+                        rawText = text
+                    )
+                }
+            }
+        }
+
         return null
+    }
+
+    private fun isOutboundNeftTransfer(text: String): Boolean {
+        val lower = text.lowercase()
+        return (lower.contains("neft") || lower.contains("money transfer")) &&
+               (lower.contains("credited to") || lower.contains("has been credited to")) &&
+               !lower.contains("credited to your a/c") &&
+               !lower.contains("credited to your account") &&
+               !lower.contains("credited to your card")
     }
 
     private fun isPaymentReceiptForExpense(text: String): Boolean {
         val lower = text.lowercase()
-        return (lower.contains("received payment") || lower.contains("received a payment") || lower.contains("received rs") || lower.contains("received inr") || lower.contains("payment received") || lower.contains("payment of")) &&
-               (lower.contains("for your") || lower.contains("against") || lower.contains("fee") || lower.contains("insurance") || lower.contains("morth") || lower.contains("policy") || lower.contains("acko") || lower.contains("receipt no") || lower.contains("airtel") || lower.contains("bill"))
+        return (lower.contains("received payment") || lower.contains("received a payment") || lower.contains("received rs") || lower.contains("received inr") || lower.contains("payment received") || lower.contains("payment of") || lower.contains("receipt of") || lower.contains("confirmation for receipt")) &&
+               (lower.contains("for your") || lower.contains("against") || lower.contains("fee") || lower.contains("insurance") || lower.contains("morth") || lower.contains("policy") || lower.contains("acko") || lower.contains("receipt no") || lower.contains("airtel") || lower.contains("bill") || lower.contains("act fibernet"))
     }
 
     private fun isCreditCardBillPayment(text: String): Boolean {
         val lower = text.lowercase()
-        // Reject bill due reminders or upcoming payment notices
-        if (lower.contains("due in") || lower.contains("is due") || lower.contains("due date") || lower.contains("pay instantly") || lower.contains("reminder")) return false
+        // Reject bill due reminders, upcoming payment notices, or cashback credits
+        if (lower.contains("due in") || lower.contains("is due") || lower.contains("due date") || lower.contains("pay instantly") || lower.contains("reminder") || lower.contains("cashback")) return false
+
+        // Check explicit UPI VPA / CC Bill payment services (CRED, CheQ, Billdesk, BBPS)
         if (CC_UPI_VPA_PATTERN.matcher(text).find()) return true
-        if (lower.contains("cheq") || lower.contains("cred.club") || lower.contains("cred app") || lower.contains("billdesk") || lower.contains("bbps")) return true
+        if (lower.contains("cred.club") || lower.contains("cred app") || lower.contains(" to cred") || lower.contains("cheq") || lower.contains("billdesk") || lower.contains("bbps")) return true
+
+        // Reject merchant card spending (e.g. Paid inr 250 with your BOBCARD to raz*uniorbit)
+        if (lower.contains("with your") || lower.contains("spent on") || lower.contains("spent using") || lower.contains(" to raz") || lower.contains(" to merchant")) return false
+
         val hasCardKeyword = lower.contains("credit card") || lower.contains("bobcard") || lower.contains("card xx") || lower.contains("card ending") || lower.contains("card no") || lower.contains("card ending in") || lower.contains("cc payment") || lower.contains("card bill")
-        val hasPaymentKeyword = lower.contains("payment received") || lower.contains("credited towards") || lower.contains("credited with") || lower.contains("payment of") || lower.contains("bill payment") || lower.contains("received towards") || lower.contains("thank you for paying") || lower.contains("received payment") || lower.contains("towards your credit card") || lower.contains("towards credit card") || lower.contains("towards your card") || lower.contains("towards card") || lower.contains("paid") || lower.contains("debited")
-        return hasCardKeyword && hasPaymentKeyword
+        val hasBillPaymentConfirmation = lower.contains("payment received") || lower.contains("credited towards") || lower.contains("credited with") || lower.contains("received towards") || lower.contains("towards credit card") || lower.contains("towards card") || lower.contains("towards bill payment") || lower.contains("received on your")
+        return hasCardKeyword && hasBillPaymentConfirmation
     }
 
     private fun isSelfTransfer(text: String): Boolean {
@@ -381,7 +457,7 @@ object RegexTransactionParser {
         if (againstMerchant.find()) return cleanMerchantName(againstMerchant.group(1) ?: "")
 
         // Pattern 8: to <Payee> (excluding phone numbers)
-        val toPayee = Pattern.compile("(?i)\\s+to\\s+([A-Za-z\\s@._\\-]+?)(?:\\s+on\\s+|\\s+via\\s+|\\s+ref|\\.|$)").matcher(cleanText)
+        val toPayee = Pattern.compile("(?i)\\s+to\\s+([A-Za-z0-9\\s@._\\-*]+?)(?:\\s+on\\s+|\\s+via\\s+|\\s+at\\s+|\\s+ref|\\.|$)").matcher(cleanText)
         if (toPayee.find()) {
             val candidate = toPayee.group(1) ?: ""
             if (!candidate.trim().matches(Regex("^[0-9\\s+\\-]+$"))) {
@@ -447,7 +523,7 @@ object RegexTransactionParser {
     private fun isInvestmentTransaction(text: String): Boolean {
         val lower = text.lowercase()
         val investmentKeywords = listOf(
-            "\\bsip\\b", "\\bmutual fund\\b", "\\bzerodha\\b", "\\bgroww\\b", "\\bindmoney\\b",
+            "\\bsip\\b", "\\bmutual funds?\\b", "\\bzerodha\\b", "\\bgroww\\b", "\\bindmoney\\b",
             "\\bupstox\\b", "\\bangel one\\b", "\\bsmallcase\\b", "\\bnps\\b", "\\bppf\\b",
             "\\bfixed deposit\\b", "\\bfd\\b", "\\blic\\b", "\\bmotilal oswal\\b",
             "\\bcoinswitch\\b", "\\bwazirx\\b", "\\bsharekhan\\b"
@@ -455,10 +531,9 @@ object RegexTransactionParser {
         val matchesBrand = investmentKeywords.any { Regex(it).containsMatchIn(lower) }
         if (!matchesBrand) return false
 
-        // Mandatory check: Investment message must contain transaction execution action verbs
         val executionKeywords = listOf(
             "debited", "spent", "invested", "purchased", "bought", "units allocated",
-            "order executed", "autopay executed", "deducted", "credited", "payment of", "paid"
+            "order executed", "autopay executed", "deducted", "credited", "payment of", "paid", "sent", "mandate", "upi mandate"
         )
         val hasExecution = executionKeywords.any { lower.contains(it) }
 
@@ -479,7 +554,7 @@ object RegexTransactionParser {
             lower.contains("swiggy") || lower.contains("zomato") || lower.contains("food") || lower.contains("cafe") || lower.contains("atithi") || lower.contains("restaurant") || lower.contains("bakery") || lower.contains("dining") || lower.contains("dominos") || lower.contains("mcdonald") || lower.contains("starbucks") || lower.contains("kfc") -> "Food & Dining"
             lower.contains("uber") || lower.contains("ola") || lower.contains("rapido") || lower.contains("irctc") || lower.contains("fuel") || lower.contains("petrol") || lower.contains("fastag") || lower.contains("toll") || lower.contains("railway") || lower.contains("metro") -> "Transportation"
             lower.contains("amazon") || lower.contains("flipkart") || lower.contains("myntra") || lower.contains("ajio") || lower.contains("dmart") || lower.contains("blinkit") || lower.contains("zepto") || lower.contains("bigbasket") || lower.contains("mart") || lower.contains("store") || lower.contains("retail") -> "Shopping"
-            lower.contains("airtel") || lower.contains("jio") || lower.contains("vi ") || lower.contains("bill") || lower.contains("recharge") || lower.contains("bescom") || lower.contains("electricity") || lower.contains("water") || lower.contains("gas") || lower.contains("broadband") || lower.contains("tata play") || lower.contains("dth") -> "Bills & Utilities"
+            lower.contains("airtel") || lower.contains("jio") || lower.contains("vi ") || lower.contains("bill") || lower.contains("recharge") || lower.contains("bescom") || lower.contains("electricity") || lower.contains("water") || lower.contains("gas") || lower.contains("broadband") || lower.contains("tata play") || lower.contains("dth") || lower.contains("fibernet") || lower.contains("act ") || lower.contains("actgrp") -> "Bills & Utilities"
             lower.contains("ksec") || lower.contains("zerodha") || lower.contains("groww") || lower.contains("upstox") || lower.contains("trading") || lower.contains("mutual fund") || lower.contains("sip") || lower.contains("coin") || lower.contains("stock") -> "Investments"
             lower.contains("netflix") || lower.contains("prime video") || lower.contains("spotify") || lower.contains("youtube") || lower.contains("bookmyshow") || lower.contains("pvr") || lower.contains("inox") || lower.contains("hotstar") || lower.contains("cinema") -> "Entertainment"
             lower.contains("pharmacy") || lower.contains("apollo") || lower.contains("practo") || lower.contains("hospital") || lower.contains("diagnostic") || lower.contains("medical") || lower.contains("pharmeasy") || lower.contains("1mg") || lower.contains("clinic") -> "Health & Medical"

@@ -95,115 +95,40 @@ fun AnalyticsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Financial Analytics",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            Text(
+                text = "Financial Analytics",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
 
-                var periodExpanded by remember { mutableStateOf(false) }
-
-                Box {
-                    Button(
-                        onClick = { periodExpanded = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        val label = when {
-                            uiState.selectedMonthYear != "ALL" -> "🗓️ ${uiState.selectedMonthYear}"
-                            uiState.selectedPeriodPreset == "THIS_MONTH" -> "📅 Current Month"
-                            uiState.selectedPeriodPreset == "LAST_MONTH" -> "🗓️ Last Month"
-                            uiState.selectedPeriodPreset == "LAST_3_MONTHS" -> "📊 Quarter"
-                            uiState.selectedPeriodPreset == "LAST_6_MONTHS" -> "📈 6 Months"
-                            uiState.selectedPeriodPreset == "YEARLY" -> "📆 Yearly"
-                            uiState.selectedPeriodPreset == "CUSTOM" -> "⏱️ Custom Dates"
-                            else -> "📅 Period: All Time"
-                        }
-                        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        // Collapsible Unified Filter Bar
+        item {
+            com.expensetracker.app.core.ui.components.UnifiedFilterBar(
+                periodOption = when {
+                    uiState.selectedMonthYear != "ALL" -> uiState.selectedMonthYear
+                    uiState.selectedPeriodPreset == "THIS_MONTH" -> "This Month"
+                    uiState.selectedPeriodPreset == "LAST_MONTH" -> "Last Month"
+                    uiState.selectedPeriodPreset == "LAST_3_MONTHS" -> "Last 3 Months"
+                    uiState.selectedPeriodPreset == "LAST_6_MONTHS" -> "Last 6 Months"
+                    uiState.selectedPeriodPreset == "YEARLY" -> "This Year"
+                    uiState.selectedPeriodPreset == "CUSTOM" -> "Custom Range"
+                    else -> "All Time"
+                },
+                periodOptions = listOf("All Time", "This Month", "Last Month", "Last 3 Months", "Last 6 Months", "This Year"),
+                onPeriodSelected = { label ->
+                    val preset = when (label) {
+                        "This Month" -> "THIS_MONTH"
+                        "Last Month" -> "LAST_MONTH"
+                        "Last 3 Months" -> "LAST_3_MONTHS"
+                        "Last 6 Months" -> "LAST_6_MONTHS"
+                        "This Year" -> "YEARLY"
+                        else -> "ALL"
                     }
-
-                    DropdownMenu(
-                        expanded = periodExpanded,
-                        onDismissRequest = { periodExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("📅 All Time", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                onMonthYearSelected("ALL")
-                                onPeriodPresetSelected("ALL")
-                                periodExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("📅 Current Month", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                onMonthYearSelected("ALL")
-                                onPeriodPresetSelected("THIS_MONTH")
-                                periodExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("🗓️ Last Month", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                onMonthYearSelected("ALL")
-                                onPeriodPresetSelected("LAST_MONTH")
-                                periodExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("📊 Quarter (Last 3 Months)", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                onMonthYearSelected("ALL")
-                                onPeriodPresetSelected("LAST_3_MONTHS")
-                                periodExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("📈 Last 6 Months", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                onMonthYearSelected("ALL")
-                                onPeriodPresetSelected("LAST_6_MONTHS")
-                                periodExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("📆 Yearly", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                onMonthYearSelected("ALL")
-                                onPeriodPresetSelected("YEARLY")
-                                periodExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("⏱️ Custom Dates...", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                periodExpanded = false
-                                showCustomDatePicker = true
-                            }
-                        )
-                        if (uiState.monthYearOptions.size > 1) {
-                            uiState.monthYearOptions.filter { it != "ALL" }.forEach { monthOpt ->
-                                DropdownMenuItem(
-                                    text = { Text("🗓️ $monthOpt", color = MaterialTheme.colorScheme.onSurface) },
-                                    onClick = {
-                                        onPeriodPresetSelected("ALL")
-                                        onMonthYearSelected(monthOpt)
-                                        periodExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    onMonthYearSelected("ALL")
+                    onPeriodPresetSelected(preset)
                 }
-            }
+            )
         }
 
         // Visual Canvas Donut Chart Card
@@ -457,11 +382,24 @@ fun AnalyticsScreen(
 @Composable
 fun CategoryBreakdownCard(item: CategoryShare) {
     val categoryColor = CategoryColorProvider.getCategoryColor(item.categoryName)
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+    val (emoji, avatarBg) = when (item.categoryName.lowercase()) {
+        "food & dining", "food", "dining" -> "🍕" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF78350F) else androidx.compose.ui.graphics.Color(0xFFFEF3C7))
+        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF134E4A) else androidx.compose.ui.graphics.Color(0xFFCCFBF1))
+        "shopping" -> "🛒" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF4C1D95) else androidx.compose.ui.graphics.Color(0xFFF3E8FF))
+        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF0C4A6E) else androidx.compose.ui.graphics.Color(0xFFE0F2FE))
+        "investments", "investment" -> "📈" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF064E3B) else androidx.compose.ui.graphics.Color(0xFFD1FAE5))
+        "health & medical" -> "🏥" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF881337) else androidx.compose.ui.graphics.Color(0xFFFFE4E6))
+        "income" -> "💰" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF064E3B) else androidx.compose.ui.graphics.Color(0xFFD1FAE5))
+        else -> "💸" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF334155) else androidx.compose.ui.graphics.Color(0xFFF1F5F9))
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -469,34 +407,51 @@ fun CategoryBreakdownCard(item: CategoryShare) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(10.dp)
-                            .background(categoryColor, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                            .size(40.dp)
+                            .background(avatarBg, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = emoji, fontSize = 18.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
                     Text(
                         text = item.categoryName,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                Text(
-                    text = "₹${String.format("%.2f", item.totalAmount)} (${String.format("%.1f", item.percentage * 100)}%)",
-                    fontWeight = FontWeight.Bold,
-                    color = categoryColor
-                )
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = categoryColor.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "₹${String.format("%.2f", item.totalAmount)} (${String.format("%.1f", item.percentage * 100)}%)",
+                        fontWeight = FontWeight.Bold,
+                        color = categoryColor,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
                 progress = { item.percentage },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
                 color = categoryColor,
-                trackColor = categoryColor.copy(alpha = 0.2f),
+                trackColor = categoryColor.copy(alpha = 0.15f),
                 strokeCap = StrokeCap.Round
             )
         }

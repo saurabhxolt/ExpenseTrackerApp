@@ -25,6 +25,9 @@ data class SettingsUiState(
     val transactionCount: Int = 0,
     val budgetCount: Int = 0,
     val isBiometricEnabled: Boolean = false,
+    val isDailyReviewEnabled: Boolean = true,
+    val dailyReviewHour: Int = 21,
+    val dailyReviewMinute: Int = 0,
     val announcements: List<Announcement> = emptyList()
 )
 
@@ -37,18 +40,23 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _isBiometricEnabled = MutableStateFlow(false)
+    private val _isDailyReviewEnabled = MutableStateFlow(true)
+    private val _dailyReviewHour = MutableStateFlow(21)
+    private val _dailyReviewMinute = MutableStateFlow(0)
     private val _announcements = MutableStateFlow<List<Announcement>>(emptyList())
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        transactionRepository.allTransactions,
-        budgetRepository.allBudgets,
-        _isBiometricEnabled,
+        combine(transactionRepository.allTransactions, budgetRepository.allBudgets) { t, b -> Pair(t, b) },
+        combine(_isBiometricEnabled, _isDailyReviewEnabled, _dailyReviewHour, _dailyReviewMinute) { bio, dr, h, m -> Quad(bio, dr, h, m) },
         _announcements
-    ) { transactions, budgets, biometric, announcementsList ->
+    ) { tb, settings, announcementsList ->
         SettingsUiState(
-            transactionCount = transactions.size,
-            budgetCount = budgets.size,
-            isBiometricEnabled = biometric,
+            transactionCount = tb.first.size,
+            budgetCount = tb.second.size,
+            isBiometricEnabled = settings.bio,
+            isDailyReviewEnabled = settings.dr,
+            dailyReviewHour = settings.h,
+            dailyReviewMinute = settings.m,
             announcements = announcementsList
         )
     }.stateIn(
@@ -59,6 +67,10 @@ class SettingsViewModel @Inject constructor(
 
     fun loadInitialState(context: Context) {
         _isBiometricEnabled.value = BiometricLockManager.isBiometricLockEnabled(context)
+        _isDailyReviewEnabled.value = com.expensetracker.app.ingestion.worker.DailyReviewWorker.isDailyReviewEnabled(context)
+        val (h, m) = com.expensetracker.app.ingestion.worker.DailyReviewWorker.getDailyReviewTime(context)
+        _dailyReviewHour.value = h
+        _dailyReviewMinute.value = m
         viewModelScope.launch {
             _announcements.value = promotionManager.getActiveAnnouncements()
         }
@@ -67,6 +79,21 @@ class SettingsViewModel @Inject constructor(
     fun toggleBiometric(context: Context, enabled: Boolean) {
         BiometricLockManager.setBiometricLockEnabled(context, enabled)
         _isBiometricEnabled.value = enabled
+    }
+
+    fun toggleDailyReview(context: Context, enabled: Boolean) {
+        com.expensetracker.app.ingestion.worker.DailyReviewWorker.setDailyReviewPreferences(
+            context, enabled, _dailyReviewHour.value, _dailyReviewMinute.value
+        )
+        _isDailyReviewEnabled.value = enabled
+    }
+
+    fun setDailyReviewTime(context: Context, hour: Int, minute: Int) {
+        com.expensetracker.app.ingestion.worker.DailyReviewWorker.setDailyReviewPreferences(
+            context, _isDailyReviewEnabled.value, hour, minute
+        )
+        _dailyReviewHour.value = hour
+        _dailyReviewMinute.value = minute
     }
 
     suspend fun exportCsvData(): String {
@@ -94,3 +121,5 @@ class SettingsViewModel @Inject constructor(
         }
     }
 }
+
+private data class Quad<A, B, C, D>(val bio: A, val dr: B, val h: C, val m: D)

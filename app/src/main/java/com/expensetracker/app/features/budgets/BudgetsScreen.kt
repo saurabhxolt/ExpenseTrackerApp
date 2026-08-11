@@ -111,7 +111,7 @@ fun BudgetsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -217,12 +217,28 @@ fun BudgetsScreen(
                 BudgetItem(item = item, onDelete = { onDeleteBudget(item) })
             }
         }
+
+        item {
+            Spacer(modifier = Modifier.height(100.dp))
+        }
     }
 }
 
 @Composable
 fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
     val progressAnim by animateFloatAsState(targetValue = item.percentage.coerceIn(0f, 1f), label = "itemProgress")
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+    val (emoji, avatarBg) = when (item.categoryName.lowercase()) {
+        "food & dining", "food", "dining" -> "🍕" to (if (isDark) Color(0xFF78350F) else Color(0xFFFEF3C7))
+        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) Color(0xFF134E4A) else Color(0xFFCCFBF1))
+        "shopping" -> "🛒" to (if (isDark) Color(0xFF4C1D95) else Color(0xFFF3E8FF))
+        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) Color(0xFF0C4A6E) else Color(0xFFE0F2FE))
+        "investments", "investment" -> "📈" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
+        "health & medical" -> "🏥" to (if (isDark) Color(0xFF881337) else Color(0xFFFFE4E6))
+        "income" -> "💰" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
+        else -> "💸" to (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9))
+    }
 
     val progressColor = when {
         item.percentage >= 1.0f -> RedExpense
@@ -233,7 +249,8 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -241,54 +258,72 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val catColor = com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(item.categoryName)
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(catColor, androidx.compose.foundation.shape.CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(avatarBg, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = emoji, fontSize = 18.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = item.categoryName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Budget",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = item.categoryName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "₹${String.format("%.2f", item.spentAmount)} spent of ₹${String.format("%.2f", item.limitAmount)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "₹${String.format("%.2f", item.spentAmount)} spent of ₹${String.format("%.2f", item.limitAmount)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = progressColor.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Text(
                         text = "${(item.percentage * 100).toInt()}%",
                         fontWeight = FontWeight.Bold,
                         color = progressColor,
-                        fontSize = 16.sp
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Budget",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
                 progress = { progressAnim },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp),
+                    .height(8.dp),
                 color = progressColor,
-                trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
         }
     }

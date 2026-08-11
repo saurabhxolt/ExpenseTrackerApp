@@ -58,6 +58,9 @@ class MainActivity : FragmentActivity() {
         // Schedule periodic 24-hour Bill & EMI Due Date Reminder Worker
         BillReminderWorker.schedulePeriodicReminders(this)
 
+        // Schedule daily end-of-day expense review reminder worker (default 9:00 PM)
+        com.expensetracker.app.ingestion.worker.DailyReviewWorker.scheduleConfiguredReview(this)
+
         setContent {
             ExpenseTrackerTheme {
                 Surface(

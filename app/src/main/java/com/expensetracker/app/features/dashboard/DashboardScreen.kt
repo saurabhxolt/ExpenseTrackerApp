@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -58,6 +59,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -145,6 +147,7 @@ fun DashboardRoute(
         Box(modifier = Modifier.padding(padding)) {
             DashboardScreen(
                 uiState = uiState,
+                onPeriodFilterSelected = { viewModel.setPeriodFilter(it) },
                 onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
                 onSortOrderSelected = { viewModel.setSortOrder(it) },
                 onTransactionClick = { selectedTransactionDetails = it },
@@ -222,6 +225,7 @@ fun DashboardRoute(
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
+    onPeriodFilterSelected: (PeriodFilter) -> Unit = {},
     onMonthYearSelected: (String) -> Unit = {},
     onSortOrderSelected: (String) -> Unit = {},
     onTransactionClick: (TransactionEntity) -> Unit = {},
@@ -240,6 +244,7 @@ fun DashboardScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 140.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -275,6 +280,18 @@ fun DashboardScreen(
             }
         }
 
+        // Unified Collapsible Filter Bar
+        item {
+            com.expensetracker.app.core.ui.components.UnifiedFilterBar(
+                periodOption = uiState.selectedPeriodFilter.label,
+                periodOptions = PeriodFilter.values().map { it.label },
+                onPeriodSelected = { label ->
+                    val filter = PeriodFilter.values().find { it.label == label } ?: PeriodFilter.THIS_MONTH
+                    onPeriodFilterSelected(filter)
+                }
+            )
+        }
+
         // Permission Banner
         item {
             AnimatedVisibility(visible = !uiState.isAutoTrackingEnabled) {
@@ -282,12 +299,15 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            smsPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.RECEIVE_SMS,
-                                    Manifest.permission.READ_SMS
-                                )
-                            )
+                            val perms = mutableListOf(
+                                Manifest.permission.RECEIVE_SMS,
+                                Manifest.permission.READ_SMS
+                            ).apply {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    add(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }.toTypedArray()
+                            smsPermissionLauncher.launch(perms)
                             val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             context.startActivity(intent)
@@ -324,7 +344,195 @@ fun DashboardScreen(
             }
         }
 
-        // Quick Stats: Today's Spend & This Week's Spend
+        // Dynamic Executive Financial Snapshot & Health Hero Card
+        item {
+            val isPositive = uiState.netCashflow >= 0
+            val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val cashflowColor = if (isPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+
+            val healthStatus = when {
+                uiState.savingsRate >= 30.0 -> "Optimal Savings 🟢"
+                uiState.savingsRate > 0.0 -> "Balanced Flow 🟡"
+                else -> "High Outflow 🔴"
+            }
+            val healthColor = when {
+                uiState.savingsRate >= 30.0 -> GreenSuccess
+                uiState.savingsRate > 0.0 -> Color(0xFFF59E0B)
+                else -> MaterialTheme.colorScheme.error
+            }
+
+            val gradientStart = if (isPositive) {
+                if (isDark) Color(0xFF0F2942) else Color(0xFFEFF6FF)
+            } else {
+                if (isDark) Color(0xFF3B1E2B) else Color(0xFFFFF1F2)
+            }
+            val gradientEnd = MaterialTheme.colorScheme.surfaceVariant
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(gradientStart, gradientEnd)
+                            )
+                        )
+                        .padding(20.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Executive Financial Summary",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = uiState.selectedPeriodFilter.label,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = healthColor.copy(alpha = 0.15f)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = healthStatus,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = healthColor
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Net Cashflow",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                AnimatedCurrencyText(
+                                    value = uiState.netCashflow,
+                                    prefix = if (isPositive) "+" else "",
+                                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
+                                    color = cashflowColor
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Avg Daily: ₹${String.format("%.1f", uiState.avgDailySpend)}/day",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Savings: ${String.format("%.1f", uiState.savingsRate)}%",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryBlue
+                                )
+                            }
+                        }
+
+                        if (uiState.totalIncome > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                progress = { (uiState.savingsRate.toFloat() / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp),
+                                color = PrimaryBlue,
+                                trackColor = PrimaryBlue.copy(alpha = 0.15f),
+                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Financial Breakdown: Incomes vs Expenses vs Investments Cards
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Income 💰", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        AnimatedCurrencyText(
+                            value = uiState.totalIncome,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Expenses 💸", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        AnimatedCurrencyText(
+                            value = uiState.totalExpenses,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Investments 📈", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        AnimatedCurrencyText(
+                            value = uiState.totalInvestments,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                            color = PrimaryBlue
+                        )
+                    }
+                }
+            }
+        }
+
+        // Quick Stats: Today's Spend & Avg Daily Spend
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -340,7 +548,7 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "₹${String.format("%.2f", uiState.todayExpenses)}",
-                            fontSize = 20.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -353,11 +561,11 @@ fun DashboardScreen(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "This Week 📊", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                        Text(text = "Avg Daily Spend 📊", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "₹${String.format("%.2f", uiState.thisWeekExpenses)}",
-                            fontSize = 20.sp,
+                            text = "₹${String.format("%.2f", uiState.avgDailySpend)}",
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -366,93 +574,10 @@ fun DashboardScreen(
             }
         }
 
-        // Net Balance Card
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Net Balance (${uiState.selectedMonthYear})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "₹${String.format("%.2f", uiState.netBalance)}",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-
-        // Incomes vs Expenses vs Investments Cards
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Incomes 💰", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "₹${String.format("%.2f", uiState.totalIncome)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Expenses 💸", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "₹${String.format("%.2f", uiState.totalExpenses)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Investments 📈", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "₹${String.format("%.2f", uiState.totalInvestments)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryBlue
-                        )
-                    }
-                }
-            }
-        }
-
-        // Section Title (Only Last 5 Days on Dashboard)
+        // Section Title
         item {
             Text(
-                text = "Recent Transactions (Last 5 Days)",
+                text = "Transactions (${uiState.selectedPeriodFilter.label})",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(vertical = 4.dp)
@@ -498,6 +623,10 @@ fun DashboardScreen(
                 )
             }
         }
+
+        item {
+            Spacer(modifier = Modifier.height(100.dp))
+        }
     }
 }
 
@@ -510,66 +639,110 @@ fun TransactionItem(
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
     val dateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+    val (emoji, avatarBg) = when (transaction.category.lowercase()) {
+        "food & dining", "food", "dining" -> "🍕" to (if (isDark) Color(0xFF78350F) else Color(0xFFFEF3C7))
+        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) Color(0xFF134E4A) else Color(0xFFCCFBF1))
+        "shopping" -> "🛒" to (if (isDark) Color(0xFF4C1D95) else Color(0xFFF3E8FF))
+        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) Color(0xFF0C4A6E) else Color(0xFFE0F2FE))
+        "investments", "investment" -> "📈" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
+        "health & medical" -> "🏥" to (if (isDark) Color(0xFF881337) else Color(0xFFFFE4E6))
+        "income" -> "💰" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
+        else -> "💸" to (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9))
+    }
+
+    val isCredit = transaction.type == "CREDIT"
+    val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)
+    
+    val amountPrefix = when {
+        isCredit -> "+"
+        isInvestment -> ""
+        else -> "-"
+    }
+    val amountColor = when {
+        isCredit -> MaterialTheme.colorScheme.tertiary
+        isInvestment -> PrimaryBlue
+        else -> MaterialTheme.colorScheme.error
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = transaction.merchant,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${transaction.category} • $dateStr",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val isCredit = transaction.type == "CREDIT"
-                val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)
-                val amountPrefix = when {
-                    isCredit -> "+"
-                    isInvestment -> ""
-                    else -> "-"
-                }
-                val amountColor = when {
-                    isCredit -> MaterialTheme.colorScheme.tertiary
-                    isInvestment -> PrimaryBlue
-                    else -> MaterialTheme.colorScheme.error
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(avatarBg, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = emoji, fontSize = 20.sp)
                 }
 
-                Text(
-                    text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
-                    fontWeight = FontWeight.Bold,
-                    color = amountColor,
-                    fontSize = 16.sp
-                )
-                IconButton(onClick = onEdit) {
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = transaction.merchant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${transaction.category} • $dateStr",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = amountColor.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
+                        fontWeight = FontWeight.Bold,
+                        color = amountColor,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Transaction",
-                        tint = PrimaryBlue
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        contentDescription = "Delete Transaction",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -1010,5 +1183,25 @@ fun EditTransactionDialog(
                 Text("Cancel")
             }
         }
+    )
+}
+
+@Composable
+fun AnimatedCurrencyText(
+    value: Double,
+    prefix: String = "₹",
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color
+) {
+    val animatedValue by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = value.toFloat(),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 550, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "currencyTickerAnim"
+    )
+    val formatted = if (animatedValue >= 0) "$prefix${String.format("%.2f", animatedValue)}" else "-₹${String.format("%.2f", -animatedValue)}"
+    Text(
+        text = formatted,
+        style = style,
+        color = color
     )
 }

@@ -96,6 +96,7 @@ fun MainScreen(
     var isSettingsOpen by remember { mutableStateOf(false) }
     val promotions by mainViewModel.promotions.collectAsState()
     val context = LocalContext.current
+    var backPressedTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
 
     val navItems = listOf(
         NavItem("Dashboard", Icons.Default.Dashboard),
@@ -104,6 +105,28 @@ fun MainScreen(
         NavItem("Budgets", Icons.Default.AccountBalanceWallet),
         NavItem("Analytics", Icons.Default.PieChart)
     )
+
+    // System Back Gesture Handling Rules:
+    // 1. If Settings screen is open, close Settings
+    androidx.activity.compose.BackHandler(enabled = isSettingsOpen) {
+        isSettingsOpen = false
+    }
+
+    // 2. If on a non-Dashboard tab (History, Split Bills, Budgets, Analytics), return to Dashboard
+    androidx.activity.compose.BackHandler(enabled = !isSettingsOpen && selectedTab != 0) {
+        selectedTab = 0
+    }
+
+    // 3. If on Dashboard tab, double-tap back gesture to exit app
+    androidx.activity.compose.BackHandler(enabled = !isSettingsOpen && selectedTab == 0) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - backPressedTime < 2000) {
+            (context as? android.app.Activity)?.finish()
+        } else {
+            backPressedTime = currentTime
+            Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     if (isSettingsOpen) {
         Scaffold { innerPadding ->

@@ -18,31 +18,58 @@ object SubscriptionDetector {
         return RECURRING_KEYWORDS.any { lower.contains(it) }
     }
 
+    fun normalizeBrandName(name: String): String {
+        return name.lowercase()
+            .replace(Regex("(?i)\\b(au|pvt|ltd|limited|upi|autopay|mandate|app|pay|india|broking|services|inc|club|corp|official|trf|ref|no|refno)\\b"), "")
+            .replace(Regex("[^a-z0-9]"), "")
+            .trim()
+    }
+
     suspend fun autoDetectAndSave(
         repository: SubscriptionRepository,
         parsedTransaction: ParsedTransaction
     ) {
         if (!isRecurringMandateText(parsedTransaction.rawText)) return
 
-        val existing = repository.findSubscriptionByName(parsedTransaction.merchant)
+        val allSubs = repository.getAllSubscriptionsList()
+        val targetNorm = normalizeBrandName(parsedTransaction.merchant)
+
+        val existing = allSubs.firstOrNull { sub ->
+            val subNorm = normalizeBrandName(sub.name)
+            subNorm == targetNorm || (subNorm.length >= 4 && targetNorm.contains(subNorm)) || (targetNorm.length >= 4 && subNorm.contains(targetNorm))
+        }
+
+        val cycle = detectBillingCycle(parsedTransaction.rawText)
         val nextDueMs = computeNextDueDate(parsedTransaction.rawText)
 
         if (existing == null) {
             val entity = SubscriptionEntity(
                 name = parsedTransaction.merchant,
                 amount = parsedTransaction.amount,
-                billingCycle = detectBillingCycle(parsedTransaction.rawText),
+                billingCycle = cycle,
                 nextDueDateMs = nextDueMs,
-                category = if (parsedTransaction.category.isNotBlank()) parsedTransaction.category else "Subscriptions",
+                category = if (parsedTransaction.category.isNotBlank() && parsedTransaction.category != "General Expense") parsedTransaction.category else "Subscriptions",
                 isActive = true,
                 isAutoDetected = true,
                 rawText = parsedTransaction.rawText
             )
             repository.saveSubscription(entity)
         } else {
+            // Late SMS / Multi-Notification Deduplication Check:
+            // If the existing subscription due date is already set in the future (further than 15 days out),
+            // a late/duplicate SMS for the same cycle should update amount and raw text without advancing due date twice.
+            val nowMs = System.currentTimeMillis()
+            val finalNextDueMs = if (existing.nextDueDateMs > nowMs + (15L * 24 * 60 * 60 * 1000L)) {
+                existing.nextDueDateMs
+            } else {
+                nextDueMs
+            }
+
             val updated = existing.copy(
                 amount = parsedTransaction.amount,
-                nextDueDateMs = nextDueMs
+                billingCycle = if (existing.billingCycle.isBlank()) cycle else existing.billingCycle,
+                nextDueDateMs = finalNextDueMs,
+                rawText = parsedTransaction.rawText
             )
             repository.updateSubscription(updated)
         }

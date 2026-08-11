@@ -96,6 +96,7 @@ fun SubscriptionsRoute(
             SubscriptionsScreen(
                 uiState = uiState,
                 onToggleActive = { viewModel.toggleSubscriptionActive(it.entity) },
+                onMarkPaid = { viewModel.markAsPaid(it) },
                 onEdit = { item ->
                     editingEntity = item.entity
                     showAddEditDialog = true
@@ -126,6 +127,7 @@ fun SubscriptionsRoute(
 fun SubscriptionsScreen(
     uiState: SubscriptionsUiState,
     onToggleActive: (SubscriptionUiModel) -> Unit = {},
+    onMarkPaid: (SubscriptionUiModel) -> Unit = {},
     onEdit: (SubscriptionUiModel) -> Unit = {},
     onDelete: (SubscriptionUiModel) -> Unit = {}
 ) {
@@ -205,16 +207,17 @@ fun SubscriptionsScreen(
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Autorenew,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(48.dp)
+                        Text(
+                            text = "No Subscriptions Added Yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("No Subscriptions Recorded", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Tap (+) to add recurring bills, rent, SIPs, or OTT subscriptions.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "Tap + to add recurring mandates, or SMS alerts will auto-detect them.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -223,6 +226,7 @@ fun SubscriptionsScreen(
                 SubscriptionCard(
                     item = item,
                     onToggleActive = { onToggleActive(item) },
+                    onMarkPaid = { onMarkPaid(item) },
                     onEdit = { onEdit(item) },
                     onDelete = { onDelete(item) }
                 )
@@ -235,6 +239,7 @@ fun SubscriptionsScreen(
 fun SubscriptionCard(
     item: SubscriptionUiModel,
     onToggleActive: () -> Unit,
+    onMarkPaid: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -315,7 +320,12 @@ fun SubscriptionCard(
                     )
                 }
 
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (item.isActive) {
+                        TextButton(onClick = onMarkPaid) {
+                            Text("Mark Paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                        }
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = PrimaryBlue)
                     }

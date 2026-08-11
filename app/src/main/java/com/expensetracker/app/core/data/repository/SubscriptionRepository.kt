@@ -27,4 +27,8 @@ class SubscriptionRepository @Inject constructor(
     suspend fun findSubscriptionByName(name: String): SubscriptionEntity? {
         return subscriptionDao.findSubscriptionByName(name)
     }
+
+    suspend fun getAllSubscriptionsList(): List<SubscriptionEntity> {
+        return subscriptionDao.getAllSubscriptionsList()
+    }
 }

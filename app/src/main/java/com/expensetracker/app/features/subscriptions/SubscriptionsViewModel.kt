@@ -51,7 +51,6 @@ class SubscriptionsViewModel @Inject constructor(
         val nowMs = System.currentTimeMillis()
 
         val uiModels = subs.map { entity ->
-            val dueCalendar = Calendar.getInstance().apply { timeInMillis = entity.nextDueDateMs }
             val formattedDate = dateFormat.format(Date(entity.nextDueDateMs))
 
             val diffDays = ((entity.nextDueDateMs - nowMs) / (1000 * 60 * 60 * 24)).toInt()
@@ -128,6 +127,14 @@ class SubscriptionsViewModel @Inject constructor(
         }
     }
 
+    fun markAsPaid(item: SubscriptionUiModel) {
+        viewModelScope.launch {
+            val nextMs = computeNextCycleDueDate(item.entity.nextDueDateMs, item.entity.billingCycle)
+            val updated = item.entity.copy(nextDueDateMs = nextMs)
+            subscriptionRepository.updateSubscription(updated)
+        }
+    }
+
     fun toggleSubscriptionActive(entity: SubscriptionEntity) {
         viewModelScope.launch {
             val updated = entity.copy(isActive = !entity.isActive)
@@ -139,5 +146,22 @@ class SubscriptionsViewModel @Inject constructor(
         viewModelScope.launch {
             subscriptionRepository.deleteSubscription(entity)
         }
+    }
+
+    private fun computeNextCycleDueDate(currentDueDateMs: Long, cycle: String): Long {
+        val cal = Calendar.getInstance()
+        val baseMs = if (currentDueDateMs > 0) currentDueDateMs else System.currentTimeMillis()
+        cal.timeInMillis = baseMs
+        val nowMs = System.currentTimeMillis()
+
+        while (cal.timeInMillis <= nowMs) {
+            when (cycle) {
+                "Yearly" -> cal.add(Calendar.YEAR, 1)
+                "Weekly" -> cal.add(Calendar.DAY_OF_YEAR, 7)
+                "Quarterly" -> cal.add(Calendar.MONTH, 3)
+                else -> cal.add(Calendar.MONTH, 1)
+            }
+        }
+        return cal.timeInMillis
     }
 }

@@ -1,5 +1,6 @@
 package com.expensetracker.app.features.settings
 
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
@@ -97,6 +99,16 @@ fun SettingsRoute(
         }
     }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Toast.makeText(context, "Notification permission granted! 🔔", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Please allow notification permission to receive daily expense review alerts.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     when (subScreen) {
         "CATEGORIES" -> {
             val categoriesVm: CategoriesViewModel = hiltViewModel()
@@ -110,6 +122,19 @@ fun SettingsRoute(
             SettingsScreen(
                 uiState = uiState,
                 onToggleBiometric = { viewModel.toggleBiometric(context, it) },
+                onToggleDailyReview = { enabled ->
+                    if (enabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                                context,
+                                android.Manifest.permission.POST_NOTIFICATIONS
+                            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                    viewModel.toggleDailyReview(context, enabled)
+                },
+                onSetDailyReviewTime = { h, m -> viewModel.setDailyReviewTime(context, h, m) },
                 onExportCsv = {
                     scope.launch {
                         val csv = viewModel.exportCsvData()
@@ -136,6 +161,8 @@ fun SettingsRoute(
 fun SettingsScreen(
     uiState: SettingsUiState,
     onToggleBiometric: (Boolean) -> Unit = {},
+    onToggleDailyReview: (Boolean) -> Unit = {},
+    onSetDailyReviewTime: (hour: Int, minute: Int) -> Unit = { _, _ -> },
     onExportCsv: () -> Unit = {},
     onExportBackup: () -> Unit = {},
     onImportBackup: () -> Unit = {},
@@ -218,6 +245,126 @@ fun SettingsScreen(
                 subtitle = "Track monthly autopays, rent, and subscriptions",
                 onClick = onOpenSubscriptions
             )
+        }
+
+        // Notifications & Reminders Section
+        item {
+            Text("Notifications & Reminders", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(imageVector = Icons.Default.NotificationsActive, contentDescription = null, tint = PrimaryBlue)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Daily Expense Review Reminder 🌙", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Evening reminder to review & organize today's transactions", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Switch(
+                            checked = uiState.isDailyReviewEnabled,
+                            onCheckedChange = onToggleDailyReview,
+                            colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+                        )
+                    }
+
+                    if (uiState.isDailyReviewEnabled) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        val context = LocalContext.current
+                        val timePickerDialog = TimePickerDialog(
+                            context,
+                            { _, selectedHour, selectedMinute ->
+                                onSetDailyReviewTime(selectedHour, selectedMinute)
+                            },
+                            uiState.dailyReviewHour,
+                            uiState.dailyReviewMinute,
+                            false
+                        )
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { timePickerDialog.show() },
+                            colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Configured Review Time: ${formatTime12Hour(uiState.dailyReviewHour, uiState.dailyReviewMinute)} ⏰",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryBlue
+                                    )
+                                    Text(
+                                        text = "Tap to pick any custom hour & minute with System Clock",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    text = "Change ✏️",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryBlue
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        androidx.compose.foundation.lazy.LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val timeOptions = listOf(
+                                Pair(20, 0) to "8:00 PM",
+                                Pair(20, 30) to "8:30 PM",
+                                Pair(21, 0) to "9:00 PM (Default)",
+                                Pair(21, 30) to "9:30 PM",
+                                Pair(22, 0) to "10:00 PM",
+                                Pair(22, 30) to "10:30 PM"
+                            )
+                            items(timeOptions) { (timePair, label) ->
+                                val isSelected = uiState.dailyReviewHour == timePair.first && uiState.dailyReviewMinute == timePair.second
+                                androidx.compose.material3.FilterChip(
+                                    selected = isSelected,
+                                    onClick = { onSetDailyReviewTime(timePair.first, timePair.second) },
+                                    label = { Text(label, fontSize = 12.sp) }
+                                )
+                            }
+                            item {
+                                androidx.compose.material3.FilterChip(
+                                    selected = false,
+                                    onClick = { timePickerDialog.show() },
+                                    label = { Text("✏️ Custom Time...", fontSize = 12.sp) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Security Section
@@ -513,4 +660,11 @@ private fun shareTextFile(context: Context, content: String, fileName: String, m
     } catch (e: Exception) {
         Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
     }
+}
+
+private fun formatTime12Hour(hour: Int, minute: Int): String {
+    val amPm = if (hour >= 12) "PM" else "AM"
+    val h12 = if (hour % 12 == 0) 12 else hour % 12
+    val mStr = String.format("%02d", minute)
+    return "$h12:$mStr $amPm"
 }

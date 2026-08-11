@@ -96,6 +96,7 @@ fun TransactionsRoute(
                 uiState = uiState,
                 onFilterSelected = { viewModel.setFilter(it) },
                 onCategoryFilterSelected = { viewModel.setCategoryFilter(it) },
+                onBankFilterSelected = { viewModel.setBankFilter(it) },
                 onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
                 onPeriodPresetSelected = { preset, startMs, endMs -> viewModel.setPeriodPreset(preset, startMs, endMs) },
                 onOpenCustomDatePicker = { showCustomDatePicker = true },
@@ -177,6 +178,7 @@ fun TransactionsScreen(
     uiState: TransactionsUiState,
     onFilterSelected: (String) -> Unit = {},
     onCategoryFilterSelected: (String) -> Unit = {},
+    onBankFilterSelected: (String) -> Unit = {},
     onMonthYearSelected: (String) -> Unit = {},
     onPeriodPresetSelected: (preset: String, startMs: Long?, endMs: Long?) -> Unit = { _, _, _ -> },
     onOpenCustomDatePicker: () -> Unit = {},
@@ -207,72 +209,55 @@ fun TransactionsScreen(
                 value = uiState.searchQuery,
                 onValueChange = onSearchQueryChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search by merchant or category...") },
+                placeholder = { Text("Search by merchant, bank or category...") },
                 leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
             )
         }
 
-        // Month-Year & Period Filter Chips & Sort Button
+        // Collapsible Unified Filter Bar (Period, Bank, Category, Type)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                var periodExpanded by remember { mutableStateOf(false) }
-
-                Box {
-                    Button(
-                        onClick = { periodExpanded = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        val label = when (uiState.selectedPeriodPreset) {
-                            "THIS_MONTH" -> "📅 Current Month"
-                            "QUARTERLY" -> "🗓️ Quarterly"
-                            "YEARLY" -> "📆 Yearly"
-                            "CUSTOM" -> "⏱️ Custom Dates"
-                            else -> "📅 Period: All Time"
+                com.expensetracker.app.core.ui.components.UnifiedFilterBar(
+                    periodOption = when (uiState.selectedPeriodPreset) {
+                        "THIS_MONTH" -> "This Month"
+                        "LAST_MONTH" -> "Last Month"
+                        "LAST_3_MONTHS" -> "Last 3 Months"
+                        "LAST_6_MONTHS" -> "Last 6 Months"
+                        "YEARLY" -> "This Year"
+                        "CUSTOM" -> "Custom Range"
+                        else -> "All Time"
+                    },
+                    periodOptions = listOf("All Time", "This Month", "Last Month", "Last 3 Months", "Last 6 Months", "This Year"),
+                    onPeriodSelected = { label ->
+                        val preset = when (label) {
+                            "This Month" -> "THIS_MONTH"
+                            "Last Month" -> "LAST_MONTH"
+                            "Last 3 Months" -> "LAST_3_MONTHS"
+                            "Last 6 Months" -> "LAST_6_MONTHS"
+                            "This Year" -> "YEARLY"
+                            else -> "ALL"
                         }
-                        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    }
+                        onPeriodPresetSelected(preset, null, null)
+                    },
+                    bankOption = uiState.selectedBankFilter,
+                    bankOptions = uiState.bankOptions,
+                    onBankSelected = onBankFilterSelected,
+                    categoryOption = uiState.selectedCategoryFilter,
+                    categoryOptions = uiState.categories,
+                    onCategorySelected = onCategoryFilterSelected,
+                    typeOption = uiState.selectedFilter,
+                    typeOptions = listOf("ALL", "DEBIT", "CREDIT", "INVESTMENT", "TRANSFER"),
+                    onTypeSelected = onFilterSelected,
+                    modifier = Modifier.weight(1f)
+                )
 
-                    DropdownMenu(
-                        expanded = periodExpanded,
-                        onDismissRequest = { periodExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("📅 All Time", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = { onPeriodPresetSelected("ALL", null, null); periodExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("📅 Current Month", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = { onPeriodPresetSelected("THIS_MONTH", null, null); periodExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("🗓️ Quarterly", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = { onPeriodPresetSelected("QUARTERLY", null, null); periodExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("📆 Yearly", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = { onPeriodPresetSelected("YEARLY", null, null); periodExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("⏱️ Custom Dates...", color = MaterialTheme.colorScheme.onSurface) },
-                            onClick = {
-                                periodExpanded = false
-                                onOpenCustomDatePicker()
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 var sortExpanded by remember { mutableStateOf(false) }
                 Box {
@@ -301,37 +286,6 @@ fun TransactionsScreen(
                         )
                     }
                 }
-            }
-        }
-
-        // Category Sub-Filter Chips Bar
-        item {
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val catList = listOf("ALL") + uiState.categories
-                items(catList) { categoryOption ->
-                    FilterChip(
-                        selected = uiState.selectedCategoryFilter == categoryOption,
-                        onClick = { onCategoryFilterSelected(categoryOption) },
-                        label = { Text(categoryOption) }
-                    )
-                }
-            }
-        }
-
-        // Type Filter Pills (All, Expenses, Incomes, Investments, Transfers)
-        item {
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                item { FilterButton("All", "ALL", uiState.selectedFilter) { onFilterSelected("ALL") } }
-                item { FilterButton("Expenses", "DEBIT", uiState.selectedFilter) { onFilterSelected("DEBIT") } }
-                item { FilterButton("Incomes", "CREDIT", uiState.selectedFilter) { onFilterSelected("CREDIT") } }
-                item { FilterButton("Investments", "INVESTMENT", uiState.selectedFilter) { onFilterSelected("INVESTMENT") } }
-                item { FilterButton("Transfers", "TRANSFER", uiState.selectedFilter) { onFilterSelected("TRANSFER") } }
             }
         }
 
@@ -402,69 +356,112 @@ fun TransactionHistoryItem(
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     val dateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+    val (emoji, avatarBg) = when (transaction.category.lowercase()) {
+        "food & dining", "food", "dining" -> "🍕" to (if (isDark) Color(0xFF78350F) else Color(0xFFFEF3C7))
+        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) Color(0xFF134E4A) else Color(0xFFCCFBF1))
+        "shopping" -> "🛒" to (if (isDark) Color(0xFF4C1D95) else Color(0xFFF3E8FF))
+        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) Color(0xFF0C4A6E) else Color(0xFFE0F2FE))
+        "investments", "investment" -> "📈" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
+        "health & medical" -> "🏥" to (if (isDark) Color(0xFF881337) else Color(0xFFFFE4E6))
+        "income" -> "💰" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
+        else -> "💸" to (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9))
+    }
+
+    val isCredit = transaction.type == "CREDIT"
+    val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)
+    val isTransfer = transaction.type == "TRANSFER"
+    val amountPrefix = when {
+        isCredit -> "+"
+        isInvestment -> ""
+        isTransfer -> "↔ "
+        else -> "-"
+    }
+    val amountColor = when {
+        isCredit -> MaterialTheme.colorScheme.tertiary
+        isInvestment -> PrimaryBlue
+        isTransfer -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = transaction.merchant,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${transaction.category} • $dateStr",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val isCredit = transaction.type == "CREDIT"
-                val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)
-                val isTransfer = transaction.type == "TRANSFER"
-                val amountPrefix = when {
-                    isCredit -> "+"
-                    isInvestment -> ""
-                    isTransfer -> "↔ "
-                    else -> "-"
-                }
-                val amountColor = when {
-                    isCredit -> MaterialTheme.colorScheme.tertiary
-                    isInvestment -> PrimaryBlue
-                    isTransfer -> MaterialTheme.colorScheme.secondary
-                    else -> MaterialTheme.colorScheme.error
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(avatarBg, androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = emoji, fontSize = 20.sp)
                 }
 
-                Text(
-                    text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
-                    fontWeight = FontWeight.Bold,
-                    color = amountColor,
-                    fontSize = 16.sp
-                )
-                IconButton(onClick = onEdit) {
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = transaction.merchant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${transaction.category} • $dateStr",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = amountColor.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
+                        fontWeight = FontWeight.Bold,
+                        color = amountColor,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Transaction",
-                        tint = PrimaryBlue
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

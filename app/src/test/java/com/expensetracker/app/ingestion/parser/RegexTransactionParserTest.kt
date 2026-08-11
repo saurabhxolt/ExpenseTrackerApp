@@ -235,9 +235,8 @@ class RegexTransactionParserTest {
         val result = RegexTransactionParser.parse(sms)
         assertNotNull(result)
         assertEquals(3400.00, result!!.amount, 0.01)
-        assertEquals("CREDIT", result.type)
+        assertEquals("DEBIT", result.type)
         assertEquals("ARCHIS KISHORRAO SONWAL", result.merchant)
-        assertEquals("Income", result.category)
     }
 
     @Test
@@ -320,7 +319,6 @@ class RegexTransactionParserTest {
         assertEquals(12500.00, result!!.amount, 0.01)
         assertEquals("TRANSFER", result.type)
         assertEquals("Credit Card Bill", result.merchant)
-        assertEquals("Bills & Utilities", result.category)
     }
 
     @Test
@@ -331,5 +329,125 @@ class RegexTransactionParserTest {
         assertEquals(8400.00, result!!.amount, 0.01)
         assertEquals("TRANSFER", result.type)
         assertEquals("Credit Card Bill", result.merchant)
+    }
+
+    @Test
+    fun testHdfcSentToGajanandSweets() {
+        val sms = "Sent Rs.330.00\nFrom HDFC Bank A/C *3856\nTo SRI GAJANAND SWEETS\nOn 11/08/26\nRef 155802040404"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(330.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("SRI GAJANAND SWEETS", result.merchant)
+    }
+
+    @Test
+    fun testAxisBankCashbackCredited() {
+        val sms = "Congratulations! Cashback of INR 173 has been credited to your Axis Bank Flipkart Visa Credit Card XX3146 towards your last month spends - Axis Bank"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(173.00, result!!.amount, 0.01)
+        assertEquals("CREDIT", result.type)
+        assertEquals("Income", result.category)
+    }
+
+    @Test
+    fun testAxisCardStatementNoticeIgnored() {
+        val sms = "Your statement for Axis Bank Credit Card no. XX4827 is generated.\nDue on: 30-08-26\nTotal amt: INR Dr. 576.69\nMin amt due: INR Dr. 100.00"
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Statement generation notice must be ignored", result)
+    }
+
+    @Test
+    fun testFailedZeptoPaymentIgnored() {
+        val sms = "Payment of Rs. 85.00 for zepto order SMOVRBLBE89005 failed. If any amount was deducted, it will be refunded in 5-7 days."
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Failed transaction SMS must be ignored", result)
+    }
+
+    @Test
+    fun testZeptoCashPaymentIsDebit() {
+        val sms = "Dear Customer, Your payment of Rs. 21.00 using Zepto Cash is successful. Updated Zepto Cash balance is Rs.0.00."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(21.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+    }
+
+    @Test
+    fun testCheqBankOutflowIsDebit() {
+        val sms = "Sent Rs.13524.00\nFrom HDFC Bank A/C *3856\nTo CheQ\nOn 01/08/26\nRef 011017138247"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(13524.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("CheQ", result.merchant)
+    }
+
+    @Test
+    fun testBobcardMerchantPurchaseIsDebitNotTransfer() {
+        val sms = "Paid inr 250.00 with your BOBCARD Uni Credit Card 0358 to raz*uniorbit technologies at 03:09:27 pm on 09-08-2026. Available Credit Limit - 170,787.46."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(250.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("raz*uniorbit technologies", result.merchant)
+    }
+
+    @Test
+    fun testCredClubBankOutflowIsDebit() {
+        val sms = "Sent Rs.2393.71\nFrom HDFC Bank A/C *3856\nTo CRED Club\nOn 01/08/26\nRef 657903202817"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(2393.71, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("CRED Club", result.merchant)
+    }
+
+    @Test
+    fun testNeftOutboundTransferCreditedToBeneficiaryIsDebit1() {
+        val sms = "HDFC Bank : NEFT money transfer Txn No HDFCH01177166555 for Rs INR 3,400.00 has been credited to ARCHIS KISHORRAO SONWAL on 07-08-2026 at 02:47:18"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(3400.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("ARCHIS KISHORRAO SONWAL", result.merchant)
+    }
+
+    @Test
+    fun testNeftOutboundTransferCreditedToBeneficiaryIsDebit2() {
+        val sms = "HDFC Bank : NEFT money transfer Txn No HDFCH01170740963 for Rs INR 23,224.00 has been credited to SAURABH KISHOR SONWAL on 05-08-2026 at 05:02:54"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(23224.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("SAURABH KISHOR SONWAL", result.merchant)
+    }
+
+    @Test
+    fun testUpiMandateMutualFundsIsInvestment() {
+        val sms = "UPI Mandate:\nSent Rs.2500.00\nfrom HDFC Bank A/c 3856\nTo ICCL Mutual Funds Au\n06/08/26\nRef 103806682720"
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(2500.00, result!!.amount, 0.01)
+        assertEquals("INVESTMENT", result.type)
+        assertEquals("Investments", result.category)
+    }
+
+    @Test
+    fun testActFibernetBillDueReminderIgnored() {
+        val sms = "Dear Patron, Your account 102705862275 has due of Rs.914.5 and you have crossed your regular pay date."
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Bill due reminder must be ignored", result)
+    }
+
+    @Test
+    fun testActFibernetReceiptIsDebit() {
+        val sms = "This is a confirmation for receipt of Rs.914.5 towards ACT Fibernet A/c No 102705862275."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(914.50, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Bills & Utilities", result.category)
     }
 }

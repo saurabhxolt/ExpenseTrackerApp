@@ -21,6 +21,8 @@ import javax.inject.Inject
 data class TransactionsUiState(
     val transactions: List<TransactionEntity> = emptyList(),
     val categories: List<String> = emptyList(),
+    val bankOptions: List<String> = listOf("ALL"),
+    val selectedBankFilter: String = "ALL",
     val monthYearOptions: List<String> = listOf("ALL"),
     val periodPresetOptions: List<String> = listOf("ALL", "THIS_MONTH", "LAST_MONTH", "LAST_3_MONTHS", "LAST_6_MONTHS", "YEARLY", "CUSTOM"),
     val selectedPeriodPreset: String = "ALL",
@@ -28,7 +30,7 @@ data class TransactionsUiState(
     val customEndDateMs: Long? = null,
     val selectedMonthYear: String = "ALL",
     val selectedCategoryFilter: String = "ALL",
-    val selectedFilter: String = "ALL", // ALL, DEBIT, CREDIT, INVESTMENT
+    val selectedFilter: String = "ALL", // ALL, DEBIT, CREDIT, INVESTMENT, TRANSFER
     val selectedSortOrder: String = "NEWEST", // NEWEST, OLDEST, HIGH_LOW, LOW_HIGH
     val searchQuery: String = "",
     val lastDeletedTransaction: TransactionEntity? = null
@@ -42,6 +44,7 @@ class TransactionsViewModel @Inject constructor(
 
     private val _selectedFilter = MutableStateFlow("ALL")
     private val _selectedCategoryFilter = MutableStateFlow("ALL")
+    private val _selectedBankFilter = MutableStateFlow("ALL")
     private val _selectedMonthYear = MutableStateFlow("ALL")
     private val _selectedPeriodPreset = MutableStateFlow("ALL")
     private val _customStartDateMs = MutableStateFlow<Long?>(null)
@@ -51,14 +54,15 @@ class TransactionsViewModel @Inject constructor(
     private val _lastDeletedTransaction = MutableStateFlow<TransactionEntity?>(null)
 
     private val _filterState = combine(
-        combine(_selectedFilter, _selectedCategoryFilter, _selectedMonthYear) { f, c, m -> Triple(f, c, m) },
+        combine(_selectedFilter, _selectedCategoryFilter, _selectedBankFilter, _selectedMonthYear) { f, c, b, m -> FilterGroup1(f, c, b, m) },
         combine(_selectedPeriodPreset, _customStartDateMs, _customEndDateMs) { p, s, e -> Triple(p, s, e) },
         combine(_selectedSortOrder, _searchQuery) { s, q -> Pair(s, q) }
-    ) { fcm, pse, sq ->
+    ) { fg1, pse, sq ->
         FilterState(
-            filter = fcm.first,
-            categoryFilter = fcm.second,
-            monthYear = fcm.third,
+            filter = fg1.filter,
+            categoryFilter = fg1.categoryFilter,
+            bankFilter = fg1.bankFilter,
+            monthYear = fg1.monthYear,
             periodPreset = pse.first,
             customStartMs = pse.second,
             customEndMs = pse.third,
@@ -81,6 +85,9 @@ class TransactionsViewModel @Inject constructor(
             .sortedDescending()
         val allMonthOptions = listOf("ALL") + availableMonths
 
+        val availableBanks = list.map { extractBankName(it) }.distinct().sorted()
+        val allBankOptions = listOf("ALL") + availableBanks
+
         val nowCal = Calendar.getInstance()
         val currentYear = nowCal.get(Calendar.YEAR)
         val currentMonth = nowCal.get(Calendar.MONTH)
@@ -94,6 +101,7 @@ class TransactionsViewModel @Inject constructor(
                 else -> true
             }
             val matchesCategory = if (filterState.categoryFilter == "ALL") true else item.category.equals(filterState.categoryFilter, ignoreCase = true)
+            val matchesBank = if (filterState.bankFilter == "ALL") true else extractBankName(item) == filterState.bankFilter
             val matchesMonth = if (filterState.monthYear == "ALL") true else monthFormat.format(Date(item.timestamp)) == filterState.monthYear
 
             val itemCal = Calendar.getInstance().apply { timeInMillis = item.timestamp }
@@ -119,9 +127,10 @@ class TransactionsViewModel @Inject constructor(
 
             val matchesQuery = filterState.query.isBlank() ||
                     item.merchant.contains(filterState.query, ignoreCase = true) ||
-                    item.category.contains(filterState.query, ignoreCase = true)
+                    item.category.contains(filterState.query, ignoreCase = true) ||
+                    extractBankName(item).contains(filterState.query, ignoreCase = true)
 
-            matchesType && matchesCategory && matchesMonth && matchesPeriod && matchesQuery
+            matchesType && matchesCategory && matchesBank && matchesMonth && matchesPeriod && matchesQuery
         }
 
         val sorted = when (filterState.sortOrder) {
@@ -138,6 +147,8 @@ class TransactionsViewModel @Inject constructor(
         TransactionsUiState(
             transactions = sorted,
             categories = combinedCategories,
+            bankOptions = allBankOptions,
+            selectedBankFilter = filterState.bankFilter,
             monthYearOptions = allMonthOptions,
             selectedPeriodPreset = filterState.periodPreset,
             customStartDateMs = filterState.customStartMs,
@@ -161,6 +172,10 @@ class TransactionsViewModel @Inject constructor(
 
     fun setCategoryFilter(category: String) {
         _selectedCategoryFilter.value = category
+    }
+
+    fun setBankFilter(bank: String) {
+        _selectedBankFilter.value = bank
     }
 
     fun setMonthYearFilter(monthYear: String) {
@@ -209,9 +224,38 @@ class TransactionsViewModel @Inject constructor(
         }
     }
 
+    private fun extractBankName(item: TransactionEntity): String {
+        val text = item.rawText.lowercase()
+        val bank = when {
+            text.contains("hdfc") -> "HDFC Bank"
+            text.contains("axis") -> "Axis Bank"
+            text.contains("icici") -> "ICICI Bank"
+            text.contains("sbi") || text.contains("state bank") -> "SBI"
+            text.contains("kotak") -> "Kotak Bank"
+            text.contains("bobcard") || text.contains("bank of baroda") -> "BOB Card/Bank"
+            text.contains("paytm") -> "Paytm"
+            text.contains("cred") -> "CRED"
+            item.accountDigits.isNotBlank() -> "Account *${item.accountDigits}"
+            else -> "Other Bank/Wallet"
+        }
+        return if (item.accountDigits.isNotBlank() && !bank.contains(item.accountDigits)) {
+            "$bank (*${item.accountDigits})"
+        } else {
+            bank
+        }
+    }
+
+    private data class FilterGroup1(
+        val filter: String,
+        val categoryFilter: String,
+        val bankFilter: String,
+        val monthYear: String
+    )
+
     private data class FilterState(
         val filter: String,
         val categoryFilter: String,
+        val bankFilter: String,
         val monthYear: String,
         val periodPreset: String,
         val customStartMs: Long?,
