@@ -106,7 +106,10 @@ object TransactionDeduplicator {
 
             // Retroactive migration for historical Credit Card Bill Payments logged before update
             if (current.type != "TRANSFER" && isCreditCardPaymentText(current.rawText, current.merchant)) {
-                val updated = current.copy(type = "TRANSFER", category = "Bills & Utilities")
+                val newMerchant = if (current.merchant.isBlank() || isGenericMerchant(current.merchant) || current.merchant == "Unknown Merchant") {
+                    com.expensetracker.app.ingestion.parser.RegexTransactionParser.extractCreditCardMerchant(current.rawText)
+                } else current.merchant
+                val updated = current.copy(type = "TRANSFER", category = "Bills & Utilities", merchant = newMerchant)
                 dao.updateTransaction(updated)
             }
 
@@ -157,10 +160,11 @@ object TransactionDeduplicator {
     }
 
     private fun isCreditCardRelated(entity: TransactionEntity): Boolean {
+        if (com.expensetracker.app.ingestion.parser.RegexTransactionParser.isCreditCardBillPayment(entity.rawText)) return true
         val lowerMerchant = entity.merchant.lowercase()
         val lowerText = entity.rawText.lowercase()
-        return lowerMerchant.contains("credit card") || lowerMerchant.contains("cheq") || lowerMerchant.contains("cred") || lowerMerchant.contains("billdesk") || lowerMerchant.contains("bbps") ||
-               lowerText.contains("credit card") || lowerText.contains("cheq") || lowerText.contains("cred") || lowerText.contains("bobcard") || lowerText.contains("card xx") || lowerText.contains("card ending") || lowerText.contains("billdesk") || lowerText.contains("bbps") ||
+        return lowerMerchant.contains("credit card") || lowerMerchant.contains("card bill") || lowerMerchant.contains("cheq") || lowerMerchant.contains("cred") || lowerMerchant.contains("billdesk") || lowerMerchant.contains("bbps") ||
+               lowerText.contains("credit card") || lowerText.contains("sbi card") || lowerText.contains("bobcard") || lowerText.contains("onecard") || lowerText.contains("cheq") || lowerText.contains("cred") || lowerText.contains("card xx") || lowerText.contains("card ending") || lowerText.contains("billdesk") || lowerText.contains("bbps") ||
                ((entity.type == "DEBIT" || entity.type == "TRANSFER") && entity.category == "Bills & Utilities" && (lowerText.contains("card") || lowerText.contains("bill")))
     }
 
@@ -226,9 +230,10 @@ object TransactionDeduplicator {
     }
 
     private fun isCreditCardPaymentText(rawText: String, merchant: String): Boolean {
+        if (com.expensetracker.app.ingestion.parser.RegexTransactionParser.isCreditCardBillPayment(rawText)) return true
         val lowerText = rawText.lowercase()
         val lowerMerchant = merchant.lowercase()
-        return lowerMerchant.contains("credit card bill") ||
+        return lowerMerchant.contains("credit card bill") || lowerMerchant.contains("card bill") ||
                lowerText.contains("towards your credit card") || lowerText.contains("towards credit card") ||
                lowerText.contains("towards card") || lowerText.contains("cred.club") || lowerText.contains("cheq") ||
                lowerText.contains("cardbill@") || lowerText.contains("ccpay@") || lowerText.contains("billdesk") || lowerText.contains("bbps")

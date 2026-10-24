@@ -41,14 +41,14 @@ interface TransactionDao {
     """)
     suspend fun findDuplicatesInWindow(type: String, amount: Double, timestamp: Long, windowMs: Long): List<TransactionEntity>
 
-    @Query("SELECT * FROM transactions WHERE ABS(amount - :amount) < 0.01 AND (merchant LIKE '%Credit Card%' OR category = 'Bills & Utilities' OR rawText LIKE '%credit card%' OR rawText LIKE '%cheq%' OR rawText LIKE '%cred%' OR rawText LIKE '%billdesk%' OR rawText LIKE '%bbps%' OR rawText LIKE '%ccpay%' OR rawText LIKE '%cardbill%') LIMIT 1")
+    @Query("SELECT * FROM transactions WHERE ABS(amount - :amount) < 0.01 AND (merchant LIKE '%Credit Card%' OR merchant LIKE '%Card Bill%' OR merchant LIKE '%CRED%' OR merchant LIKE '%CheQ%' OR type = 'TRANSFER' OR category = 'Bills & Utilities' OR rawText LIKE '%credit card%' OR rawText LIKE '%sbi card%' OR rawText LIKE '%bobcard%' OR rawText LIKE '%onecard%' OR rawText LIKE '%cheq%' OR rawText LIKE '%cred%' OR rawText LIKE '%billdesk%' OR rawText LIKE '%bbps%' OR rawText LIKE '%ccpay%' OR rawText LIKE '%cardbill%') LIMIT 1")
     suspend fun findExistingCreditCardPayment(amount: Double): TransactionEntity?
 
     @Query("""
         SELECT * FROM transactions 
         WHERE ABS(amount - :amount) < 0.01 
           AND ABS(timestamp - :timestamp) <= :windowMs
-          AND (merchant LIKE '%Credit Card%' OR category = 'Bills & Utilities' OR rawText LIKE '%credit card%' OR rawText LIKE '%cheq%' OR rawText LIKE '%cred%' OR rawText LIKE '%billdesk%' OR rawText LIKE '%bbps%' OR rawText LIKE '%ccpay%' OR rawText LIKE '%cardbill%')
+          AND (merchant LIKE '%Credit Card%' OR merchant LIKE '%Card Bill%' OR merchant LIKE '%CRED%' OR merchant LIKE '%CheQ%' OR type = 'TRANSFER' OR category = 'Bills & Utilities' OR rawText LIKE '%credit card%' OR rawText LIKE '%sbi card%' OR rawText LIKE '%bobcard%' OR rawText LIKE '%onecard%' OR rawText LIKE '%cheq%' OR rawText LIKE '%cred%' OR rawText LIKE '%billdesk%' OR rawText LIKE '%bbps%' OR rawText LIKE '%ccpay%' OR rawText LIKE '%cardbill%')
         ORDER BY ABS(timestamp - :timestamp) ASC
     """)
     suspend fun findCreditCardPaymentsInWindow(amount: Double, timestamp: Long, windowMs: Long): List<TransactionEntity>

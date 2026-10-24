@@ -464,5 +464,94 @@ class RegexTransactionParserTest {
         val result = RegexTransactionParser.parse(sms)
         assertNull("Promotional EMI conversion marketing SMS must be excluded", result)
     }
+
+    @Test
+    fun testHdfcBankDebitTowardsCreditCardIsTransfer() {
+        val sms = "Dear Customer, INR 15,000.00 debited from A/C **3856 on 15-Oct-26 towards Credit Card payment. Avl Bal INR 45,210.00."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(15000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testSbiBankDebitTransferToCardIsTransfer() {
+        val sms = "Dear SBI User, your A/C 9876 debited by Rs 12,450.00 on 18Oct26 by transfer to Credit Card XX4321."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(12450.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testHdfcCardPaymentReceivedIsTransfer() {
+        val sms = "Payment of Rs. 15000.00 received towards your HDFC Bank Credit Card XX7478 on 22-OCT-26."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(15000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testIciciCardPaymentReceivedWithLimitIsTransfer() {
+        val sms = "Payment of INR 20,000.00 received on 22-OCT-26 towards your ICICI Bank Credit Card 4xxx-xxxx-xxxx-1234. Available limit is INR 1,50,000."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(20000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testSbiCardPaymentThankYouIsTransfer() {
+        val sms = "Thank you for payment of Rs 15,000 towards your SBI Card ending 7478 on 22-Oct-26."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(15000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testOneCardPaymentSuccessfulIsTransfer() {
+        val sms = "Your payment of Rs 5,000 for OneCard is successful."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(5000.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testUpiDebitToCreditCardBillIsTransfer() {
+        val sms = "Paid Rs 14,500.00 to HDFC Credit Card bill using UPI ref 123456."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(14500.00, result!!.amount, 0.01)
+        assertEquals("TRANSFER", result.type)
+        assertEquals("Credit Card Bill", result.merchant)
+        assertEquals("Bills & Utilities", result.category)
+    }
+
+    @Test
+    fun testCardSwipeAtMerchantRemainsDebit() {
+        val sms = "INR 1,499.00 spent on ICICI Bank Card XX4001 at AMAZON on 22-Oct-26. Avl Limit: INR 1,48,501.00."
+        val result = RegexTransactionParser.parse(sms)
+        assertNotNull(result)
+        assertEquals(1499.00, result!!.amount, 0.01)
+        assertEquals("DEBIT", result.type)
+        assertEquals("Amazon", result.merchant)
+        assertEquals("Shopping", result.category)
+    }
 }
+
 

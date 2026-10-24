@@ -46,13 +46,13 @@
 ### 1. Dual-Channel Ingestion Pipeline
 * **Broadcast SMS Ingestion (`SmsReceiver`)**: Catches incoming bank SMS PDUs in real time.
 * **Push Notification Listener (`ExpenseNotificationListenerService`)**: Captures status bar push notifications from banking and UPI apps (PhonePe, GPay, Paytm, CRED).
-* **Inbox History Scanner**: Scans inbox starting from the 1st of the current month on first run, then performs incremental delta scans.
+* **Inbox History Scanner**: Scans inbox starting from the 1st of 3 months prior on first install (e.g., Oct -> July 1st), followed by incremental delta scans and automatic home widget updates.
 
 ### 2. Intelligent NLP & Regex Parser
 * **Multi-Bank Pattern Suite**: Pre-configured parsing patterns for HDFC, SBI, ICICI, Axis, Kotak, BOBCARD, CRED, and major UPI handles.
 * **Word Boundary Protection (`\b`)**: Strict boundary enforcement on short matchers (`\bcred\b`, `\bcheq\b`, `\bupi\b`) preventing false collisions with "to credit".
 * **Zero False Positive Rejection**: Discards promotional offers, loan approvals, EMI schemes, OTPs, and balance inquiry alerts.
-* **Outflow vs. Transfer Discrimination**: Accurately maps credit card bill settlements (CRED/CheQ) to `TRANSFER` under `Bills & Utilities`.
+* **Credit Card Bill & Transfer Identification Engine**: Accurately recognizes card bill settlements across issuers (HDFC, SBI, ICICI, Axis, Kotak, BOBCARD, OneCard, Amex) and payment rails (CRED, CheQ, BillDesk, BBPS, UPI, direct net banking auto-debit), classifying them as `TRANSFER` under `Bills & Utilities` with dedicated UI display (`↔ ₹`), badges, and self-healing historical deduplication repair.
 
 ### 3. Repeat Merchant Preference Memory
 * **Merchant-to-Category Learning**: Remembers user manual category corrections for specific merchants.

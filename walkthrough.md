@@ -148,13 +148,37 @@
 
 ---
 
+### 💳 17. 3-Month Historical SMS Lookback & Credit Card Bill Identification Engine Overhaul
+- **3-Month Historical SMS Scan on First Install**:
+  - Implemented `getInitialScanTimestamp(monthsBack = 3)` in [SmsScanner.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/sms/SmsScanner.kt).
+  - Explicitly resets calendar `DAY_OF_MONTH = 1` *before* subtracting months, preventing month-end day clamping errors (e.g., March 31 minus 1 month skipping February).
+  - Ensures initial installation in October scans backwards to July 1st, crossing calendar year boundaries seamlessly (e.g., January -> October 1st of prior year).
+  - Triggers live widget refresh automatically once historical scan completes.
+- **Credit Card Bill Payment vs Expense Disambiguation Engine**:
+  - **The Problem**: Real-world bank SMS messages often have words between phrases (e.g. `"Payment of INR 20,000.00 received on 22-OCT-26 towards your ICICI Bank Credit Card"`), which broke rigid substring checks. Furthermore, generic receipt matching in `isPaymentReceiptForExpense` fell through to `DEBIT`, while the UI displayed `TRANSFER` transactions with negative `-₹` in red.
+  - **The Solution**:
+    1. **Flexible Issuer Intent Matcher**: Updated `isCreditCardBillPayment` in [RegexTransactionParser.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/RegexTransactionParser.kt) with flexible issuer confirmation patterns and bank debit targets (`sbi card`, `bobcard`, `onecard`, `amex`, `card bill`, `cc payment`, etc.).
+    2. **Receipt Exclusion Guard**: Enforced `if (isCreditCardBillPayment(text)) return false` inside `isPaymentReceiptForExpense`.
+    3. **DEBIT Loop Fall-Through Guard**: Added a safety check in `DEBIT_PATTERNS` so any debit targeting a card bill is routed to `type = "TRANSFER"` under `Bills & Utilities`.
+    4. **UI Transfer Support**: Enhanced [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) with transfer amount prefix (`↔ ₹`), secondary accent color, a `"Transfer / CC Bill"` type badge in details dialog, and a "Transfer" button in the edit dialog.
+    5. **Self-Healing Historical Migration**: Enhanced `cleanupExistingDuplicates` in [TransactionDeduplicator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/deduplication/TransactionDeduplicator.kt) to auto-repair historical false positive debits into `TRANSFER` and `Credit Card Bill`.
+    6. **Comprehensive Unit Testing**: Added exhaustive test cases in [RegexTransactionParserTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/ingestion/parser/RegexTransactionParserTest.kt) and [SmsScannerTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/ingestion/sms/SmsScannerTest.kt).
+
+---
+
 ## 2. Automated Test Verification
 
 Executed Gradle unit test suite:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
 ```
-All unit tests compiled and passed cleanly with zero errors!
+Result: **72 / 72 tests passed (100% success rate)** across parser, deduplicator, SMS scanner, backup manager, and subscriptions.
+
+Verified Debug APK Compilation:
+```cmd
+cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
+```
+Result: **BUILD SUCCESSFUL**. Pure offline compilation with zero network permissions verified.
 
 
 

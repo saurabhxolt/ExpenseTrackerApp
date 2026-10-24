@@ -710,15 +710,18 @@ fun TransactionItem(
 
     val isCredit = transaction.type == "CREDIT"
     val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)
+    val isTransfer = transaction.type == "TRANSFER"
     
     val amountPrefix = when {
         isCredit -> "+"
         isInvestment -> ""
+        isTransfer -> "↔ "
         else -> "-"
     }
     val amountColor = when {
         isCredit -> MaterialTheme.colorScheme.tertiary
         isInvestment -> PrimaryBlue
+        isTransfer -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.error
     }
 
@@ -842,18 +845,57 @@ fun TransactionDetailsDialog(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = transaction.category,
-                            fontSize = 14.sp,
-                            color = PrimaryBlue,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = transaction.category,
+                                fontSize = 14.sp,
+                                color = PrimaryBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            val typeLabel = when (transaction.type) {
+                                "CREDIT" -> "Income"
+                                "TRANSFER" -> "Transfer / CC Bill"
+                                "INVESTMENT" -> "Investment"
+                                else -> "Expense"
+                            }
+                            val typeBg = when (transaction.type) {
+                                "CREDIT" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                                "TRANSFER" -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                "INVESTMENT" -> PrimaryBlue.copy(alpha = 0.15f)
+                                else -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                            }
+                            val typeColor = when (transaction.type) {
+                                "CREDIT" -> MaterialTheme.colorScheme.tertiary
+                                "TRANSFER" -> MaterialTheme.colorScheme.secondary
+                                "INVESTMENT" -> PrimaryBlue
+                                else -> MaterialTheme.colorScheme.error
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .background(typeBg, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(text = typeLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = typeColor)
+                            }
+                        }
+                    }
+                    val amountPrefix = when (transaction.type) {
+                        "CREDIT" -> "+"
+                        "TRANSFER" -> "↔ "
+                        "INVESTMENT" -> ""
+                        else -> "-"
+                    }
+                    val amountColor = when (transaction.type) {
+                        "CREDIT" -> MaterialTheme.colorScheme.tertiary
+                        "TRANSFER" -> MaterialTheme.colorScheme.secondary
+                        "INVESTMENT" -> PrimaryBlue
+                        else -> MaterialTheme.colorScheme.error
                     }
                     Text(
-                        text = "${if (transaction.type == "CREDIT") "+" else "-"}₹${String.format("%.2f", transaction.amount)}",
+                        text = "$amountPrefix₹${String.format("%.2f", transaction.amount)}",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (transaction.type == "CREDIT") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                        color = amountColor,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -1163,6 +1205,20 @@ fun EditTransactionDialog(
                         )
                     ) {
                         Text("Investment", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                    }
+                    Button(
+                        onClick = {
+                            selectedType = "TRANSFER"
+                            selectedCategory = "Bills & Utilities"
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedType == "TRANSFER") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selectedType == "TRANSFER") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("Transfer", fontSize = 11.sp, maxLines = 1, softWrap = false)
                     }
                 }
 

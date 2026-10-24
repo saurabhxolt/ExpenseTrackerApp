@@ -44,14 +44,14 @@ class TransactionDeduplicatorTest {
         override suspend fun findExistingCreditCardPayment(amount: Double): TransactionEntity? {
             return storedTransactions.firstOrNull {
                 Math.abs(it.amount - amount) < 0.01 &&
-                (it.merchant.contains("Credit Card", ignoreCase = true) || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
+                (it.merchant.contains("Credit Card", ignoreCase = true) || it.merchant.contains("Card Bill", ignoreCase = true) || it.type == "TRANSFER" || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("sbi card", ignoreCase = true) || it.rawText.contains("bobcard", ignoreCase = true) || it.rawText.contains("onecard", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
             }
         }
 
         override suspend fun findCreditCardPaymentsInWindow(amount: Double, timestamp: Long, windowMs: Long): List<TransactionEntity> {
             return storedTransactions.filter {
                 Math.abs(it.amount - amount) < 0.01 && Math.abs(it.timestamp - timestamp) <= windowMs &&
-                (it.merchant.contains("Credit Card", ignoreCase = true) || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
+                (it.merchant.contains("Credit Card", ignoreCase = true) || it.merchant.contains("Card Bill", ignoreCase = true) || it.type == "TRANSFER" || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("sbi card", ignoreCase = true) || it.rawText.contains("bobcard", ignoreCase = true) || it.rawText.contains("onecard", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
             }.sortedBy { Math.abs(it.timestamp - timestamp) }
         }
 

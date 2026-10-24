@@ -4,7 +4,7 @@ Version: 3.5 | Multi-Phase Long-Term Product Strategy
 # Development Roadmap Status
 
 - **Phase 1: Ingestion & Storage Core** — ✅ COMPLETED & ENHANCED
-  - Automatic First-Launch Permission Prompting (`READ_SMS`, `RECEIVE_SMS`, `POST_NOTIFICATIONS`) + Dedicated SMS Transaction Parser Agent Infrastructure (`.agents/skills/sms_transaction_parser/SKILL.md`) + Multi-channel SMS & Notification Listener + Generic Multi-Stage NLP Parser (Festive Loan & EMI Conversion Marketing Rejection, Word Boundary Protection, News Digest & Bill Due Rejection, Credit Card Swipe DEBIT vs Bill Payment TRANSFER Classification, Universal VPA Handle Regex Engine, Mandatory Execution Verbs) + Timeless & Windowed Anti-Duplication Engine with DB Cleanup + Monthwise Inbox Scanner.
+  - Automatic First-Launch Permission Prompting (`READ_SMS`, `RECEIVE_SMS`, `POST_NOTIFICATIONS`) + Dedicated SMS Transaction Parser Agent Infrastructure (`.agents/skills/sms_transaction_parser/SKILL.md`) + Multi-channel SMS & Notification Listener + Generic Multi-Stage NLP Parser (Festive Loan & EMI Conversion Marketing Rejection, Word Boundary Protection, News Digest & Bill Due Rejection, Credit Card Swipe DEBIT vs Bill Payment TRANSFER Classification, Universal VPA Handle Regex Engine, Mandatory Execution Verbs) + Timeless & Windowed Anti-Duplication Engine with DB Cleanup + 3-Month Historical Inbox Scanner on First Install + Credit Card Bill Identification Engine Hardening with UI Transfer Display (`↔ ₹`).
 - **Phase 2: Budgets & Search** — ✅ COMPLETED
   - Header Settings IconButton + Bottom Navigation Bar + Category Budget Caps + Transaction Search & Unified Category Selector.
 - **Phase 3: Offline Peer-to-Peer Split Expenses** — ✅ COMPLETED

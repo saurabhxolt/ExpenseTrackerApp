@@ -16,7 +16,7 @@ Build a privacy-first personal expense tracker that automatically captures bank 
 - Fast (<2 second launch time) and lightweight execution footprint.
 - User owns 100% of their data with private user-controlled cloud backups.
 - Multi-channel automated transaction ingestion (SMS BroadcastReceiver + NotificationListenerService).
-- Historical monthwise SMS inbox scanning starting from 1st day of the current month with incremental timestamp updates.
+- Historical 3-month SMS inbox scanning starting from the 1st of 3 months prior upon first install (e.g., Oct -> July 1st), with incremental timestamp updates thereafter.
 
 # 3. Target Users
 Students, salaried employees, families, freelancers, room-mates, trip groups, and small business owners seeking automated, private expense tracking and offline bill splitting.
@@ -29,20 +29,20 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
   1. Real Outgoing Expense (`DEBIT`)
   2. Genuine External Income (`CREDIT`)
   3. Investments (`INVESTMENT`: SIP, Mutual Funds, Zerodha, Groww, INDmoney, Stocks, NPS, PPF, FD, Gold, LIC)
-  4. Internal Account Transfers (`TRANSFER`)
+  4. Internal Account Transfers & Card Bill Settlements (`TRANSFER`)
   5. Informational Statement & Initiated Refund Alerts (Rejection Filter: statement sent, min due, has been initiated)
   6. Promotional Loan / Festive Offer / EMI Marketing / News Digest / Bill Due Reminder Filter (Rejection Filter: news articles, Groww/Market digests, "$X billion capital inflow", "cr order", Sensex/Nifty alerts, "bill due in X days", "pay instantly on Paytm to avoid late fee", "YES BANK Festive Offer", "festive loan", "digital authorization via link below", "convert your transaction of X into EMI", "1 step away", "no paperwork needed").
 - Regex Substring Safety & Word Boundary Protection: Strict word boundary checks (`\b`) prevent short service matchers (e.g. `\bcred\b`, `\bcheq\b`) from colliding with natural language verbs like `"to credit"`.
 - Mandatory Execution Action Verification: Ensures investment and credit card payment messages explicitly contain execution action verbs ("debited", "spent", "invested", "units allocated", "order executed", "paid") before parsing as completed transactions.
-- Payment Receipt Detection: Merchant/utility/insurance/government fee payment confirmations ("we have received a payment of Rs 347.16 for your Airtel Black ID", "We received payment for your bike insurance") are categorized as `DEBIT` / Expense.
+- Payment Receipt Detection: Merchant/utility/insurance/government fee payment confirmations ("we have received a payment of Rs 347.16 for your Airtel Black ID", "We received payment for your bike insurance") are categorized as `DEBIT` / Expense, with strict card settlement exclusion guards.
 - Beneficiary & Entity Extraction: Strips `HH:MM:SS` timestamps to prevent time strings from becoming merchant names, extracting true payee/beneficiary names (e.g. `ARCHIS KISHORRAO SONWAL`, `Airtel Black`, `Airtel Wi-Fi`).
-- Credit Card & Bill App Accounting Intelligence (`RegexTransactionParser.kt`): Individual card purchases (Swipes, Online Gateways, RuPay UPI on CC) are categorized as `DEBIT` (Real Expense). Credit Card Bill Payments via third-party apps (`CRED`, `CheQ`, `BillDesk`, `BBPS`, NetBanking) and credit card receipts are categorized as `Merchant: Credit Card Bill`, `Category: Bills & Utilities`, `Type: TRANSFER` (Debt Repayment), preventing double-counting in Total Monthly Expense calculations and suppressing artificial income inflation. Universal VPA handle pattern matching (`(?i)\b[a-z0-9._-]*?(ccpay|cardpay|cardbill|billdesk|bbps|cred|cheq)[a-z0-9._-]*?@[a-z]+\b`) dynamically captures payments across present and future third-party payment aggregators.
+- Credit Card & Bill App Accounting Intelligence (`RegexTransactionParser.kt`): Individual card purchases (Swipes, Online Gateways, RuPay UPI on CC) are categorized as `DEBIT` (Real Expense). Credit Card Bill Payments via third-party apps (`CRED`, `CheQ`, `BillDesk`, `BBPS`, NetBanking) and card issuer payment confirmations (HDFC, SBI Card, ICICI, Axis, Kotak, BOBCARD, OneCard, Amex) are categorized as `Merchant: Credit Card Bill`, `Category: Bills & Utilities`, `Type: TRANSFER` (Debt Repayment), preventing double-counting in Total Monthly Expense calculations and suppressing artificial income inflation. Universal VPA handle pattern matching (`(?i)\b[a-z0-9._-]*?(ccpay|cardpay|cardbill|billdesk|bbps|cred|cheq)[a-z0-9._-]*?@[a-z]+\b`) dynamically captures payments across present and future third-party payment aggregators. Dashboard presents transfers with `↔ ₹` in neutral secondary styling, with self-healing migration in `TransactionDeduplicator`.
 - Windowed Dual-Channel Anti-Duplication Engine (`TransactionDeduplicator.kt`): Enforces a 2-hour dual-channel matching window (`DEFAULT_DEDUPLICATION_WINDOW_MS = 2h`) between SMS and status bar push notifications, and a 4-day credit card settlement window (`CC_PAYMENT_DEDUPLICATION_WINDOW_MS = 4d`) for bank debits vs card receipt confirmations via `findDuplicatesInWindow` and `findCreditCardPaymentsInWindow`. Resolves timeless duplicate suppression so legitimate repeat purchases across days are never dropped.
 - Hardware-Backed SQLCipher AES-256 (`SecurityKeyManager.kt`): Android KeyStore master key generation and derivation, eliminating static passphrases for Room encryption.
 - Responsive UI Layout (`DashboardScreen.kt`): Added flex weights, `contentPadding`, and vertical wrapping prevention (`maxLines = 1, softWrap = false`) for transaction buttons and dialogs.
 - Precise Amount Extraction ignoring trailing available balance, credit limit, and magnitude scale clauses (billion, million, crore, cr, lakh, points, %).
 - Dual-channel detection: Android SMS Receiver and NotificationListenerService.
-- Historical Monthwise & Incremental SMS Scanner.
+- Historical 3-Month & Incremental SMS Scanner (`SmsScanner.kt`).
 
 ## Phase 2: Navigation & Navigation Structure (COMPLETED)
 - Header Settings Navigation: Top app bar includes an explicit Settings IconButton (`Icons.Default.Settings`) accessible across all tabs.

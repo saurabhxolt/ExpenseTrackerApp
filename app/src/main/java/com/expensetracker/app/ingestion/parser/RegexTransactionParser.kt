@@ -198,10 +198,7 @@ object RegexTransactionParser {
         if (isCreditCardBillPayment(cleanText)) {
             val amount = extractGenericAmount(textWithoutBalance)
             if (amount > 0.0) {
-                val lower = cleanText.lowercase()
-                val merchant = if (lower.contains("cred club") || lower.contains("to cred")) "CRED Club"
-                               else if (lower.contains("cheq")) "CheQ"
-                               else "Credit Card Bill"
+                val merchant = extractCreditCardMerchant(cleanText)
                 val accountDigits = extractAccountDigits(cleanText)
                 return ParsedTransaction(
                     amount = amount,
@@ -314,6 +311,19 @@ object RegexTransactionParser {
                 val amountStr = matcher.group(1)?.replace(",", "")
                 val amount = amountStr?.toDoubleOrNull() ?: 0.0
                 if (amount > 0.0) {
+                    // Safety Guard: Even in DEBIT pattern matcher, verify if this debit is paying a credit card bill
+                    if (isCreditCardBillPayment(cleanText)) {
+                        val merchant = extractCreditCardMerchant(cleanText)
+                        val accountDigits = extractAccountDigits(cleanText)
+                        return ParsedTransaction(
+                            amount = amount,
+                            type = "TRANSFER",
+                            merchant = merchant,
+                            accountDigits = accountDigits,
+                            category = "Bills & Utilities",
+                            rawText = text
+                        )
+                    }
                     val merchant = extractMerchant(cleanText, "DEBIT")
                     val category = predictCategory(merchant, cleanText, "DEBIT")
                     val accountDigits = extractAccountDigits(cleanText)
@@ -342,26 +352,91 @@ object RegexTransactionParser {
     }
 
     private fun isPaymentReceiptForExpense(text: String): Boolean {
+        if (isCreditCardBillPayment(text)) return false
         val lower = text.lowercase()
+        if (lower.contains("credit card") || lower.contains("sbi card") || lower.contains("card bill") ||
+            lower.contains("bobcard") || lower.contains("onecard") || lower.contains("card ending") ||
+            lower.contains("card xx") || lower.contains("cc payment") || lower.contains("card payment") ||
+            lower.contains("cred.club") || lower.contains("cheq") || lower.contains("to cred")) {
+            return false
+        }
         return (lower.contains("received payment") || lower.contains("received a payment") || lower.contains("received rs") || lower.contains("received inr") || lower.contains("payment received") || lower.contains("payment of") || lower.contains("receipt of") || lower.contains("confirmation for receipt")) &&
                (lower.contains("for your") || lower.contains("against") || lower.contains("fee") || lower.contains("insurance") || lower.contains("morth") || lower.contains("policy") || lower.contains("acko") || lower.contains("receipt no") || lower.contains("airtel") || lower.contains("bill") || lower.contains("act fibernet"))
     }
 
-    private fun isCreditCardBillPayment(text: String): Boolean {
+    fun isCreditCardBillPayment(text: String): Boolean {
+        if (text.isBlank()) return false
         val lower = text.lowercase()
-        // Reject bill due reminders, upcoming payment notices, or cashback credits
-        if (lower.contains("due in") || lower.contains("is due") || lower.contains("due date") || lower.contains("pay instantly") || lower.contains("reminder") || lower.contains("cashback")) return false
 
-        // Check explicit UPI VPA / CC Bill payment services (CRED, CheQ, Billdesk, BBPS)
+        // 1. Rejection: Statement reminders, upcoming dues, or cashback/refunds
+        if (lower.contains("due in") || lower.contains("is due") || lower.contains("due date") ||
+            lower.contains("bill due") || lower.contains("pay instantly") || lower.contains("reminder") ||
+            lower.contains("cashback received") || lower.contains("cashback of") || lower.contains("refund of")) {
+            return false
+        }
+
+        // 2. Direct Aggregators & VPAs (CRED, CheQ, BillDesk, BBPS, ccpay, cardbill, cardpay)
         if (CC_UPI_VPA_PATTERN.matcher(text).find()) return true
-        if (lower.contains("cred.club") || lower.contains("cred app") || lower.contains(" to cred ") || lower.contains(" to cred.") || lower.contains("via cred") || lower.contains("on cred") || lower.contains("cred club") || lower.contains("cheq") || lower.contains("billdesk") || lower.contains("bbps")) return true
+        if (lower.contains("cred.club") || lower.contains("cred app") || lower.contains("cred club") ||
+            lower.contains("to cred") || lower.contains("via cred") || lower.contains("on cred") ||
+            lower.contains("cheq") || lower.contains("billdesk") || lower.contains("bbps")) {
+            return true
+        }
 
-        // Reject merchant card spending (e.g. Paid inr 250 with your BOBCARD to raz*uniorbit)
-        if (lower.contains("with your") || lower.contains("spent on") || lower.contains("spent using") || lower.contains(" to raz") || lower.contains(" to merchant")) return false
+        // 3. Reject active merchant purchase swipes
+        val isCardPurchase = (lower.contains(" spent ") || lower.contains("spent on") || lower.contains("spent at") ||
+                              lower.contains("used at") || lower.contains("purchase of") || lower.contains("txn at") ||
+                              lower.contains("with your") || lower.contains("at merchant") || lower.contains("spent using")) &&
+                             (lower.contains(" at ") || lower.contains(" to raz") || lower.contains(" on amazon") ||
+                              lower.contains(" on flipkart") || lower.contains(" on swiggy") || lower.contains(" on zomato") ||
+                              lower.contains(" pos ") || lower.contains(" e-com ") || lower.contains(" info of txn"))
+        if (isCardPurchase) return false
 
-        val hasCardKeyword = lower.contains("credit card") || lower.contains("bobcard") || lower.contains("card xx") || lower.contains("card ending") || lower.contains("card no") || lower.contains("card ending in") || lower.contains("cc payment") || lower.contains("card bill")
-        val hasBillPaymentConfirmation = lower.contains("payment received") || lower.contains("credited towards") || lower.contains("credited with") || lower.contains("received towards") || lower.contains("towards credit card") || lower.contains("towards card") || lower.contains("towards bill payment") || lower.contains("received on your")
-        return hasCardKeyword && hasBillPaymentConfirmation
+        // 4. Card target identifiers
+        val hasCardTarget = lower.contains("credit card") || lower.contains("sbi card") || lower.contains("bobcard") ||
+                            lower.contains("onecard") || lower.contains("amex") || lower.contains("american express") ||
+                            lower.contains("card bill") || lower.contains("cc bill") || lower.contains("cc payment") ||
+                            lower.contains("card payment") || lower.contains("card ending") || lower.contains("card xx") ||
+                            lower.contains("card no") || lower.contains("card a/c") || lower.contains("card account") ||
+                            lower.contains("towards card") || lower.contains("towards your card") ||
+                            lower.contains("for your card") || lower.contains("to your card")
+
+        if (!hasCardTarget) return false
+
+        // 5. Inbound or Outbound Bill Settlement Intent
+        // 5a. Confirmation from issuer (payment received/credited/thank you)
+        val isPaymentReceived = lower.contains("payment received") || lower.contains("received payment") ||
+                                lower.contains("received a payment") || lower.contains("payment of") ||
+                                lower.contains("payment for") || lower.contains("payment towards") ||
+                                lower.contains("thank you for payment") || lower.contains("thank you for paying") ||
+                                lower.contains("thanks for payment") || lower.contains("thanks for paying") ||
+                                lower.contains("acknowledge receipt") || lower.contains("credited towards") ||
+                                lower.contains("received towards") || lower.contains("credited with") ||
+                                lower.contains("credited to your") || lower.contains("received on your") ||
+                                lower.contains("has been received") || lower.contains("is received") ||
+                                lower.contains("payment successful") || lower.contains("payment is successful") ||
+                                lower.contains("payment was successful") || lower.contains("has been processed")
+
+        // 5b. Outbound debit from bank account for card bill
+        val isBankDebitForCard = (lower.contains("debited") || lower.contains("paid") || lower.contains("sent") ||
+                                  lower.contains("transferred") || lower.contains("transfer to") || lower.contains("auto-debit") ||
+                                  lower.contains("autopay") || lower.contains("deducted") || lower.contains("txn of") ||
+                                  lower.contains("si of")) &&
+                                 (lower.contains("towards") || lower.contains("for payment") || lower.contains("card bill") ||
+                                  lower.contains("cc bill") || lower.contains("card payment") || lower.contains("to credit card") ||
+                                  lower.contains("to card") || lower.contains("towards credit card") || lower.contains("towards card") ||
+                                  lower.contains("for your credit card") || lower.contains("for your card"))
+
+        return isPaymentReceived || isBankDebitForCard
+    }
+
+    fun extractCreditCardMerchant(text: String): String {
+        val lower = text.lowercase()
+        return when {
+            lower.contains("cheq") -> "CheQ"
+            lower.contains("cred club") || lower.contains("to cred ") -> "CRED Club"
+            else -> "Credit Card Bill"
+        }
     }
 
     private fun isSelfTransfer(text: String): Boolean {
@@ -442,7 +517,7 @@ object RegexTransactionParser {
         if (onDateOnMerchant.find()) return cleanMerchantName(onDateOnMerchant.group(1) ?: "")
 
         // Pattern 4: at <Merchant> (excluding timestamps)
-        val atMerchant = Pattern.compile("(?i)\\s+at\\s+([A-Za-z0-9._\\-@#\\s]+?)(?:,?\\s+is\\s+eligible|,?\\s+on\\s+[0-9]{2}-[0-9]{2}|\\s+by\\s+upi|\\.\\s*available|\\.\\s*avl|\\.|$)").matcher(cleanText)
+        val atMerchant = Pattern.compile("(?i)\\s+at\\s+([A-Za-z0-9._\\-@#\\s]+?)(?:,?\\s+is\\s+eligible|,?\\s+on\\s+[0-9]{1,2}-[A-Za-z0-9\\-]+|,?\\s+on\\s+[0-9]{2}/[0-9]{2}|\\s+by\\s+upi|\\.\\s*available|\\.\\s*avl|\\.|$)").matcher(cleanText)
         if (atMerchant.find()) {
             val candidate = atMerchant.group(1) ?: ""
             if (!candidate.trim().matches(Regex("^[0-9:]+$"))) {

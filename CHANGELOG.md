@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Hardcoded Plaintext Passphrase**: Replaced static string passphrase across all database call sites with KeyStore-derived keys.
 - **DailyReviewWorker Rescheduling**: Switched `ExistingPeriodicWorkPolicy` to `KEEP` on app launch so launching the app does not disrupt the evening review schedule.
 - **CRED Club / CheQ Transfer Misclassification**: Corrected credit card bill settlement categorization to `TRANSFER` with `Bills & Utilities`.
+- **Credit Card Bill Payment False Expense Classification**: Hardened `RegexTransactionParser.isCreditCardBillPayment` and `DEBIT_PATTERNS` to catch issuer payment confirmations (HDFC, SBI, ICICI, Axis, Kotak, BOBCARD, OneCard, Amex) and outbound bank settlements, classifying them as `TRANSFER` rather than `DEBIT` expenses. Added receipt exclusion guards and self-healing historical deduplication migration in `TransactionDeduplicator`.
+- **Dashboard Transfer UI Display**: Updated `DashboardScreen.kt` to render `TRANSFER` items with neutral prefix (`↔ ₹`), secondary accent coloring, a `"Transfer / CC Bill"` type badge in details dialog, and manual transfer editing support.
 - **Short Matcher Substring Collision**: Enforced word boundary protection (`\b`) on `cred`, `cheq`, and `upi` to avoid false triggers on "to credit".
 
 ---
