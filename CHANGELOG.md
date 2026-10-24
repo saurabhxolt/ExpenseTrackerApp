@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased] - Branch `Dev`
 
 ### Added
+- **3-Month Historical SMS Lookback on Install**: Configured initial inbox scan in `SmsScanner` to fetch from the 1st of 3 months prior (e.g. July 1st if installed in October) instead of only the current month.
+- **Home Screen App Widget Live Data**: Connected `ExpenseWidgetProvider.kt` with encrypted Room database queries to dynamically render current net balance and today's total spend, with automatic updates triggered upon transaction ingestion.
 - **Multi-AI Governance Framework**: Initialized `AGENTS.md`, `.cursorrules`, `CLAUDE.md`, `.github/copilot-instructions.md`, and modular `docs/`.
 - **Android KeyStore SQLCipher Key Derivation**: Implemented `SecurityKeyManager.kt` sealing 256-bit AES master keys in hardware KeyStore.
 - **Biometric App Lock Background Grace Period**: Added 30-second lifecycle background tracking in `MainActivity.kt` to re-lock automatically on return.

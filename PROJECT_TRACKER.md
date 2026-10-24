@@ -15,6 +15,7 @@
 | **Multi-Entity Pure-Kotlin Backup Engine** | Backup / SAF | ✅ Completed | Storage Engine |
 | **Category Preference Learning in Ingestion** | Ingestion / DB | ✅ Completed | `category_assignment_agent` |
 | **Home Screen App Widget Live Data** | UI / Widget | ✅ Completed | Android System |
+| **3-Month SMS Historical Scan on Install** | Ingestion / SMS | ✅ Completed | `sms_transaction_parser` |
 
 ---
 

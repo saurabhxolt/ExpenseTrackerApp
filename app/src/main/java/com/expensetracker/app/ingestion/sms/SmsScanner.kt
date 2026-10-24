@@ -19,9 +19,10 @@ object SmsScanner {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val lastScanTime = prefs.getLong(KEY_LAST_SCAN_TIME, 0L)
 
-        // If never scanned before, calculate 1st day of current month (00:00:00)
+        // If never scanned before, calculate 1st day of 3 months prior (00:00:00)
+        // e.g., if current month is October, scan starts from 1st July 00:00:00
         val startTime = if (lastScanTime == 0L) {
-            getStartOfCurrentMonthTimestamp()
+            getInitialScanTimestamp(monthsBack = 3)
         } else {
             lastScanTime
         }
@@ -77,8 +78,7 @@ object SmsScanner {
                 }
             }
 
-            var cleanedCount = 0
-            kotlinx.coroutines.runBlocking {
+            val cleanedCount = kotlinx.coroutines.runBlocking {
                 for (entity in pendingEntities) {
                     val normKey = com.expensetracker.app.ingestion.parser.CategoryClassifier.normalizeMerchantKey(entity.merchant)
                     val learnedCategory = if (normKey.isNotBlank()) {
@@ -95,12 +95,16 @@ object SmsScanner {
                         newTransactionsCount++
                     }
                 }
-                cleanedCount = TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
+                TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
             }
 
             // Save new last scan timestamp
             prefs.edit().putLong(KEY_LAST_SCAN_TIME, System.currentTimeMillis()).apply()
             Log.d("SmsScanner", "SMS Scan complete! Found $newTransactionsCount new transactions, cleaned $cleanedCount existing duplicates.")
+
+            if (newTransactionsCount > 0) {
+                com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)
+            }
 
         } catch (e: Exception) {
             Log.e("SmsScanner", "Error scanning SMS inbox", e)
@@ -109,13 +113,17 @@ object SmsScanner {
         return newTransactionsCount
     }
 
-    private fun getStartOfCurrentMonthTimestamp(): Long {
-        val calendar = Calendar.getInstance(TimeZone.getDefault())
+    fun getInitialScanTimestamp(
+        monthsBack: Int = 3,
+        baseCalendar: Calendar = Calendar.getInstance(TimeZone.getDefault())
+    ): Long {
+        val calendar = baseCalendar.clone() as Calendar
         calendar.set(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
+        calendar.add(Calendar.MONTH, -monthsBack)
         return calendar.timeInMillis
     }
 }

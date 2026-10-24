@@ -101,8 +101,8 @@
 - **Automatic OS Permission Request on Launch**:
   - Implemented automatic runtime permission launching in `DashboardRoute` (`LaunchedEffect(Unit)`).
   - When the app is opened for the first time (or whenever `READ_SMS`, `RECEIVE_SMS`, or `POST_NOTIFICATIONS` permissions are missing), the OS permission dialog is triggered automatically without requiring the user to find and tap an "Allow Permission" button.
-- **Immediate Post-Consent SMS Scanning**:
-  - In the permission result callback, as soon as the user taps "Allow", `triggerSmsInboxScan(context)` automatically triggers to scan the current month's bank SMS transactions and instantly populate the Dashboard!
+- **Immediate Post-Consent SMS Scanning (3-Month Historical Lookback)**:
+  - In the permission result callback, as soon as the user taps "Allow", `triggerSmsInboxScan(context)` automatically triggers to scan the previous 3 months plus the current month's bank SMS transactions (e.g., from July 1st 00:00:00 if installed in October) to instantly populate the Dashboard, Ledger, Budgets, and Analytics charts!
 
 ### 🏛️ 15. Modular AI Governance Framework & Engineering Standards Adaptation
 - **Adapted Android AI Prompt (`PromptForCleanAndroidAppDevelopmentFromAIAgent.md`)**:
