@@ -23,26 +23,39 @@ class SmsReceiver : BroadcastReceiver() {
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val db = ExpenseDatabase.getInstance(context.applicationContext, "expense_tracker_secret_passphrase_key".toByteArray())
+                    val passphrase = com.expensetracker.app.core.security.SecurityKeyManager.getOrCreateDatabasePassphrase(context.applicationContext)
+                    val db = ExpenseDatabase.getInstance(context.applicationContext, passphrase)
+                    val mappingDao = db.merchantCategoryMappingDao()
+
                     for (sms in messages) {
                         val body = sms.messageBody ?: continue
                         val parsed = RegexTransactionParser.parse(body)
                         if (parsed != null) {
-                            val hash = "${parsed.merchant}-${parsed.amount}-${parsed.timestamp}"
+                            val smsTimestamp = sms.timestampMillis.takeIf { it > 0 } ?: parsed.timestamp
+
+                            // Check learned merchant category preference
+                            val normKey = com.expensetracker.app.ingestion.parser.CategoryClassifier.normalizeMerchantKey(parsed.merchant)
+                            val learnedCategory = if (normKey.isNotBlank()) {
+                                mappingDao.getMappingForMerchant(normKey)?.assignedCategory
+                            } else null
+                            val finalCategory = learnedCategory?.takeIf { it.isNotBlank() } ?: parsed.category
+
+                            val hash = "${parsed.merchant}-${parsed.amount}-$smsTimestamp"
                             val entity = TransactionEntity(
                                 amount = parsed.amount,
                                 type = parsed.type,
                                 merchant = parsed.merchant,
                                 rawText = body,
-                                category = parsed.category,
-                                timestamp = parsed.timestamp,
+                                category = finalCategory,
+                                timestamp = smsTimestamp,
                                 transactionHash = hash
                             )
                             val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
                             if (rowId > 0) {
                                 Log.d("SmsReceiver", "Saved SMS transaction: ${parsed.merchant} ₹${parsed.amount}")
                                 val subRepo = com.expensetracker.app.core.data.repository.SubscriptionRepository(db.subscriptionDao())
-                                com.expensetracker.app.ingestion.parser.SubscriptionDetector.autoDetectAndSave(subRepo, parsed)
+                                com.expensetracker.app.ingestion.parser.RecurringMandateDetector.autoDetectAndSave(subRepo, parsed)
+                                com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)
                             } else {
                                 Log.d("SmsReceiver", "Duplicate SMS transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")
                             }

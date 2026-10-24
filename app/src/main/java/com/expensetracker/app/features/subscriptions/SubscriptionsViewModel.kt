@@ -3,8 +3,12 @@ package com.expensetracker.app.features.subscriptions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expensetracker.app.core.data.repository.CategoryRepository
+import com.expensetracker.app.core.data.repository.SubscriptionDetector
 import com.expensetracker.app.core.data.repository.SubscriptionRepository
+import com.expensetracker.app.core.data.repository.TransactionRepository
+import com.expensetracker.app.core.data.repository.DetectedSubscriptionCandidate
 import com.expensetracker.app.core.database.entity.SubscriptionEntity
+import com.expensetracker.app.ingestion.parser.SubscriptionMatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,11 +31,13 @@ data class SubscriptionUiModel(
     val isOverdue: Boolean,
     val isDueSoon: Boolean,
     val category: String,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val autoMatched: Boolean = false
 )
 
 data class SubscriptionsUiState(
     val subscriptions: List<SubscriptionUiModel> = emptyList(),
+    val detectedCandidates: List<DetectedSubscriptionCandidate> = emptyList(),
     val categories: List<String> = emptyList(),
     val totalMonthlyCost: Double = 0.0,
     val activeCount: Int = 0
@@ -40,13 +46,16 @@ data class SubscriptionsUiState(
 @HiltViewModel
 class SubscriptionsViewModel @Inject constructor(
     private val subscriptionRepository: SubscriptionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val transactionRepository: TransactionRepository,
+    private val subscriptionDetector: SubscriptionDetector
 ) : ViewModel() {
 
     val uiState: StateFlow<SubscriptionsUiState> = combine(
         subscriptionRepository.allSubscriptions,
-        categoryRepository.allCategories
-    ) { subs, categories ->
+        categoryRepository.allCategories,
+        transactionRepository.allTransactions
+    ) { subs, categories, transactions ->
         val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         val nowMs = System.currentTimeMillis()
 
@@ -56,6 +65,9 @@ class SubscriptionsViewModel @Inject constructor(
             val diffDays = ((entity.nextDueDateMs - nowMs) / (1000 * 60 * 60 * 24)).toInt()
 
             val (statusText, isOverdue, isDueSoon) = when {
+                entity.autoMatched && entity.lastPaidDateMs != null && (nowMs - entity.lastPaidDateMs) < 7 * 86400000L -> {
+                    Triple("Auto-Paid via SMS 🟢 (Next: $formattedDate)", false, false)
+                }
                 diffDays < 0 -> Triple("Overdue by ${-diffDays} day(s) ($formattedDate)", true, false)
                 diffDays == 0 -> Triple("Due Today ($formattedDate)", false, true)
                 diffDays <= 5 -> Triple("Due in $diffDays day(s) ($formattedDate)", false, true)
@@ -72,7 +84,8 @@ class SubscriptionsViewModel @Inject constructor(
                 isOverdue = isOverdue,
                 isDueSoon = isDueSoon,
                 category = entity.category,
-                isActive = entity.isActive
+                isActive = entity.isActive,
+                autoMatched = entity.autoMatched
             )
         }
 
@@ -85,10 +98,12 @@ class SubscriptionsViewModel @Inject constructor(
             }
         }
 
+        val candidates = subscriptionDetector.detectCandidates(transactions, subs)
         val catList = (listOf("Subscriptions", "Bills & Utilities", "Rent", "EMI", "Entertainment", "Health & Medical", "Investments", "General Expense") + categories.map { it.name }).distinct()
 
         SubscriptionsUiState(
             subscriptions = uiModels,
+            detectedCandidates = candidates,
             categories = catList,
             totalMonthlyCost = totalMonthly,
             activeCount = subs.count { it.isActive }
@@ -99,6 +114,16 @@ class SubscriptionsViewModel @Inject constructor(
         initialValue = SubscriptionsUiState()
     )
 
+    fun addDetectedCandidate(candidate: DetectedSubscriptionCandidate) {
+        saveSubscription(
+            name = candidate.name,
+            amount = candidate.amount,
+            cycle = candidate.suggestedCycle,
+            category = candidate.category,
+            dueDateMs = System.currentTimeMillis() + (30L * 24 * 3600 * 1000)
+        )
+    }
+
     fun saveSubscription(name: String, amount: Double, cycle: String, category: String, dueDateMs: Long) {
         viewModelScope.launch {
             val entity = SubscriptionEntity(
@@ -107,8 +132,7 @@ class SubscriptionsViewModel @Inject constructor(
                 billingCycle = cycle,
                 category = category,
                 nextDueDateMs = dueDateMs,
-                isActive = true,
-                isAutoDetected = false
+                isActive = true
             )
             subscriptionRepository.saveSubscription(entity)
         }
@@ -129,8 +153,12 @@ class SubscriptionsViewModel @Inject constructor(
 
     fun markAsPaid(item: SubscriptionUiModel) {
         viewModelScope.launch {
-            val nextMs = computeNextCycleDueDate(item.entity.nextDueDateMs, item.entity.billingCycle)
-            val updated = item.entity.copy(nextDueDateMs = nextMs)
+            val nextDueDate = SubscriptionMatcher.calculateNextDueDate(item.entity.nextDueDateMs, item.billingCycle)
+            val updated = item.entity.copy(
+                nextDueDateMs = nextDueDate,
+                lastPaidDateMs = System.currentTimeMillis(),
+                autoMatched = true
+            )
             subscriptionRepository.updateSubscription(updated)
         }
     }
@@ -146,22 +174,5 @@ class SubscriptionsViewModel @Inject constructor(
         viewModelScope.launch {
             subscriptionRepository.deleteSubscription(entity)
         }
-    }
-
-    private fun computeNextCycleDueDate(currentDueDateMs: Long, cycle: String): Long {
-        val cal = Calendar.getInstance()
-        val baseMs = if (currentDueDateMs > 0) currentDueDateMs else System.currentTimeMillis()
-        cal.timeInMillis = baseMs
-        val nowMs = System.currentTimeMillis()
-
-        while (cal.timeInMillis <= nowMs) {
-            when (cycle) {
-                "Yearly" -> cal.add(Calendar.YEAR, 1)
-                "Weekly" -> cal.add(Calendar.DAY_OF_YEAR, 7)
-                "Quarterly" -> cal.add(Calendar.MONTH, 3)
-                else -> cal.add(Calendar.MONTH, 1)
-            }
-        }
-        return cal.timeInMillis
     }
 }

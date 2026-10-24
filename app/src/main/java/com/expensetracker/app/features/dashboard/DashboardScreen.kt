@@ -115,8 +115,52 @@ fun DashboardRoute(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsMap ->
+        viewModel.refreshPermissionState(context)
+        val isSmsGranted = permissionsMap[Manifest.permission.READ_SMS] == true ||
+                           com.expensetracker.app.core.utils.PermissionUtils.isSmsPermissionGranted(context)
+        if (isSmsGranted) {
+            viewModel.triggerSmsInboxScan(context)
+        }
+    }
+
+    val requestPermissionsAndScan = {
+        val perms = mutableListOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+        smsPermissionLauncher.launch(perms)
+
+        if (!com.expensetracker.app.core.utils.PermissionUtils.isNotificationListenerGranted(context)) {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.refreshPermissionState(context)
+        if (!com.expensetracker.app.core.utils.PermissionUtils.isSmsPermissionGranted(context)) {
+            val perms = mutableListOf(
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.READ_SMS
+            ).apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }.toTypedArray()
+            smsPermissionLauncher.launch(perms)
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -165,7 +209,8 @@ fun DashboardRoute(
                         }
                     }
                 },
-                onScanInbox = { viewModel.triggerSmsInboxScan(context) }
+                onScanInbox = { viewModel.triggerSmsInboxScan(context) },
+                onRequestPermissions = { requestPermissionsAndScan() }
             )
 
             if (showAddDialog) {
@@ -231,13 +276,10 @@ fun DashboardScreen(
     onTransactionClick: (TransactionEntity) -> Unit = {},
     onEditTransaction: (TransactionEntity) -> Unit = {},
     onDeleteTransaction: (TransactionEntity) -> Unit = {},
-    onScanInbox: () -> Unit = {}
+    onScanInbox: () -> Unit = {},
+    onRequestPermissions: () -> Unit = {}
 ) {
     val context = LocalContext.current
-
-    val smsPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ -> }
 
     LazyColumn(
         modifier = Modifier
@@ -298,20 +340,7 @@ fun DashboardScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            val perms = mutableListOf(
-                                Manifest.permission.RECEIVE_SMS,
-                                Manifest.permission.READ_SMS
-                            ).apply {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    add(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            }.toTypedArray()
-                            smsPermissionLauncher.launch(perms)
-                            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
-                        },
+                        .clickable { onRequestPermissions() },
                     colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -532,6 +561,36 @@ fun DashboardScreen(
             }
         }
 
+        // Upcoming Mandates & Monthly Bills Commitment Card
+        if (uiState.totalMonthlyCommitted > 0 || uiState.upcomingSubscriptions.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Monthly Mandates & Subscriptions 🔄", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                "Total ₹${String.format("%.0f", uiState.totalMonthlyCommitted)}/mo",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Paid: ₹${String.format("%.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
+                            Text("Pending: ₹${String.format("%.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        }
+
         // Quick Stats: Today's Spend & Avg Daily Spend
         item {
             Row(
@@ -641,16 +700,13 @@ fun TransactionItem(
     val dateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
-    val (emoji, avatarBg) = when (transaction.category.lowercase()) {
-        "food & dining", "food", "dining" -> "🍕" to (if (isDark) Color(0xFF78350F) else Color(0xFFFEF3C7))
-        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) Color(0xFF134E4A) else Color(0xFFCCFBF1))
-        "shopping" -> "🛒" to (if (isDark) Color(0xFF4C1D95) else Color(0xFFF3E8FF))
-        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) Color(0xFF0C4A6E) else Color(0xFFE0F2FE))
-        "investments", "investment" -> "📈" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
-        "health & medical" -> "🏥" to (if (isDark) Color(0xFF881337) else Color(0xFFFFE4E6))
-        "income" -> "💰" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
-        else -> "💸" to (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9))
+    val emoji = remember(transaction.category) {
+        com.expensetracker.app.core.ui.theme.CategoryEmojiProvider.getCategoryEmoji(transaction.category)
     }
+    val categoryColor = remember(transaction.category) {
+        com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(transaction.category)
+    }
+    val avatarBg = categoryColor.copy(alpha = 0.15f)
 
     val isCredit = transaction.type == "CREDIT"
     val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)

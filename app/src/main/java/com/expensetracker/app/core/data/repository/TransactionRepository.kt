@@ -2,6 +2,7 @@ package com.expensetracker.app.core.data.repository
 
 import com.expensetracker.app.core.database.dao.TransactionDao
 import com.expensetracker.app.core.database.entity.TransactionEntity
+import com.expensetracker.app.ingestion.parser.SubscriptionMatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -9,7 +10,8 @@ import javax.inject.Singleton
 
 @Singleton
 class TransactionRepository @Inject constructor(
-    private val transactionDao: TransactionDao
+    private val transactionDao: TransactionDao,
+    private val subscriptionMatcher: SubscriptionMatcher
 ) {
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllTransactions().map { list ->
         list.map { item ->
@@ -29,7 +31,11 @@ class TransactionRepository @Inject constructor(
         } else {
             transaction
         }
-        return transactionDao.insertTransaction(sanitized)
+        val insertedId = transactionDao.insertTransaction(sanitized)
+        if (insertedId > 0) {
+            subscriptionMatcher.matchAndAdvance(sanitized.copy(id = insertedId))
+        }
+        return insertedId
     }
 
     suspend fun updateTransaction(transaction: TransactionEntity) {

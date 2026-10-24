@@ -20,6 +20,9 @@ import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
 import net.sqlcipher.database.SupportFactory
 
+import com.expensetracker.app.core.database.dao.MerchantCategoryMappingDao
+import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
+
 @Database(
     entities = [
         TransactionEntity::class,
@@ -30,10 +33,11 @@ import net.sqlcipher.database.SupportFactory
         SplitExpenseEntity::class,
         ExpenseSplitShareEntity::class,
         GroupSettlementEntity::class,
-        SubscriptionEntity::class
+        SubscriptionEntity::class,
+        MerchantCategoryMappingEntity::class
     ],
-    version = 3,
-    exportSchema = false
+    version = 4,
+    exportSchema = true
 )
 abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
@@ -41,6 +45,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun splitDao(): SplitDao
     abstract fun subscriptionDao(): SubscriptionDao
+    abstract fun merchantCategoryMappingDao(): MerchantCategoryMappingDao
 
     companion object {
         @Volatile
@@ -55,7 +60,6 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     "expense_tracker_encrypted.db"
                 )
                     .openHelperFactory(factory)
-                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

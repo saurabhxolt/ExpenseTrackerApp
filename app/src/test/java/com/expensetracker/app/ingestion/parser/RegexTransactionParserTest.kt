@@ -450,4 +450,19 @@ class RegexTransactionParserTest {
         assertEquals("DEBIT", result.type)
         assertEquals("Bills & Utilities", result.category)
     }
+
+    @Test
+    fun testExcludeYesBankFestiveLoanOfferScreenshot1() {
+        val sms = "YES BANK LTD Limited Time Festive Offer\nHi Customer, to credit the festive loan of ₹3,22,000.00 to your Yes Bank Credit Card ending xx0570, please provide your digital authorization via the link below."
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Promotional festive loan offer SMS must be excluded", result)
+    }
+
+    @Test
+    fun testExcludeAuBankEmiConversionOfferScreenshot2() {
+        val sms = "Easy Payments with EMI is 1 step away! Convert your transaction of ₹7000 into EMI on AU Credit Card 💳.No paperwork needed ❗"
+        val result = RegexTransactionParser.parse(sms)
+        assertNull("Promotional EMI conversion marketing SMS must be excluded", result)
+    }
 }
+

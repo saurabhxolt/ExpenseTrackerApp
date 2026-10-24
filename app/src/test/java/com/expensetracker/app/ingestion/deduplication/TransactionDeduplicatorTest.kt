@@ -18,10 +18,27 @@ class TransactionDeduplicatorTest {
         override fun getTotalExpenses(): Flow<Double?> = flowOf(storedTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount })
         override fun getTotalIncome(): Flow<Double?> = flowOf(storedTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount })
 
+        override suspend fun getNetBalance(): Double {
+            val income = storedTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
+            val expense = storedTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
+            return income - expense
+        }
+
+        override suspend fun getTodaySpend(startOfDayTimestamp: Long): Double? {
+            val spend = storedTransactions.filter { it.type == "DEBIT" && it.timestamp >= startOfDayTimestamp }.sumOf { it.amount }
+            return if (spend > 0) spend else null
+        }
+
         override suspend fun findCandidateDuplicate(type: String, amount: Double): TransactionEntity? {
             return storedTransactions.firstOrNull {
                 it.type == type && Math.abs(it.amount - amount) < 0.01
             }
+        }
+
+        override suspend fun findDuplicatesInWindow(type: String, amount: Double, timestamp: Long, windowMs: Long): List<TransactionEntity> {
+            return storedTransactions.filter {
+                it.type == type && Math.abs(it.amount - amount) < 0.01 && Math.abs(it.timestamp - timestamp) <= windowMs
+            }.sortedBy { Math.abs(it.timestamp - timestamp) }
         }
 
         override suspend fun findExistingCreditCardPayment(amount: Double): TransactionEntity? {
@@ -29,6 +46,13 @@ class TransactionDeduplicatorTest {
                 Math.abs(it.amount - amount) < 0.01 &&
                 (it.merchant.contains("Credit Card", ignoreCase = true) || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
             }
+        }
+
+        override suspend fun findCreditCardPaymentsInWindow(amount: Double, timestamp: Long, windowMs: Long): List<TransactionEntity> {
+            return storedTransactions.filter {
+                Math.abs(it.amount - amount) < 0.01 && Math.abs(it.timestamp - timestamp) <= windowMs &&
+                (it.merchant.contains("Credit Card", ignoreCase = true) || it.category == "Bills & Utilities" || it.rawText.contains("credit card", ignoreCase = true) || it.rawText.contains("cheq", ignoreCase = true) || it.rawText.contains("cred", ignoreCase = true))
+            }.sortedBy { Math.abs(it.timestamp - timestamp) }
         }
 
         override suspend fun insertTransaction(transaction: TransactionEntity): Long {
@@ -45,6 +69,14 @@ class TransactionDeduplicatorTest {
 
         override suspend fun deleteTransaction(transaction: TransactionEntity) {
             storedTransactions.remove(transaction)
+        }
+
+        override suspend fun updateTransactionCategoryName(oldCategoryName: String, newCategoryName: String) {
+            storedTransactions.forEachIndexed { index, tx ->
+                if (tx.category == oldCategoryName) {
+                    storedTransactions[index] = tx.copy(category = newCategoryName)
+                }
+            }
         }
     }
 
@@ -319,5 +351,40 @@ class TransactionDeduplicatorTest {
         assertEquals("First Airtel UPI payment inserted", 1L, id1)
         assertEquals("Second Airtel Black receipt suppressed as duplicate (-1)", -1L, id2)
         assertEquals("Database should contain 1 transaction record", 1, dao.storedTransactions.size)
+    }
+
+    @Test
+    fun testLegitimateRepeatPurchaseOutsideWindowAllowed() = runBlocking {
+        val dao = FakeTransactionDao()
+        val timestamp = System.currentTimeMillis()
+
+        // First purchase: Starbucks coffee ₹250 today
+        val coffee1 = TransactionEntity(
+            amount = 250.0,
+            type = "DEBIT",
+            merchant = "Starbucks",
+            rawText = "Paid Rs 250 at Starbucks",
+            category = "Food & Dining",
+            timestamp = timestamp,
+            transactionHash = "hash-starbucks-1"
+        )
+
+        // Second purchase: Starbucks coffee ₹250 three days later
+        val coffee2 = TransactionEntity(
+            amount = 250.0,
+            type = "DEBIT",
+            merchant = "Starbucks",
+            rawText = "Paid Rs 250 at Starbucks",
+            category = "Food & Dining",
+            timestamp = timestamp + 3 * 24 * 3600 * 1000L, // 3 days later
+            transactionHash = "hash-starbucks-2"
+        )
+
+        val id1 = TransactionDeduplicator.insertWithDeduplication(dao, coffee1)
+        val id2 = TransactionDeduplicator.insertWithDeduplication(dao, coffee2)
+
+        assertEquals("First coffee purchase inserted", 1L, id1)
+        assertEquals("Second coffee purchase on another day MUST be inserted (not suppressed)", 2L, id2)
+        assertEquals("Database must contain 2 separate records for repeat purchases", 2, dao.storedTransactions.size)
     }
 }

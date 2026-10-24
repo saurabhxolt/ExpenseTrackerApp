@@ -21,16 +21,28 @@ data class CategoryShare(
     val percentage: Float
 )
 
+data class AnalyticsFilterState(
+    val periodPreset: String,
+    val monthYear: String,
+    val customStartMs: Long?,
+    val customEndMs: Long?,
+    val transactionType: String
+)
+
 data class AnalyticsUiState(
     val categoryShares: List<CategoryShare> = emptyList(),
     val totalExpenses: Double = 0.0,
     val totalIncome: Double = 0.0,
     val totalInvestments: Double = 0.0,
+    val totalTransfers: Double = 0.0,
+    val activeTypeTotal: Double = 0.0,
     val topSpendingCategory: String = "None",
     val monthYearOptions: List<String> = listOf("ALL"),
     val periodPresetOptions: List<String> = listOf("ALL", "THIS_MONTH", "LAST_MONTH", "LAST_3_MONTHS", "LAST_6_MONTHS", "YEARLY", "CUSTOM"),
+    val transactionTypeOptions: List<String> = listOf("DEBIT", "CREDIT", "INVESTMENT", "TRANSFER", "ALL"),
     val selectedPeriodPreset: String = "ALL",
     val selectedMonthYear: String = "ALL",
+    val selectedTransactionType: String = "DEBIT",
     val customStartDateMs: Long? = null,
     val customEndDateMs: Long? = null
 )
@@ -42,6 +54,7 @@ class AnalyticsViewModel @Inject constructor(
 
     private val _selectedPeriodPreset = MutableStateFlow("ALL")
     private val _selectedMonthYear = MutableStateFlow("ALL")
+    private val _selectedTransactionType = MutableStateFlow("DEBIT")
     private val _customStartDateMs = MutableStateFlow<Long?>(null)
     private val _customEndDateMs = MutableStateFlow<Long?>(null)
 
@@ -49,9 +62,10 @@ class AnalyticsViewModel @Inject constructor(
         _selectedPeriodPreset,
         _selectedMonthYear,
         _customStartDateMs,
-        _customEndDateMs
-    ) { preset, monthYear, startMs, endMs ->
-        AnalyticsFilterState(preset, monthYear, startMs, endMs)
+        _customEndDateMs,
+        _selectedTransactionType
+    ) { preset, monthYear, startMs, endMs, type ->
+        AnalyticsFilterState(preset, monthYear, startMs, endMs, type)
     }
 
     val uiState: StateFlow<AnalyticsUiState> = combine(
@@ -99,17 +113,29 @@ class AnalyticsViewModel @Inject constructor(
         val debitTransactions = filtered.filter { it.type == "DEBIT" }
         val creditTransactions = filtered.filter { it.type == "CREDIT" }
         val investmentTransactions = filtered.filter { it.type == "INVESTMENT" }
+        val transferTransactions = filtered.filter { it.type == "TRANSFER" }
 
         val totalExp = debitTransactions.sumOf { it.amount }
         val totalInc = creditTransactions.sumOf { it.amount }
         val totalInv = investmentTransactions.sumOf { it.amount }
+        val totalTrf = transferTransactions.sumOf { it.amount }
 
-        val shares = (debitTransactions + investmentTransactions)
+        // Filter transactions for Donut chart breakdown based strictly on selected Transaction Type
+        val donutTransactions = when (filterState.transactionType) {
+            "DEBIT" -> debitTransactions
+            "CREDIT" -> creditTransactions
+            "INVESTMENT" -> investmentTransactions
+            "TRANSFER" -> transferTransactions
+            else -> filtered // ALL
+        }
+
+        val activeTotal = donutTransactions.sumOf { it.amount }
+
+        val shares = donutTransactions
             .groupBy { it.category }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
             .map { (cat, amount) ->
-                val base = totalExp + totalInv
-                val pct = if (base > 0) (amount / base).toFloat() else 0f
+                val pct = if (activeTotal > 0) (amount / activeTotal).toFloat() else 0f
                 CategoryShare(categoryName = cat, totalAmount = amount, percentage = pct)
             }
             .sortedByDescending { it.totalAmount }
@@ -121,10 +147,13 @@ class AnalyticsViewModel @Inject constructor(
             totalExpenses = totalExp,
             totalIncome = totalInc,
             totalInvestments = totalInv,
+            totalTransfers = totalTrf,
+            activeTypeTotal = activeTotal,
             topSpendingCategory = topCategory,
             monthYearOptions = allMonthOptions,
             selectedPeriodPreset = filterState.periodPreset,
             selectedMonthYear = filterState.monthYear,
+            selectedTransactionType = filterState.transactionType,
             customStartDateMs = filterState.customStartMs,
             customEndDateMs = filterState.customEndMs
         )
@@ -146,16 +175,12 @@ class AnalyticsViewModel @Inject constructor(
         _selectedMonthYear.value = monthYear
     }
 
+    fun onTransactionTypeSelected(type: String) {
+        _selectedTransactionType.value = type
+    }
+
     fun onCustomDateRangeSelected(startMs: Long?, endMs: Long?) {
         _customStartDateMs.value = startMs
         _customEndDateMs.value = endMs
-        _selectedPeriodPreset.value = "CUSTOM"
     }
 }
-
-private data class AnalyticsFilterState(
-    val periodPreset: String,
-    val monthYear: String,
-    val customStartMs: Long?,
-    val customEndMs: Long?
-)

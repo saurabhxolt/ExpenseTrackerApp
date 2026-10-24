@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.app.core.data.repository.CategoryRepository
 import com.expensetracker.app.core.data.repository.TransactionRepository
 import com.expensetracker.app.core.database.entity.TransactionEntity
+import com.expensetracker.app.ingestion.parser.CategoryClassifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,7 +40,8 @@ data class TransactionsUiState(
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
     private val repository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val categoryClassifier: CategoryClassifier
 ) : ViewModel() {
 
     private val _selectedFilter = MutableStateFlow("ALL")
@@ -88,9 +90,33 @@ class TransactionsViewModel @Inject constructor(
         val availableBanks = list.map { extractBankName(it) }.distinct().sorted()
         val allBankOptions = listOf("ALL") + availableBanks
 
-        val nowCal = Calendar.getInstance()
-        val currentYear = nowCal.get(Calendar.YEAR)
-        val currentMonth = nowCal.get(Calendar.MONTH)
+        val nowMs = System.currentTimeMillis()
+        val thisMonthStart = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val lastMonthCal = Calendar.getInstance().apply {
+            add(Calendar.MONTH, -1)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val lastMonthStart = lastMonthCal.timeInMillis
+        val lastMonthEnd = thisMonthStart - 1L
+
+        val yearStart = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
         val filtered = list.filter { item ->
             val matchesType = when (filterState.filter) {
@@ -104,19 +130,12 @@ class TransactionsViewModel @Inject constructor(
             val matchesBank = if (filterState.bankFilter == "ALL") true else extractBankName(item) == filterState.bankFilter
             val matchesMonth = if (filterState.monthYear == "ALL") true else monthFormat.format(Date(item.timestamp)) == filterState.monthYear
 
-            val itemCal = Calendar.getInstance().apply { timeInMillis = item.timestamp }
-            val itemYear = itemCal.get(Calendar.YEAR)
-            val itemMonth = itemCal.get(Calendar.MONTH)
-
             val matchesPeriod = when (filterState.periodPreset) {
-                "THIS_MONTH" -> itemYear == currentYear && itemMonth == currentMonth
-                "LAST_MONTH" -> {
-                    val lastMonthCal = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
-                    itemYear == lastMonthCal.get(Calendar.YEAR) && itemMonth == lastMonthCal.get(Calendar.MONTH)
-                }
-                "LAST_3_MONTHS" -> item.timestamp >= (System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000)
-                "LAST_6_MONTHS" -> item.timestamp >= (System.currentTimeMillis() - 180L * 24 * 60 * 60 * 1000)
-                "YEARLY" -> itemYear == currentYear
+                "THIS_MONTH" -> item.timestamp >= thisMonthStart
+                "LAST_MONTH" -> item.timestamp in lastMonthStart..lastMonthEnd
+                "LAST_3_MONTHS" -> item.timestamp >= (nowMs - 90L * 24 * 60 * 60 * 1000)
+                "LAST_6_MONTHS" -> item.timestamp >= (nowMs - 180L * 24 * 60 * 60 * 1000)
+                "YEARLY" -> item.timestamp >= yearStart
                 "CUSTOM" -> {
                     val start = filterState.customStartMs ?: 0L
                     val end = filterState.customEndMs ?: Long.MAX_VALUE
@@ -205,6 +224,7 @@ class TransactionsViewModel @Inject constructor(
                 type = newType
             )
             repository.updateTransaction(updated)
+            categoryClassifier.saveUserMerchantPreference(newMerchant, newCategory)
         }
     }
 

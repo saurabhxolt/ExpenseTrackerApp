@@ -19,8 +19,7 @@ import java.util.concurrent.TimeUnit
 
 class BillReminderWorker(
     private val context: Context,
-    params: WorkerParameters,
-    private val transactionDao: TransactionDao
+    params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {

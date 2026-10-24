@@ -4,11 +4,14 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expensetracker.app.core.data.repository.CategoryRepository
+import com.expensetracker.app.core.data.repository.SubscriptionRepository
 import com.expensetracker.app.core.data.repository.TransactionRepository
+import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
 import com.expensetracker.app.core.promotions.Promotion
 import com.expensetracker.app.core.promotions.PromotionManager
 import com.expensetracker.app.core.utils.PermissionUtils
+import com.expensetracker.app.ingestion.parser.CategoryClassifier
 import com.expensetracker.app.ingestion.sms.SmsScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -50,14 +53,20 @@ data class DashboardUiState(
     val lastDeletedTransaction: TransactionEntity? = null,
     val promotions: List<Promotion> = emptyList(),
     val isAutoTrackingEnabled: Boolean = false,
-    val isScanning: Boolean = false
+    val isScanning: Boolean = false,
+    val upcomingSubscriptions: List<SubscriptionEntity> = emptyList(),
+    val totalMonthlyCommitted: Double = 0.0,
+    val totalPaidCommitted: Double = 0.0,
+    val totalPendingCommitted: Double = 0.0
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
-    private val promotionManager: PromotionManager
+    private val subscriptionRepository: SubscriptionRepository,
+    private val promotionManager: PromotionManager,
+    private val categoryClassifier: CategoryClassifier
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)
@@ -69,22 +78,28 @@ class DashboardViewModel @Inject constructor(
     private val _promotions = MutableStateFlow<List<Promotion>>(emptyList())
 
     private val _filterState = combine(
-        _selectedPeriodFilter,
-        _selectedMonthYear,
-        _selectedSortOrder,
-        _isAutoTrackingEnabled,
-        _isScanning
-    ) { periodFilter, monthYear, sortOrder, autoTrack, scanning ->
-        FilterState(periodFilter, monthYear, sortOrder, autoTrack, scanning)
+        combine(_selectedPeriodFilter, _selectedMonthYear, _selectedSortOrder) { p, m, s -> Triple(p, m, s) },
+        combine(_isAutoTrackingEnabled, _isScanning, _lastDeletedTransaction, _promotions) { a, sc, l, pr ->
+            FilterExtra(a, sc, l, pr)
+        }
+    ) { pms, extra ->
+        FilterState(
+            periodFilter = pms.first,
+            monthYear = pms.second,
+            sortOrder = pms.third,
+            isAutoTrackingEnabled = extra.autoTrack,
+            isScanning = extra.scanning,
+            lastDeleted = extra.lastDeleted,
+            promos = extra.promos
+        )
     }
 
     val uiState: StateFlow<DashboardUiState> = combine(
         repository.allTransactions,
         categoryRepository.allCategories,
-        _filterState,
-        _lastDeletedTransaction,
-        _promotions
-    ) { transactions, categoryEntities, filterState, lastDeleted, promos ->
+        subscriptionRepository.allSubscriptions,
+        _filterState
+    ) { transactions, categoryEntities, subscriptions, filterState ->
 
         val startOfToday = getStartOfTodayTimestamp()
         val startOf7DaysAgo = getStartOf7DaysAgoTimestamp()
@@ -126,6 +141,21 @@ class DashboardViewModel @Inject constructor(
         val customCatNames = categoryEntities.map { it.name }
         val combinedCategories = (defaultCats + customCatNames).distinct()
 
+        val activeSubs = subscriptions.filter { it.isActive }
+        val totalMonthlyComm = activeSubs.sumOf { sub ->
+            when (sub.billingCycle) {
+                "Yearly" -> sub.amount / 12.0
+                "Weekly" -> sub.amount * 4.33
+                "Quarterly" -> sub.amount / 3.0
+                else -> sub.amount
+            }
+        }
+        val nowMs = System.currentTimeMillis()
+        val totalPaidComm = activeSubs.filter { it.autoMatched && it.lastPaidDateMs != null && (nowMs - it.lastPaidDateMs) < 30 * 86400000L }.sumOf { it.amount }
+        val totalPendingComm = (totalMonthlyComm - totalPaidComm).coerceAtLeast(0.0)
+
+        val upcomingSubs = activeSubs.sortedBy { it.nextDueDateMs }.take(4)
+
         DashboardUiState(
             transactions = sortedTransactions,
             categories = combinedCategories,
@@ -141,10 +171,14 @@ class DashboardViewModel @Inject constructor(
             netCashflow = netCash,
             savingsRate = savRate,
             avgDailySpend = dailyAvg,
-            lastDeletedTransaction = lastDeleted,
-            promotions = promos,
+            lastDeletedTransaction = filterState.lastDeleted,
+            promotions = filterState.promos,
             isAutoTrackingEnabled = filterState.isAutoTrackingEnabled,
-            isScanning = filterState.isScanning
+            isScanning = filterState.isScanning,
+            upcomingSubscriptions = upcomingSubs,
+            totalMonthlyCommitted = totalMonthlyComm,
+            totalPaidCommitted = totalPaidComm,
+            totalPendingCommitted = totalPendingComm
         )
     }.stateIn(
         scope = viewModelScope,
@@ -152,26 +186,38 @@ class DashboardViewModel @Inject constructor(
         initialValue = DashboardUiState()
     )
 
+    init {
+        loadPromotions()
+    }
+
     fun refreshPermissionState(context: Context) {
-        val fullyEnabled = PermissionUtils.isAutoTrackingFullyEnabled(context)
-        _isAutoTrackingEnabled.value = fullyEnabled
+        val hasSms = PermissionUtils.isSmsPermissionGranted(context)
+        val hasNotif = PermissionUtils.isNotificationListenerGranted(context)
+        _isAutoTrackingEnabled.value = hasSms && hasNotif
+    }
 
+    fun triggerSmsInboxScan(context: Context) {
+        if (!PermissionUtils.isSmsPermissionGranted(context)) return
         viewModelScope.launch(Dispatchers.IO) {
-            _promotions.value = promotionManager.getActivePromotions()
-            val db = com.expensetracker.app.core.database.ExpenseDatabase.getInstance(
-                context.applicationContext,
-                "expense_tracker_secret_passphrase_key".toByteArray()
-            )
-            com.expensetracker.app.ingestion.deduplication.TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
-        }
-
-        if (PermissionUtils.isSmsPermissionGranted(context)) {
-            triggerSmsInboxScan(context)
+            _isScanning.value = true
+            try {
+                SmsScanner.scanInbox(context)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isScanning.value = false
+            }
         }
     }
 
-    fun setPeriodFilter(periodFilter: PeriodFilter) {
-        _selectedPeriodFilter.value = periodFilter
+    private fun loadPromotions() {
+        viewModelScope.launch {
+            _promotions.value = promotionManager.getActivePromotions()
+        }
+    }
+
+    fun setPeriodFilter(filter: PeriodFilter) {
+        _selectedPeriodFilter.value = filter
     }
 
     fun setMonthYearFilter(monthYear: String) {
@@ -182,20 +228,13 @@ class DashboardViewModel @Inject constructor(
         _selectedSortOrder.value = sortOrder
     }
 
-    fun triggerSmsInboxScan(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isScanning.value = true
-            try {
-                SmsScanner.scanInbox(context)
-            } finally {
-                _isScanning.value = false
-            }
-        }
+    fun addTransaction(merchant: String, amount: Double, type: String = "DEBIT", category: String = "General Expense", note: String = "", timestamp: Long = System.currentTimeMillis()) {
+        addManualTransaction(merchant, category, amount, type, note, timestamp)
     }
 
-    fun addTransaction(merchant: String, amount: Double, type: String, category: String, note: String = "", timestamp: Long = System.currentTimeMillis()) {
+    fun addManualTransaction(merchant: String, category: String, amount: Double, type: String = "DEBIT", note: String = "", timestamp: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
-            val hash = "$merchant-$amount-$timestamp-${(0..9999).random()}"
+            val hash = "manual_${timestamp}_${amount}_$merchant"
             val entity = TransactionEntity(
                 amount = amount,
                 type = type,
@@ -208,6 +247,7 @@ class DashboardViewModel @Inject constructor(
                 isManual = true
             )
             repository.insertTransaction(entity)
+            categoryClassifier.saveUserMerchantPreference(merchant, category)
         }
     }
 
@@ -220,6 +260,7 @@ class DashboardViewModel @Inject constructor(
                 type = newType
             )
             repository.updateTransaction(updated)
+            categoryClassifier.saveUserMerchantPreference(newMerchant, newCategory)
         }
     }
 
@@ -319,11 +360,20 @@ class DashboardViewModel @Inject constructor(
         return (diffMs / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(1)
     }
 
+    private data class FilterExtra(
+        val autoTrack: Boolean,
+        val scanning: Boolean,
+        val lastDeleted: TransactionEntity?,
+        val promos: List<Promotion>
+    )
+
     private data class FilterState(
         val periodFilter: PeriodFilter,
         val monthYear: String,
         val sortOrder: String,
         val isAutoTrackingEnabled: Boolean,
-        val isScanning: Boolean
+        val isScanning: Boolean,
+        val lastDeleted: TransactionEntity?,
+        val promos: List<Promotion>
     )
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -95,6 +96,7 @@ fun SubscriptionsRoute(
         Box(modifier = Modifier.padding(padding)) {
             SubscriptionsScreen(
                 uiState = uiState,
+                onAddCandidate = { viewModel.addDetectedCandidate(it) },
                 onToggleActive = { viewModel.toggleSubscriptionActive(it.entity) },
                 onMarkPaid = { viewModel.markAsPaid(it) },
                 onEdit = { item ->
@@ -126,6 +128,7 @@ fun SubscriptionsRoute(
 @Composable
 fun SubscriptionsScreen(
     uiState: SubscriptionsUiState,
+    onAddCandidate: (com.expensetracker.app.core.data.repository.DetectedSubscriptionCandidate) -> Unit = {},
     onToggleActive: (SubscriptionUiModel) -> Unit = {},
     onMarkPaid: (SubscriptionUiModel) -> Unit = {},
     onEdit: (SubscriptionUiModel) -> Unit = {},
@@ -184,6 +187,44 @@ fun SubscriptionsScreen(
                             color = PrimaryBlue,
                             fontSize = 13.sp
                         )
+                    }
+                }
+            }
+        }
+
+        // Smart Subscription Radar Banner
+        if (uiState.detectedCandidates.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🛰️ Smart Subscription Radar", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.weight(1f))
+                            Text("${uiState.detectedCandidates.size} Detected", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        }
+                        Text(
+                            "We detected recurring payments in your history. Tap to add to your mandates:",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(uiState.detectedCandidates) { cand ->
+                                Button(
+                                    onClick = { onAddCandidate(cand) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    shape = RoundedCornerShape(20.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("+ ${cand.name} (₹${String.format("%.0f", cand.amount)}/mo)", fontSize = 12.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }

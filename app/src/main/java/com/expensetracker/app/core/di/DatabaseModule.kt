@@ -4,6 +4,7 @@ import android.content.Context
 import com.expensetracker.app.core.database.ExpenseDatabase
 import com.expensetracker.app.core.database.dao.BudgetDao
 import com.expensetracker.app.core.database.dao.CategoryDao
+import com.expensetracker.app.core.database.dao.MerchantCategoryMappingDao
 import com.expensetracker.app.core.database.dao.SplitDao
 import com.expensetracker.app.core.database.dao.SubscriptionDao
 import com.expensetracker.app.core.database.dao.TransactionDao
@@ -21,8 +22,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): ExpenseDatabase {
-        // Passphrase for SQLCipher Room DB encryption
-        val passphrase = "expense_tracker_secret_passphrase_key".toByteArray()
+        val passphrase = com.expensetracker.app.core.security.SecurityKeyManager.getOrCreateDatabasePassphrase(context)
         return ExpenseDatabase.getInstance(context, passphrase)
     }
 
@@ -40,4 +40,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSubscriptionDao(db: ExpenseDatabase): SubscriptionDao = db.subscriptionDao()
+
+    @Provides
+    fun provideMerchantCategoryMappingDao(db: ExpenseDatabase): MerchantCategoryMappingDao = db.merchantCategoryMappingDao()
 }

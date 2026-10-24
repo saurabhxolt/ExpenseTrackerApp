@@ -1,0 +1,18 @@
+# Cursor Rules - Expense Tracker App
+# Directs Cursor AI to obey master governance rules.
+
+You are working on an offline-first Android Native app (Kotlin, Jetpack Compose Material3, Room + SQLCipher AES-256).
+
+You MUST strictly follow and obey all operating standards defined in:
+1. AGENTS.md (Root AI Governance)
+2. .agents/AGENTS.md (Project Rules & Dedicated Agent Skills)
+3. PROJECT_TRACKER.md (Active sprint status, max 150 lines)
+4. docs/architecture/ (Subsystem modular cheatsheets)
+5. docs/development/ (Development workflows & QA test playbooks)
+
+Key Enforcements:
+- STRICT NO-PUSH to remote git repositories.
+- Zero network permissions (`android.permission.INTERNET` forbidden).
+- Zero false positives in SMS/Notification parsing (promotions, OTPs, balance notices must be dropped).
+- Word boundaries (`\b`) required on all short service matchers (`\bcred\b`, `\bcheq\b`, `\bupi\b`).
+- Keep docs (PROJECT_TRACKER.md, FEATURES.md, SRS, walkthrough.md) synchronized in the exact same commit.

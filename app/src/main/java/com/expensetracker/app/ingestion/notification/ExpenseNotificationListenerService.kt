@@ -34,22 +34,35 @@ class ExpenseNotificationListenerService : NotificationListenerService() {
                 if (parsed != null) {
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            val db = ExpenseDatabase.getInstance(applicationContext, "expense_tracker_secret_passphrase_key".toByteArray())
-                            val hash = "${parsed.merchant}-${parsed.amount}-${parsed.timestamp}"
+                            val passphrase = com.expensetracker.app.core.security.SecurityKeyManager.getOrCreateDatabasePassphrase(applicationContext)
+                            val db = ExpenseDatabase.getInstance(applicationContext, passphrase)
+                            val mappingDao = db.merchantCategoryMappingDao()
+
+                            val notifTimestamp = sbn.postTime.takeIf { it > 0 } ?: parsed.timestamp
+
+                            // Check learned merchant category preference
+                            val normKey = com.expensetracker.app.ingestion.parser.CategoryClassifier.normalizeMerchantKey(parsed.merchant)
+                            val learnedCategory = if (normKey.isNotBlank()) {
+                                mappingDao.getMappingForMerchant(normKey)?.assignedCategory
+                            } else null
+                            val finalCategory = learnedCategory?.takeIf { it.isNotBlank() } ?: parsed.category
+
+                            val hash = "${parsed.merchant}-${parsed.amount}-$notifTimestamp"
                             val entity = TransactionEntity(
                                 amount = parsed.amount,
                                 type = parsed.type,
                                 merchant = parsed.merchant,
                                 rawText = combined,
-                                category = parsed.category,
-                                timestamp = parsed.timestamp,
+                                category = finalCategory,
+                                timestamp = notifTimestamp,
                                 transactionHash = hash
                             )
                             val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
                             if (rowId > 0) {
                                 Log.d("NotificationService", "Saved notification transaction: ${parsed.merchant} ₹${parsed.amount}")
                                 val subRepo = com.expensetracker.app.core.data.repository.SubscriptionRepository(db.subscriptionDao())
-                                com.expensetracker.app.ingestion.parser.SubscriptionDetector.autoDetectAndSave(subRepo, parsed)
+                                com.expensetracker.app.ingestion.parser.RecurringMandateDetector.autoDetectAndSave(subRepo, parsed)
+                                com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(applicationContext)
                             } else {
                                 Log.d("NotificationService", "Duplicate notification transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")
                             }

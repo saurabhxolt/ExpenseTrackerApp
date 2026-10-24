@@ -92,10 +92,10 @@ class DailyReviewWorker(
                 putInt(KEY_MINUTE, minute)
                 apply()
             }
-            scheduleConfiguredReview(context)
+            scheduleConfiguredReview(context, forceReschedule = true)
         }
 
-        fun scheduleConfiguredReview(context: Context) {
+        fun scheduleConfiguredReview(context: Context, forceReschedule: Boolean = false) {
             val workManager = WorkManager.getInstance(context)
             val enabled = isDailyReviewEnabled(context)
 
@@ -111,9 +111,15 @@ class DailyReviewWorker(
                 .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
                 .build()
 
+            val policy = if (forceReschedule) {
+                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
+            } else {
+                ExistingPeriodicWorkPolicy.KEEP
+            }
+
             workManager.enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+                policy,
                 request
             )
         }

@@ -22,6 +22,10 @@ android {
         }
     }
 
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file("${rootDir}/vault_release_key.jks")

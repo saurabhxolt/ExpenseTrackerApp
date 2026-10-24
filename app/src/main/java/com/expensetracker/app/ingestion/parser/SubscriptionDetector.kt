@@ -4,7 +4,7 @@ import com.expensetracker.app.core.data.repository.SubscriptionRepository
 import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import java.util.Calendar
 
-object SubscriptionDetector {
+object RecurringMandateDetector {
 
     private val RECURRING_KEYWORDS = listOf(
         "autopay", "e-mandate", "mandate", "recurring", "standing instruction",
@@ -100,3 +100,7 @@ object SubscriptionDetector {
         return c.timeInMillis
     }
 }
+
+@Deprecated("Renamed to RecurringMandateDetector to avoid clash with repository SubscriptionDetector", ReplaceWith("RecurringMandateDetector"))
+typealias SubscriptionDetector = RecurringMandateDetector
+

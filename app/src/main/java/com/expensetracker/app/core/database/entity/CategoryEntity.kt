@@ -11,5 +11,6 @@ data class CategoryEntity(
     val type: String, // EXPENSE, INCOME
     val iconName: String,
     val colorHex: String,
-    val isCustom: Boolean = false
+    val isCustom: Boolean = false,
+    val emoji: String = ""
 )

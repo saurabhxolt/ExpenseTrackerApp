@@ -13,5 +13,8 @@ data class SubscriptionEntity(
     val category: String = "Subscriptions",
     val isActive: Boolean = true,
     val isAutoDetected: Boolean = false,
-    val rawText: String = ""
+    val rawText: String = "",
+    val lastPaidTransactionId: Long? = null,
+    val autoMatched: Boolean = false,
+    val lastPaidDateMs: Long? = null
 )

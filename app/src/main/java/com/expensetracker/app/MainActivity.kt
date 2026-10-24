@@ -46,6 +46,8 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     private var isUnlocked by mutableStateOf(false)
+    private var lastBackgroundTimestamp: Long = 0L
+    private val lockGracePeriodMs: Long = 30_000L // 30 seconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,10 +91,21 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        lastBackgroundTimestamp = System.currentTimeMillis()
+    }
+
     override fun onResume() {
         super.onResume()
-        if (BiometricLockManager.isBiometricLockEnabled(this) && !isUnlocked) {
-            triggerBiometricUnlock()
+        if (BiometricLockManager.isBiometricLockEnabled(this)) {
+            val now = System.currentTimeMillis()
+            if (lastBackgroundTimestamp > 0 && (now - lastBackgroundTimestamp) > lockGracePeriodMs) {
+                isUnlocked = false
+            }
+            if (!isUnlocked) {
+                triggerBiometricUnlock()
+            }
         }
     }
 

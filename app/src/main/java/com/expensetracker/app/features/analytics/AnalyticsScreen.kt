@@ -14,42 +14,37 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDateRangePickerState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.expensetracker.app.core.ui.theme.CategoryColorProvider
+import com.expensetracker.app.core.ui.theme.CategoryEmojiProvider
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +58,7 @@ fun AnalyticsRoute(
         uiState = uiState,
         onPeriodPresetSelected = viewModel::onPeriodPresetSelected,
         onMonthYearSelected = viewModel::onMonthYearSelected,
+        onTransactionTypeSelected = viewModel::onTransactionTypeSelected,
         onCustomDateRangeSelected = viewModel::onCustomDateRangeSelected
     )
 }
@@ -73,6 +69,7 @@ fun AnalyticsScreen(
     uiState: AnalyticsUiState,
     onPeriodPresetSelected: (String) -> Unit = {},
     onMonthYearSelected: (String) -> Unit = {},
+    onTransactionTypeSelected: (String) -> Unit = {},
     onCustomDateRangeSelected: (startMs: Long?, endMs: Long?) -> Unit = { _, _ -> }
 ) {
     var showCustomDatePicker by remember { mutableStateOf(false) }
@@ -96,13 +93,14 @@ fun AnalyticsScreen(
     ) {
         item {
             Text(
-                text = "Financial Analytics",
+                text = "Financial Analytics 📊",
                 style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        // Collapsible Unified Filter Bar
+        // Collapsible Unified Filter Bar for Time Period
         item {
             com.expensetracker.app.core.ui.components.UnifiedFilterBar(
                 periodOption = when {
@@ -131,28 +129,71 @@ fun AnalyticsScreen(
             )
         }
 
-        // Visual Canvas Donut Chart Card
-        if (uiState.categoryShares.isNotEmpty() && uiState.totalExpenses > 0) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Category Distribution Donut Chart 🎨",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.align(Alignment.Start)
+        // Transaction Type Selector Bar for Donut Chart & Breakdown
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Breakdown by Transaction Type:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val typeOptions = listOf(
+                    "DEBIT" to "Expenses 💸",
+                    "CREDIT" to "Income 💰",
+                    "INVESTMENT" to "Investments 📈",
+                    "TRANSFER" to "Transfers 🔄",
+                    "ALL" to "All Types 🌐"
+                )
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(typeOptions) { (typeKey, label) ->
+                        val isSelected = uiState.selectedTransactionType == typeKey
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onTransactionTypeSelected(typeKey) },
+                            label = { Text(label, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = PrimaryBlue,
+                                selectedLabelColor = Color.White
+                            )
                         )
+                    }
+                }
+            }
+        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+        // Visual Canvas Donut Chart Card
+        item {
+            val activeTypeLabel = when (uiState.selectedTransactionType) {
+                "DEBIT" -> "Expenses"
+                "CREDIT" -> "Income"
+                "INVESTMENT" -> "Investments"
+                "TRANSFER" -> "Transfers"
+                else -> "Total Flow"
+            }
 
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "$activeTypeLabel Donut Breakdown 🎨",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (uiState.categoryShares.isNotEmpty() && uiState.activeTypeTotal > 0) {
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.size(180.dp)
@@ -175,12 +216,12 @@ fun AnalyticsScreen(
 
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "Total Spent",
-                                    fontSize = 12.sp,
+                                    text = "Total $activeTypeLabel",
+                                    fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "₹${String.format("%.0f", uiState.totalExpenses)}",
+                                    text = "₹${String.format("%.0f", uiState.activeTypeTotal)}",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -190,17 +231,20 @@ fun AnalyticsScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Legend Items
+                        // Top Donut Legend Items
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            uiState.categoryShares.take(4).forEach { cat ->
+                            uiState.categoryShares.take(5).forEach { cat ->
                                 val catColor = CategoryColorProvider.getCategoryColor(cat.categoryName)
+                                val emoji = CategoryEmojiProvider.getCategoryEmoji(cat.categoryName)
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
+                                    Text(text = emoji, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Box(
                                         modifier = Modifier
-                                            .size(12.dp)
+                                            .size(10.dp)
                                             .background(catColor, CircleShape)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -219,6 +263,18 @@ fun AnalyticsScreen(
                                     )
                                 }
                             }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No $activeTypeLabel recorded for selected period",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -318,6 +374,7 @@ fun AnalyticsScreen(
         // Top Category Badge Card
         item {
             val topCategoryColor = CategoryColorProvider.getCategoryColor(uiState.topSpendingCategory)
+            val topEmoji = CategoryEmojiProvider.getCategoryEmoji(uiState.topSpendingCategory)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -327,6 +384,17 @@ fun AnalyticsScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(topCategoryColor.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = topEmoji, fontSize = 22.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Top Spending Category",
@@ -349,6 +417,7 @@ fun AnalyticsScreen(
             Text(
                 text = "Category Breakdown Leaderboard",
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
@@ -367,7 +436,7 @@ fun AnalyticsScreen(
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "No Expense Data Available", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "No Transaction Data Available", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -382,18 +451,7 @@ fun AnalyticsScreen(
 @Composable
 fun CategoryBreakdownCard(item: CategoryShare) {
     val categoryColor = CategoryColorProvider.getCategoryColor(item.categoryName)
-    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
-
-    val (emoji, avatarBg) = when (item.categoryName.lowercase()) {
-        "food & dining", "food", "dining" -> "🍕" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF78350F) else androidx.compose.ui.graphics.Color(0xFFFEF3C7))
-        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF134E4A) else androidx.compose.ui.graphics.Color(0xFFCCFBF1))
-        "shopping" -> "🛒" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF4C1D95) else androidx.compose.ui.graphics.Color(0xFFF3E8FF))
-        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF0C4A6E) else androidx.compose.ui.graphics.Color(0xFFE0F2FE))
-        "investments", "investment" -> "📈" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF064E3B) else androidx.compose.ui.graphics.Color(0xFFD1FAE5))
-        "health & medical" -> "🏥" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF881337) else androidx.compose.ui.graphics.Color(0xFFFFE4E6))
-        "income" -> "💰" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF064E3B) else androidx.compose.ui.graphics.Color(0xFFD1FAE5))
-        else -> "💸" to (if (isDark) androidx.compose.ui.graphics.Color(0xFF334155) else androidx.compose.ui.graphics.Color(0xFFF1F5F9))
-    }
+    val emoji = CategoryEmojiProvider.getCategoryEmoji(item.categoryName)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -414,10 +472,10 @@ fun CategoryBreakdownCard(item: CategoryShare) {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(avatarBg, CircleShape),
+                            .background(categoryColor.copy(alpha = 0.2f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = emoji, fontSize = 18.sp)
+                        Text(text = emoji, fontSize = 20.sp)
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))

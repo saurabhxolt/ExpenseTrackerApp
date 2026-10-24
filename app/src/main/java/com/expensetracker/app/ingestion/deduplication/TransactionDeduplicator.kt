@@ -10,31 +10,57 @@ object TransactionDeduplicator {
         "dr", "cr", "inr", "rs", "amt", "amount", "paid", "debited", "credited", "store", "shop", "at"
     )
 
+    const val DEFAULT_DEDUPLICATION_WINDOW_MS = 2 * 60 * 60 * 1000L // 2-hour window for notification/SMS duplicates
+    const val CC_PAYMENT_DEDUPLICATION_WINDOW_MS = 4 * 24 * 60 * 60 * 1000L // 4-day window for Credit Card settlements
+
     suspend fun insertWithDeduplication(dao: TransactionDao, entity: TransactionEntity): Long {
-        // 1. Generic Timeless Credit Card Payment Deduplication
+        // 1. Credit Card Payment Deduplication (Window: 4 days)
         val isCreditCardPayment = isCreditCardRelated(entity)
 
         if (isCreditCardPayment) {
-            val existingCardPayment = dao.findExistingCreditCardPayment(entity.amount)
-            if (existingCardPayment != null && existingCardPayment.transactionHash != entity.transactionHash) {
-                if (isGenericMerchant(existingCardPayment.merchant) && !isGenericMerchant(entity.merchant)) {
-                    val updated = existingCardPayment.copy(
-                        merchant = entity.merchant,
-                        category = entity.category
-                    )
-                    dao.updateTransaction(updated)
+            val candidatePayments = dao.findCreditCardPaymentsInWindow(
+                amount = entity.amount,
+                timestamp = entity.timestamp,
+                windowMs = CC_PAYMENT_DEDUPLICATION_WINDOW_MS
+            ).ifEmpty {
+                val single = dao.findExistingCreditCardPayment(entity.amount)
+                if (single != null && Math.abs(single.timestamp - entity.timestamp) <= CC_PAYMENT_DEDUPLICATION_WINDOW_MS) {
+                    listOf(single)
+                } else emptyList()
+            }
+
+            for (existingCardPayment in candidatePayments) {
+                if (existingCardPayment.transactionHash != entity.transactionHash) {
+                    if (isGenericMerchant(existingCardPayment.merchant) && !isGenericMerchant(entity.merchant)) {
+                        val updated = existingCardPayment.copy(
+                            merchant = entity.merchant,
+                            category = entity.category
+                        )
+                        dao.updateTransaction(updated)
+                    }
+                    return -1L // Suppress duplicate credit card payment confirmation within 4-day window
                 }
-                return -1L // Suppress duplicate credit card payment confirmation timelessly
             }
         }
 
-        // 2. Generic Timeless Candidate Duplicate Search (No time bound)
-        val existing = dao.findCandidateDuplicate(
+        // 2. Dual-Channel Candidate Duplicate Search (Window: 2 hours)
+        val candidateDuplicates = dao.findDuplicatesInWindow(
             type = entity.type,
-            amount = entity.amount
-        )
+            amount = entity.amount,
+            timestamp = entity.timestamp,
+            windowMs = DEFAULT_DEDUPLICATION_WINDOW_MS
+        ).ifEmpty {
+            val single = dao.findCandidateDuplicate(type = entity.type, amount = entity.amount)
+            if (single != null && Math.abs(single.timestamp - entity.timestamp) <= DEFAULT_DEDUPLICATION_WINDOW_MS) {
+                listOf(single)
+            } else emptyList()
+        }
 
-        if (existing != null && existing.transactionHash != entity.transactionHash) {
+        for (existing in candidateDuplicates) {
+            if (existing.transactionHash == entity.transactionHash) {
+                return -1L // Identical transaction hash
+            }
+
             val sameRawText = existing.rawText.trim().equals(entity.rawText.trim(), ignoreCase = true)
             val merchantsMatchOrRelated = areMerchantsMatchingOrRelated(existing.merchant, entity.merchant)
             val bothAreRefunds = existing.rawText.lowercase().contains("refund") && entity.rawText.lowercase().contains("refund")
@@ -43,7 +69,7 @@ object TransactionDeduplicator {
             val isExistingGeneric = isGenericMerchant(existing.merchant)
             val isNewGeneric = isGenericMerchant(entity.merchant)
 
-            // Suppress duplicate timelessly if raw text matches, merchants match/related, both are refunds, both are bill receipts, or one is generic
+            // Suppress duplicate within window if raw text matches, merchants match/related, both are refunds, both are bill receipts, or one is generic
             if (sameRawText || merchantsMatchOrRelated || bothAreRefunds || bothAreCashback || bothAreBillPaymentConfirmations || isExistingGeneric || isNewGeneric) {
                 if (isExistingGeneric && !isNewGeneric) {
                     val updated = existing.copy(
@@ -58,7 +84,7 @@ object TransactionDeduplicator {
                     )
                     dao.updateTransaction(updated)
                 }
-                return -1L // Duplicate suppressed timelessly
+                return -1L // Duplicate suppressed within window
             }
         }
 
@@ -93,23 +119,29 @@ object TransactionDeduplicator {
                 val isCandidateCC = isCreditCardRelated(candidate)
                 val sameType = current.type == candidate.type
                 val sameAmount = Math.abs(current.amount - candidate.amount) < 0.01
+                val timeDiff = Math.abs(current.timestamp - candidate.timestamp)
 
-                // 1. Generic Timeless Credit Card / Payment App Cleanup
-                if (isCurrentCC && isCandidateCC && sameAmount) {
+                // 1. Credit Card Settlement Cleanup within 4-day window
+                if (isCurrentCC && isCandidateCC && sameAmount && timeDiff <= CC_PAYMENT_DEDUPLICATION_WINDOW_MS) {
                     toDelete.add(candidate)
                     continue
                 }
 
-                // 2. Generic Timeless Duplicate Cleanup (No time bound)
+                // 2. Duplicate Cleanup (Only within 2-hour window, or exact same text within 24 hours)
                 if (sameType && sameAmount) {
                     val sameRawText = current.rawText.trim().equals(candidate.rawText.trim(), ignoreCase = true)
-                    val relatedMerchants = areMerchantsMatchingOrRelated(current.merchant, candidate.merchant)
-                    val bothRefunds = current.rawText.lowercase().contains("refund") && candidate.rawText.lowercase().contains("refund")
-                    val bothCashback = current.rawText.lowercase().contains("cashback") && candidate.rawText.lowercase().contains("cashback")
-                    val bothBillReceipts = isBillOrPolicyReceipt(current.rawText) && isBillOrPolicyReceipt(candidate.rawText)
+                    val isWithinWindow = timeDiff <= DEFAULT_DEDUPLICATION_WINDOW_MS
+                    val isSameDayExactRawText = sameRawText && timeDiff <= 24 * 60 * 60 * 1000L
 
-                    if (sameRawText || relatedMerchants || bothRefunds || bothCashback || bothBillReceipts) {
-                        toDelete.add(candidate)
+                    if (isWithinWindow || isSameDayExactRawText) {
+                        val relatedMerchants = areMerchantsMatchingOrRelated(current.merchant, candidate.merchant)
+                        val bothRefunds = current.rawText.lowercase().contains("refund") && candidate.rawText.lowercase().contains("refund")
+                        val bothCashback = current.rawText.lowercase().contains("cashback") && candidate.rawText.lowercase().contains("cashback")
+                        val bothBillReceipts = isBillOrPolicyReceipt(current.rawText) && isBillOrPolicyReceipt(candidate.rawText)
+
+                        if (sameRawText || relatedMerchants || bothRefunds || bothCashback || bothBillReceipts) {
+                            toDelete.add(candidate)
+                        }
                     }
                 }
             }

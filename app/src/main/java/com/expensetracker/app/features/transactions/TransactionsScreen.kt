@@ -358,16 +358,13 @@ fun TransactionHistoryItem(
     val dateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
-    val (emoji, avatarBg) = when (transaction.category.lowercase()) {
-        "food & dining", "food", "dining" -> "🍕" to (if (isDark) Color(0xFF78350F) else Color(0xFFFEF3C7))
-        "transportation", "fuel", "travel" -> "🚗" to (if (isDark) Color(0xFF134E4A) else Color(0xFFCCFBF1))
-        "shopping" -> "🛒" to (if (isDark) Color(0xFF4C1D95) else Color(0xFFF3E8FF))
-        "bills & utilities", "credit card bill" -> "💡" to (if (isDark) Color(0xFF0C4A6E) else Color(0xFFE0F2FE))
-        "investments", "investment" -> "📈" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
-        "health & medical" -> "🏥" to (if (isDark) Color(0xFF881337) else Color(0xFFFFE4E6))
-        "income" -> "💰" to (if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5))
-        else -> "💸" to (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9))
+    val emoji = remember(transaction.category) {
+        com.expensetracker.app.core.ui.theme.CategoryEmojiProvider.getCategoryEmoji(transaction.category)
     }
+    val categoryColor = remember(transaction.category) {
+        com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(transaction.category)
+    }
+    val avatarBg = categoryColor.copy(alpha = 0.15f)
 
     val isCredit = transaction.type == "CREDIT"
     val isInvestment = transaction.type == "INVESTMENT" || transaction.category.equals("Investments", ignoreCase = true) || transaction.category.equals("Investment", ignoreCase = true)

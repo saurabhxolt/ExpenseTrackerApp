@@ -42,7 +42,18 @@ object RegexTransactionParser {
         Pattern.compile("(?i)premium\\s+starts"),
         Pattern.compile("(?i)reminder\\s+for\\s+appointment"),
         Pattern.compile("(?i)missed\\s+call\\s+from"),
-        Pattern.compile("(?i)limit.*cannot\\s+be\\s+increased")
+        Pattern.compile("(?i)limit.*cannot\\s+be\\s+increased"),
+        Pattern.compile("(?i)festive\\s+offer"),
+        Pattern.compile("(?i)festive\\s+loan"),
+        Pattern.compile("(?i)digital\\s+authorization"),
+        Pattern.compile("(?i)authorization\\s+via"),
+        Pattern.compile("(?i)convert.*into\\s+emi"),
+        Pattern.compile("(?i)convert\\s+your\\s+transaction"),
+        Pattern.compile("(?i)is\\s+\\d+\\s+step\\s+away"),
+        Pattern.compile("(?i)step\\s+away"),
+        Pattern.compile("(?i)no\\s+paperwork\\s+needed"),
+        Pattern.compile("(?i)easy\\s+payments\\s+with\\s+emi"),
+        Pattern.compile("(?i)link\\s+below")
     )
 
     private val CC_UPI_VPA_PATTERN = Pattern.compile(
@@ -343,7 +354,7 @@ object RegexTransactionParser {
 
         // Check explicit UPI VPA / CC Bill payment services (CRED, CheQ, Billdesk, BBPS)
         if (CC_UPI_VPA_PATTERN.matcher(text).find()) return true
-        if (lower.contains("cred.club") || lower.contains("cred app") || lower.contains(" to cred") || lower.contains("cheq") || lower.contains("billdesk") || lower.contains("bbps")) return true
+        if (lower.contains("cred.club") || lower.contains("cred app") || lower.contains(" to cred ") || lower.contains(" to cred.") || lower.contains("via cred") || lower.contains("on cred") || lower.contains("cred club") || lower.contains("cheq") || lower.contains("billdesk") || lower.contains("bbps")) return true
 
         // Reject merchant card spending (e.g. Paid inr 250 with your BOBCARD to raz*uniorbit)
         if (lower.contains("with your") || lower.contains("spent on") || lower.contains("spent using") || lower.contains(" to raz") || lower.contains(" to merchant")) return false
@@ -546,21 +557,6 @@ object RegexTransactionParser {
     }
 
     private fun predictCategory(merchant: String, rawText: String, type: String): String {
-        if (type == "CREDIT") return "Income"
-        if (type == "INVESTMENT") return "Investments"
-
-        val lower = "$merchant $rawText".lowercase()
-        return when {
-            lower.contains("swiggy") || lower.contains("zomato") || lower.contains("food") || lower.contains("cafe") || lower.contains("atithi") || lower.contains("restaurant") || lower.contains("bakery") || lower.contains("dining") || lower.contains("dominos") || lower.contains("mcdonald") || lower.contains("starbucks") || lower.contains("kfc") -> "Food & Dining"
-            lower.contains("uber") || lower.contains("ola") || lower.contains("rapido") || lower.contains("irctc") || lower.contains("fuel") || lower.contains("petrol") || lower.contains("fastag") || lower.contains("toll") || lower.contains("railway") || lower.contains("metro") -> "Transportation"
-            lower.contains("amazon") || lower.contains("flipkart") || lower.contains("myntra") || lower.contains("ajio") || lower.contains("dmart") || lower.contains("blinkit") || lower.contains("zepto") || lower.contains("bigbasket") || lower.contains("mart") || lower.contains("store") || lower.contains("retail") -> "Shopping"
-            lower.contains("airtel") || lower.contains("jio") || lower.contains("vi ") || lower.contains("bill") || lower.contains("recharge") || lower.contains("bescom") || lower.contains("electricity") || lower.contains("water") || lower.contains("gas") || lower.contains("broadband") || lower.contains("tata play") || lower.contains("dth") || lower.contains("fibernet") || lower.contains("act ") || lower.contains("actgrp") -> "Bills & Utilities"
-            lower.contains("ksec") || lower.contains("zerodha") || lower.contains("groww") || lower.contains("upstox") || lower.contains("trading") || lower.contains("mutual fund") || lower.contains("sip") || lower.contains("coin") || lower.contains("stock") -> "Investments"
-            lower.contains("netflix") || lower.contains("prime video") || lower.contains("spotify") || lower.contains("youtube") || lower.contains("bookmyshow") || lower.contains("pvr") || lower.contains("inox") || lower.contains("hotstar") || lower.contains("cinema") -> "Entertainment"
-            lower.contains("pharmacy") || lower.contains("apollo") || lower.contains("practo") || lower.contains("hospital") || lower.contains("diagnostic") || lower.contains("medical") || lower.contains("pharmeasy") || lower.contains("1mg") || lower.contains("clinic") -> "Health & Medical"
-            lower.contains("insurance") || lower.contains("acko") || lower.contains("policy") || lower.contains("lic") -> "Insurance"
-            lower.contains("morth") || lower.contains("rto") || lower.contains("fee") || lower.contains("registration fee") || lower.contains("tax") -> "Government & Fees"
-            else -> "General Expense"
-        }
+        return CategoryClassifier.predictCategoryStatic(merchant, rawText, type)
     }
 }

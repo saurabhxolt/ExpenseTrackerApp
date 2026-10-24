@@ -11,6 +11,8 @@ import com.expensetracker.app.core.promotions.PromotionManager
 import com.expensetracker.app.features.backup.BackupManager
 import com.expensetracker.app.features.reports.ReportsExporter
 import com.expensetracker.app.features.security.BiometricLockManager
+import com.expensetracker.app.core.database.dao.MerchantCategoryMappingDao
+import com.expensetracker.app.core.database.dao.SubscriptionDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +38,8 @@ class SettingsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
     private val categoryDao: CategoryDao,
+    private val subscriptionDao: SubscriptionDao,
+    private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val promotionManager: PromotionManager
 ) : ViewModel() {
 
@@ -105,19 +109,33 @@ class SettingsViewModel @Inject constructor(
         val transactions = transactionRepository.allTransactions.first()
         val budgets = budgetRepository.allBudgets.first()
         val categories = categoryDao.getAllCategories().first()
-        return BackupManager.createBackupJson(transactions, categories, budgets)
+        val subscriptions = subscriptionDao.getAllSubscriptionsList()
+        val merchantMappings = merchantCategoryMappingDao.getAllMappingsList()
+        return BackupManager.createBackupJson(
+            transactions = transactions,
+            categories = categories,
+            budgets = budgets,
+            subscriptions = subscriptions,
+            merchantMappings = merchantMappings
+        )
     }
 
     fun restoreBackupJson(jsonStr: String) {
         viewModelScope.launch {
-            val (transactions, categories, budgets) = BackupManager.parseBackupJson(jsonStr)
-            for (t in transactions) {
+            val data = BackupManager.parseBackupData(jsonStr)
+            for (t in data.transactions) {
                 transactionRepository.insertTransaction(t)
             }
-            for (b in budgets) {
+            for (b in data.budgets) {
                 budgetRepository.saveBudget(b)
             }
-            categoryDao.insertCategories(categories)
+            categoryDao.insertCategories(data.categories)
+            for (s in data.subscriptions) {
+                subscriptionDao.insertSubscription(s)
+            }
+            for (m in data.merchantMappings) {
+                merchantCategoryMappingDao.insertMapping(m)
+            }
         }
     }
 }

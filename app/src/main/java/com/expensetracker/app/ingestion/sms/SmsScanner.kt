@@ -44,7 +44,11 @@ object SmsScanner {
                 sortOrder
             )
 
-            val db = ExpenseDatabase.getInstance(context.applicationContext, "expense_tracker_secret_passphrase_key".toByteArray())
+            val passphrase = com.expensetracker.app.core.security.SecurityKeyManager.getOrCreateDatabasePassphrase(context.applicationContext)
+            val db = ExpenseDatabase.getInstance(context.applicationContext, passphrase)
+            val mappingDao = db.merchantCategoryMappingDao()
+
+            val pendingEntities = mutableListOf<TransactionEntity>()
 
             cursor?.use { c ->
                 val bodyIndex = c.getColumnIndex(Telephony.Sms.BODY)
@@ -58,29 +62,40 @@ object SmsScanner {
                     if (parsed != null) {
                         val hash = "${parsed.merchant}-${parsed.amount}-$smsDate"
 
-                        // Insert transaction synchronously into DB
-                        val entity = TransactionEntity(
-                            amount = parsed.amount,
-                            type = parsed.type,
-                            merchant = parsed.merchant,
-                            rawText = body,
-                            category = parsed.category,
-                            timestamp = smsDate,
-                            transactionHash = hash
+                        pendingEntities.add(
+                            TransactionEntity(
+                                amount = parsed.amount,
+                                type = parsed.type,
+                                merchant = parsed.merchant,
+                                rawText = body,
+                                category = parsed.category,
+                                timestamp = smsDate,
+                                transactionHash = hash
+                            )
                         )
-
-                        val rowId = kotlinx.coroutines.runBlocking {
-                            TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), entity)
-                        }
-                        if (rowId > 0) {
-                            newTransactionsCount++
-                        }
                     }
                 }
             }
 
-            val cleanedCount = kotlinx.coroutines.runBlocking {
-                TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
+            var cleanedCount = 0
+            kotlinx.coroutines.runBlocking {
+                for (entity in pendingEntities) {
+                    val normKey = com.expensetracker.app.ingestion.parser.CategoryClassifier.normalizeMerchantKey(entity.merchant)
+                    val learnedCategory = if (normKey.isNotBlank()) {
+                        mappingDao.getMappingForMerchant(normKey)?.assignedCategory
+                    } else null
+                    val finalEntity = if (!learnedCategory.isNullOrBlank()) {
+                        entity.copy(category = learnedCategory)
+                    } else {
+                        entity
+                    }
+
+                    val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), finalEntity)
+                    if (rowId > 0) {
+                        newTransactionsCount++
+                    }
+                }
+                cleanedCount = TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())
             }
 
             // Save new last scan timestamp

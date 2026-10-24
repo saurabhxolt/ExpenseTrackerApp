@@ -1,7 +1,6 @@
 package com.expensetracker.app.features.categories
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,17 +42,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.expensetracker.app.core.database.entity.CategoryEntity
-import com.expensetracker.app.core.ui.theme.DarkCard
+import com.expensetracker.app.core.ui.theme.CategoryColorProvider
+import com.expensetracker.app.core.ui.theme.CategoryEmojiProvider
 import com.expensetracker.app.core.ui.theme.GreenSuccess
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.core.ui.theme.RedExpense
-import com.expensetracker.app.core.ui.theme.TextPrimary
-import com.expensetracker.app.core.ui.theme.TextSecondary
 
 @Composable
 fun CategoriesRoute(
@@ -61,6 +58,7 @@ fun CategoriesRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingCategory by remember { mutableStateOf<CategoryEntity?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -70,22 +68,35 @@ fun CategoriesRoute(
                 contentColor = Color.White,
                 shape = CircleShape
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Category")
+                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Custom Category")
             }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             CategoriesScreen(
                 uiState = uiState,
+                onEditCategory = { editingCategory = it },
                 onDeleteCategory = { viewModel.deleteCategory(it) }
             )
 
             if (showAddDialog) {
-                AddCategoryDialog(
+                AddEditCategoryDialog(
+                    initialCategory = null,
                     onDismiss = { showAddDialog = false },
-                    onConfirm = { name, type, colorHex ->
-                        viewModel.addCategory(name, type, "Category", colorHex)
+                    onConfirm = { name, type, emoji ->
+                        viewModel.addCategory(name = name, type = type, userEmoji = emoji)
                         showAddDialog = false
+                    }
+                )
+            }
+
+            editingCategory?.let { category ->
+                AddEditCategoryDialog(
+                    initialCategory = category,
+                    onDismiss = { editingCategory = null },
+                    onConfirm = { name, type, emoji ->
+                        viewModel.updateCategory(category, newName = name, newType = type, newEmoji = emoji)
+                        editingCategory = null
                     }
                 )
             }
@@ -96,6 +107,7 @@ fun CategoriesRoute(
 @Composable
 fun CategoriesScreen(
     uiState: CategoriesUiState,
+    onEditCategory: (CategoryEntity) -> Unit = {},
     onDeleteCategory: (CategoryEntity) -> Unit = {}
 ) {
     LazyColumn(
@@ -103,81 +115,152 @@ fun CategoriesScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(
-                text = "Custom Categories",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
+            Column {
+                Text(
+                    text = "Category Manager 🏷️",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "All system and custom categories. System auto-assigns non-conflicting colors.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        items(uiState.categories, key = { "${it.id}_${it.name}" }) { category ->
+            CategoryItem(
+                category = category,
+                onEdit = { onEditCategory(category) },
+                onDelete = { onDeleteCategory(category) }
             )
         }
 
-        items(uiState.categories, key = { it.id }) { category ->
-            CategoryItem(category = category, onDelete = { onDeleteCategory(category) })
+        item {
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
 
 @Composable
-fun CategoryItem(category: CategoryEntity, onDelete: () -> Unit) {
-    val parsedColor = remember(category.colorHex, category.name) {
-        try {
-            Color(android.graphics.Color.parseColor(category.colorHex))
-        } catch (e: Exception) {
-            com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(category.name)
-        }
+fun CategoryItem(
+    category: CategoryEntity,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val categoryColor = remember(category.name, category.colorHex) {
+        CategoryColorProvider.getCategoryColor(category.name)
+    }
+    val emoji = remember(category.name, category.emoji) {
+        if (category.emoji.isNotBlank()) category.emoji else CategoryEmojiProvider.getCategoryEmoji(category.name)
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(16.dp)
-                        .background(parsedColor, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
+                        .size(40.dp)
+                        .background(categoryColor.copy(alpha = 0.2f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = emoji, fontSize = 20.sp)
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
                 Column {
-                    Text(text = category.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text(text = category.type, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = category.name,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(categoryColor, CircleShape)
+                        )
+                    }
+                    Text(
+                        text = "${category.type}${if (category.isCustom) " • Custom" else " • System"}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Category",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Category",
+                        tint = PrimaryBlue
+                    )
+                }
+
+                if (category.isCustom && category.id > 0) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Category",
+                            tint = RedExpense
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun AddCategoryDialog(
+fun AddEditCategoryDialog(
+    initialCategory: CategoryEntity? = null,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, type: String, colorHex: String) -> Unit
+    onConfirm: (name: String, type: String, emoji: String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf("EXPENSE") }
+    var name by remember { mutableStateOf(initialCategory?.name ?: "") }
+    var selectedType by remember { mutableStateOf(initialCategory?.type ?: "EXPENSE") }
+    var emojiInput by remember { mutableStateOf(initialCategory?.emoji ?: "") }
+
+    val autoResolvedEmoji = remember(name) {
+        if (emojiInput.isNotBlank()) emojiInput else CategoryEmojiProvider.getCategoryEmoji(name)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Add Custom Category", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface) },
+        title = {
+            Text(
+                text = if (initialCategory == null) "Add Custom Category 🏷️" else "Edit Category ✏️",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    text = "Select Transaction Type:",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(
                         onClick = { selectedType = "EXPENSE" },
@@ -207,7 +290,7 @@ fun AddCategoryDialog(
                             contentColor = if (selectedType == "INVESTMENT") Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("Investment", fontSize = 11.sp)
+                        Text("Invest", fontSize = 11.sp)
                     }
                 }
 
@@ -219,38 +302,34 @@ fun AddCategoryDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                val systemAssignedColor = remember(name) {
-                    com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(name)
-                }
+                OutlinedTextField(
+                    value = emojiInput,
+                    onValueChange = { emojiInput = it },
+                    label = { Text("Category Emoji (Optional)") },
+                    placeholder = { Text(autoResolvedEmoji) },
+                    trailingIcon = { Text(autoResolvedEmoji, fontSize = 20.sp) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(systemAssignedColor, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "System-Assigned Unique Color",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "ℹ️ Category color will be assigned automatically by the system to prevent duplicate color collisions.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
-                        val assignedColor = com.expensetracker.app.core.ui.theme.CategoryColorProvider.getCategoryColor(name)
-                        val argb = assignedColor.toArgb()
-                        val colorHex = String.format("#%06X", 0xFFFFFF and argb)
-                        onConfirm(name, selectedType, colorHex)
+                        val finalEmoji = if (emojiInput.isNotBlank()) emojiInput else CategoryEmojiProvider.getCategoryEmoji(name)
+                        onConfirm(name, selectedType, finalEmoji)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
-                Text("Save Category")
+                Text(if (initialCategory == null) "Add" else "Save")
             }
         },
         dismissButton = {

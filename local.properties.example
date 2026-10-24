@@ -1,0 +1,18 @@
+## Expense Tracker App - Local Environment Template
+## Copy this file to 'local.properties' and adjust paths for your local machine.
+
+## Location of the Android SDK. This is only used by Gradle.
+## Windows example:
+# sdk.dir=C\:\\Users\\<Username>\\AppData\\Local\\Android\\Sdk
+## macOS example:
+# sdk.dir=/Users/<Username>/Library/Android/sdk
+## Linux example:
+# sdk.dir=/home/<Username>/Android/Sdk
+
+sdk.dir=C\:\\Users\\Admin\\AppData\\Local\\Android\\Sdk
+
+## Release Signing Placeholders (DO NOT COMMIT REAL PASSWORDS TO GIT)
+# RELEASE_KEYSTORE_PATH=vault_release_key.jks
+# RELEASE_KEYSTORE_PASSWORD=mock_keystore_password
+# RELEASE_KEY_ALIAS=mock_key_alias
+# RELEASE_KEY_PASSWORD=mock_key_password
