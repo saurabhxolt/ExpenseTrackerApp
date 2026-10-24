@@ -47,10 +47,35 @@ class BillReminderWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val passphrase = try {
+            com.expensetracker.app.core.security.SecurityKeyManager.getOrCreateDatabasePassphrase(context)
+        } catch (e: Exception) {
+            return Result.success()
+        }
+
+        val db = com.expensetracker.app.core.database.ExpenseDatabase.getInstance(context, passphrase)
+        val allSubs = db.subscriptionDao().getAllSubscriptionsList()
+        val now = System.currentTimeMillis()
+        val dueWindowEnd = now + 48 * 60 * 60 * 1000L // Next 48 hours
+
+        val dueBills = allSubs.filter { it.isActive && it.nextDueDateMs in now..dueWindowEnd }
+        if (dueBills.isEmpty()) {
+            return Result.success() // No bills due in next 48 hours -> suppress false notification
+        }
+
+        val title = if (dueBills.size == 1) "Upcoming Bill Reminder 🔔" else "${dueBills.size} Upcoming Bills Due 🔔"
+        val message = if (dueBills.size == 1) {
+            val bill = dueBills.first()
+            "${bill.name} (₹${String.format(java.util.Locale.getDefault(), "%.2f", bill.amount)}) is due soon. Tap to view details."
+        } else {
+            val totalDue = dueBills.sumOf { it.amount }
+            "${dueBills.size} recurring bills totaling ₹${String.format(java.util.Locale.getDefault(), "%.2f", totalDue)} are due in the next 48 hours."
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Upcoming Bill Reminder 🔔")
-            .setContentText("You have recurring bills due in the next 48 hours. Tap to view details.")
+            .setContentTitle(title)
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

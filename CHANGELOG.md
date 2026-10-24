@@ -9,14 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 - **3-Month Historical SMS Lookback on Install**: Configured initial inbox scan in `SmsScanner` to fetch from the 1st of 3 months prior (e.g. July 1st if installed in October) instead of only the current month.
-- **Home Screen App Widget Live Data**: Connected `ExpenseWidgetProvider.kt` with encrypted Room database queries to dynamically render current net balance and today's total spend, with automatic updates triggered upon transaction ingestion.
+- **Auto-Detection of Subscriptions on Historical Scan**: Configured `SmsScanner` to run `RecurringMandateDetector.autoDetectAndSave` during inbox scan.
+- **Full Splitwise P2P Subsystem Backup & Disaster Recovery (v3)**: Added support in `BackupManager` and `SettingsViewModel` for groups, group members, split expenses, split shares, and group settlements with complete roundtrip fidelity.
+- **High-Volume Database Indexing (v5 Migration)**: Added database indexes on `timestamp`, `(type, timestamp)`, and `category` in `TransactionEntity` with non-destructive `MIGRATION_4_5`.
+- **Home Screen App Widget Live Data**: Connected `ExpenseWidgetProvider.kt` with encrypted Room database queries to dynamically render current month's net cashflow and today's total spend, with automatic updates triggered upon transaction ingestion.
 - **Multi-AI Governance Framework**: Initialized `AGENTS.md`, `.cursorrules`, `CLAUDE.md`, `.github/copilot-instructions.md`, and modular `docs/`.
 - **Android KeyStore SQLCipher Key Derivation**: Implemented `SecurityKeyManager.kt` sealing 256-bit AES master keys in hardware KeyStore.
 - **Biometric App Lock Background Grace Period**: Added 30-second lifecycle background tracking in `MainActivity.kt` to re-lock automatically on return.
-- **Multi-Entity Pure-Kotlin Backup Engine**: Upgraded `BackupManager.kt` to support all 5 entities with multi-line SMS handling and zero stub dependencies.
 - **Merchant Category Memory in Live Ingestion**: Connected `merchantCategoryMappingDao` to `SmsReceiver`, `ExpenseNotificationListenerService`, and `SmsScanner`.
 
 ### Changed
+- **Monthly Budgets Calendar Scoping**: Bound `BudgetsViewModel` category spend totals to the current active calendar month, preventing historical multi-month transaction scans from skewing monthly budget gauges.
+- **Smart DB-Aware Background Workers**: Upgraded `BillReminderWorker` to evaluate upcoming active subscriptions within 48h and `DailyReviewWorker` to tailor evening reminders with actual recorded spend amounts.
+- **Reports & Widget Alignment**: Enhanced `ReportsExporter` to render distinct symbols (`↔` and `📈`) and summary totals for transfers and investments, aligning with Dashboard cashflow metrics.
 - **Budgets & Dashboard FAB Collision Fix**: Shifted delete action icon to the left header row and added generous bottom spacers to prevent Floating Action Button clipping.
 - **Category Badges & Avatars**: Upgraded to 44dp vibrant avatar circles and soft container amount pill badges across all transaction lists.
 - **System Back Gesture Routing**: Unified Android system back gestures to return from sub-screens/tabs to the primary Dashboard.

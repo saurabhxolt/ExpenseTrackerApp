@@ -36,7 +36,7 @@ import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
         SubscriptionEntity::class,
         MerchantCategoryMappingEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class ExpenseDatabase : RoomDatabase() {
@@ -51,6 +51,14 @@ abstract class ExpenseDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: ExpenseDatabase? = null
 
+        val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_timestamp` ON `transactions` (`timestamp`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_type_timestamp` ON `transactions` (`type`, `timestamp`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_category` ON `transactions` (`category`)")
+            }
+        }
+
         fun getInstance(context: Context, passphrase: ByteArray): ExpenseDatabase {
             return INSTANCE ?: synchronized(this) {
                 val factory = SupportFactory(passphrase)
@@ -60,6 +68,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     "expense_tracker_encrypted.db"
                 )
                     .openHelperFactory(factory)
+                    .addMigrations(MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance

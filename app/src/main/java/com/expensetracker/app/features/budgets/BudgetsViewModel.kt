@@ -37,8 +37,18 @@ class BudgetsViewModel @Inject constructor(
         budgetRepository.allBudgets,
         transactionRepository.allTransactions
     ) { budgets, transactions ->
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        val currentMonthStart = cal.timeInMillis
+        cal.add(java.util.Calendar.MONTH, 1)
+        val currentMonthEnd = cal.timeInMillis - 1
+
         val categorySpentMap = transactions
-            .filter { it.type == "DEBIT" }
+            .filter { it.type == "DEBIT" && it.timestamp in currentMonthStart..currentMonthEnd }
             .groupBy { it.category }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
 

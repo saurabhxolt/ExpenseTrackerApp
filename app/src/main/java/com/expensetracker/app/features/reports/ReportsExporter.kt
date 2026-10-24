@@ -26,7 +26,9 @@ object ReportsExporter {
     fun generateSummaryTextReport(
         transactions: List<TransactionEntity>,
         totalIncome: Double,
-        totalExpenses: Double
+        totalExpenses: Double,
+        totalInvestments: Double = 0.0,
+        totalTransfers: Double = 0.0
     ): String {
         val sb = StringBuilder()
         sb.append("=========================================\n")
@@ -34,9 +36,15 @@ object ReportsExporter {
         sb.append("Generated on: ").append(SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date())).append("\n")
         sb.append("=========================================\n\n")
 
-        sb.append("Total Income:   ₹").append(String.format("%.2f", totalIncome)).append("\n")
-        sb.append("Total Expenses: ₹").append(String.format("%.2f", totalExpenses)).append("\n")
-        sb.append("Net Balance:    ₹").append(String.format("%.2f", totalIncome - totalExpenses)).append("\n\n")
+        sb.append("Total Income:      ₹").append(String.format("%.2f", totalIncome)).append("\n")
+        sb.append("Total Expenses:    ₹").append(String.format("%.2f", totalExpenses)).append("\n")
+        if (totalInvestments > 0) {
+            sb.append("Total Investments: ₹").append(String.format("%.2f", totalInvestments)).append("\n")
+        }
+        if (totalTransfers > 0) {
+            sb.append("Total Transfers:   ₹").append(String.format("%.2f", totalTransfers)).append("\n")
+        }
+        sb.append("Net Balance:       ₹").append(String.format("%.2f", totalIncome - totalExpenses)).append("\n\n")
 
         sb.append("-----------------------------------------\n")
         sb.append("TRANSACTION HISTORY (").append(transactions.size).append(" Records)\n")
@@ -45,7 +53,12 @@ object ReportsExporter {
         val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         for (t in transactions) {
             val dateStr = dateFormat.format(Date(t.timestamp))
-            val sign = if (t.type == "CREDIT") "+" else "-"
+            val sign = when (t.type) {
+                "CREDIT" -> "+"
+                "TRANSFER" -> "↔ "
+                "INVESTMENT" -> "📈 "
+                else -> "-"
+            }
             sb.append("[$dateStr] ").append(t.merchant).append(" (").append(t.category).append("): ")
                 .append(sign).append("₹").append(String.format("%.2f", t.amount)).append("\n")
         }

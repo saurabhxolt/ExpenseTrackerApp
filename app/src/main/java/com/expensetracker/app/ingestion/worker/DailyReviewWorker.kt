@@ -53,10 +53,32 @@ class DailyReviewWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val startOfDay = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        var todaySpend = 0.0
+        try {
+            val passphrase = com.expensetracker.app.core.security.SecurityKeyManager.getOrCreateDatabasePassphrase(context)
+            val db = com.expensetracker.app.core.database.ExpenseDatabase.getInstance(context, passphrase)
+            todaySpend = db.transactionDao().getTodaySpend(startOfDay) ?: 0.0
+        } catch (e: Exception) {
+            // Key derivation or database locked fallback
+        }
+
+        val contentText = if (todaySpend > 0.0) {
+            "You recorded ₹${String.format(java.util.Locale.getDefault(), "%.2f", todaySpend)} in expenses today. Tap to review & organize them!"
+        } else {
+            "No expenses recorded today. Tap to add any cash transactions or check your balance!"
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("🌙 End of Day Expense Review")
-            .setContentText("Take 10 seconds to review & organize today's expenses in VaultExpense!")
+            .setContentText(contentText)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

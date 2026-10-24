@@ -26,6 +26,9 @@ interface TransactionDao {
     @Query("SELECT (COALESCE((SELECT SUM(amount) FROM transactions WHERE type = 'CREDIT'), 0.0) - COALESCE((SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT'), 0.0))")
     suspend fun getNetBalance(): Double
 
+    @Query("SELECT (COALESCE((SELECT SUM(amount) FROM transactions WHERE type = 'CREDIT' AND timestamp >= :startTimestamp), 0.0) - COALESCE((SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT' AND timestamp >= :startTimestamp), 0.0))")
+    suspend fun getNetBalanceSince(startTimestamp: Long): Double
+
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT' AND timestamp >= :startOfDayTimestamp")
     suspend fun getTodaySpend(startOfDayTimestamp: Long): Double?
 

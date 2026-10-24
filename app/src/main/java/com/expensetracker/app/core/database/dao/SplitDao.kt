@@ -62,4 +62,28 @@ interface SplitDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSettlement(settlement: GroupSettlementEntity): Long
+
+    @Query("SELECT * FROM split_groups ORDER BY createdAt DESC")
+    suspend fun getAllGroupsList(): List<GroupEntity>
+
+    @Query("SELECT * FROM group_members")
+    suspend fun getAllGroupMembersList(): List<GroupMemberEntity>
+
+    @Query("SELECT * FROM split_expenses ORDER BY timestamp DESC")
+    suspend fun getAllSplitExpensesList(): List<SplitExpenseEntity>
+
+    @Query("SELECT * FROM expense_split_shares")
+    suspend fun getAllExpenseSharesList(): List<ExpenseSplitShareEntity>
+
+    @Query("SELECT * FROM group_settlements ORDER BY timestamp DESC")
+    suspend fun getAllSettlementsList(): List<GroupSettlementEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGroups(groups: List<GroupEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(expenses: List<SplitExpenseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSettlements(settlements: List<GroupSettlementEntity>)
 }

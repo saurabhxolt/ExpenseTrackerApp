@@ -30,7 +30,14 @@ class ExpenseWidgetProvider : AppWidgetProvider() {
             try {
                 val key = SecurityKeyManager.getOrCreateDatabasePassphrase(context)
                 val db = ExpenseDatabase.getInstance(context, key)
-                val netBalance = db.transactionDao().getNetBalance()
+                val monthCal = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val netBalance = db.transactionDao().getNetBalanceSince(monthCal.timeInMillis)
 
                 val cal = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)

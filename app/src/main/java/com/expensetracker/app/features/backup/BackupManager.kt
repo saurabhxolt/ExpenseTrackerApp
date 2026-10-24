@@ -2,7 +2,12 @@ package com.expensetracker.app.features.backup
 
 import com.expensetracker.app.core.database.entity.BudgetEntity
 import com.expensetracker.app.core.database.entity.CategoryEntity
+import com.expensetracker.app.core.database.entity.ExpenseSplitShareEntity
+import com.expensetracker.app.core.database.entity.GroupEntity
+import com.expensetracker.app.core.database.entity.GroupMemberEntity
+import com.expensetracker.app.core.database.entity.GroupSettlementEntity
 import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
+import com.expensetracker.app.core.database.entity.SplitExpenseEntity
 import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
 
@@ -11,19 +16,29 @@ data class BackupData(
     val categories: List<CategoryEntity> = emptyList(),
     val budgets: List<BudgetEntity> = emptyList(),
     val subscriptions: List<SubscriptionEntity> = emptyList(),
-    val merchantMappings: List<MerchantCategoryMappingEntity> = emptyList()
+    val merchantMappings: List<MerchantCategoryMappingEntity> = emptyList(),
+    val groups: List<GroupEntity> = emptyList(),
+    val groupMembers: List<GroupMemberEntity> = emptyList(),
+    val splitExpenses: List<SplitExpenseEntity> = emptyList(),
+    val splitShares: List<ExpenseSplitShareEntity> = emptyList(),
+    val groupSettlements: List<GroupSettlementEntity> = emptyList()
 )
 
 object BackupManager {
 
-    private const val SCHEMA_VERSION = 2
+    private const val SCHEMA_VERSION = 3
 
     fun createBackupJson(
         transactions: List<TransactionEntity>,
         categories: List<CategoryEntity>,
         budgets: List<BudgetEntity>,
         subscriptions: List<SubscriptionEntity> = emptyList(),
-        merchantMappings: List<MerchantCategoryMappingEntity> = emptyList()
+        merchantMappings: List<MerchantCategoryMappingEntity> = emptyList(),
+        groups: List<GroupEntity> = emptyList(),
+        groupMembers: List<GroupMemberEntity> = emptyList(),
+        splitExpenses: List<SplitExpenseEntity> = emptyList(),
+        splitShares: List<ExpenseSplitShareEntity> = emptyList(),
+        groupSettlements: List<GroupSettlementEntity> = emptyList()
     ): String {
         val sb = StringBuilder()
         sb.append("{\n")
@@ -95,6 +110,68 @@ object BackupManager {
             sb.append("      \"lastUpdatedMs\": ").append(m.lastUpdatedMs).append("\n")
             sb.append("    }").append(if (idx < merchantMappings.size - 1) "," else "").append("\n")
         }
+        sb.append("  ],\n")
+
+        // 6. Split Groups
+        sb.append("  \"groups\": [\n")
+        groups.forEachIndexed { idx, g ->
+            sb.append("    {\n")
+            sb.append("      \"id\": ").append(g.id).append(",\n")
+            sb.append("      \"name\": \"").append(escape(g.name)).append("\",\n")
+            sb.append("      \"description\": \"").append(escape(g.description)).append("\",\n")
+            sb.append("      \"emoji\": \"").append(escape(g.emoji)).append("\",\n")
+            sb.append("      \"createdAt\": ").append(g.createdAt).append("\n")
+            sb.append("    }").append(if (idx < groups.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 7. Group Members
+        sb.append("  \"groupMembers\": [\n")
+        groupMembers.forEachIndexed { idx, m ->
+            sb.append("    {\n")
+            sb.append("      \"groupId\": ").append(m.groupId).append(",\n")
+            sb.append("      \"memberName\": \"").append(escape(m.memberName)).append("\"\n")
+            sb.append("    }").append(if (idx < groupMembers.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 8. Split Expenses
+        sb.append("  \"splitExpenses\": [\n")
+        splitExpenses.forEachIndexed { idx, e ->
+            sb.append("    {\n")
+            sb.append("      \"id\": ").append(e.id).append(",\n")
+            sb.append("      \"groupId\": ").append(e.groupId).append(",\n")
+            sb.append("      \"title\": \"").append(escape(e.title)).append("\",\n")
+            sb.append("      \"totalAmount\": ").append(e.totalAmount).append(",\n")
+            sb.append("      \"paidByMember\": \"").append(escape(e.paidByMember)).append("\",\n")
+            sb.append("      \"category\": \"").append(escape(e.category)).append("\",\n")
+            sb.append("      \"timestamp\": ").append(e.timestamp).append("\n")
+            sb.append("    }").append(if (idx < splitExpenses.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 9. Split Shares
+        sb.append("  \"splitShares\": [\n")
+        splitShares.forEachIndexed { idx, s ->
+            sb.append("    {\n")
+            sb.append("      \"expenseId\": ").append(s.expenseId).append(",\n")
+            sb.append("      \"memberName\": \"").append(escape(s.memberName)).append("\",\n")
+            sb.append("      \"shareAmount\": ").append(s.shareAmount).append("\n")
+            sb.append("    }").append(if (idx < splitShares.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 10. Group Settlements
+        sb.append("  \"groupSettlements\": [\n")
+        groupSettlements.forEachIndexed { idx, s ->
+            sb.append("    {\n")
+            sb.append("      \"groupId\": ").append(s.groupId).append(",\n")
+            sb.append("      \"fromMember\": \"").append(escape(s.fromMember)).append("\",\n")
+            sb.append("      \"toMember\": \"").append(escape(s.toMember)).append("\",\n")
+            sb.append("      \"amount\": ").append(s.amount).append(",\n")
+            sb.append("      \"timestamp\": ").append(s.timestamp).append("\n")
+            sb.append("    }").append(if (idx < groupSettlements.size - 1) "," else "").append("\n")
+        }
         sb.append("  ]\n")
         sb.append("}")
 
@@ -109,6 +186,11 @@ object BackupManager {
         val budgets = mutableListOf<BudgetEntity>()
         val subscriptions = mutableListOf<SubscriptionEntity>()
         val merchantMappings = mutableListOf<MerchantCategoryMappingEntity>()
+        val groups = mutableListOf<GroupEntity>()
+        val groupMembers = mutableListOf<GroupMemberEntity>()
+        val splitExpenses = mutableListOf<SplitExpenseEntity>()
+        val splitShares = mutableListOf<ExpenseSplitShareEntity>()
+        val groupSettlements = mutableListOf<GroupSettlementEntity>()
 
         // 1. Transactions
         val txArrayStr = extractArray(jsonStr, "transactions")
@@ -203,7 +285,99 @@ object BackupManager {
             }
         }
 
-        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings)
+        // 6. Split Groups
+        val grpArrayStr = extractArray(jsonStr, "groups")
+        val grpObjects = splitJsonObjects(grpArrayStr)
+        for (obj in grpObjects) {
+            val name = extractString(obj, "name")
+            if (name.isNotBlank()) {
+                groups.add(
+                    GroupEntity(
+                        id = extractLong(obj, "id"),
+                        name = name,
+                        description = extractString(obj, "description"),
+                        emoji = extractString(obj, "emoji").ifBlank { "✈️" },
+                        createdAt = extractLong(obj, "createdAt").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        // 7. Group Members
+        val memArrayStr = extractArray(jsonStr, "groupMembers")
+        val memObjects = splitJsonObjects(memArrayStr)
+        for (obj in memObjects) {
+            val memberName = extractString(obj, "memberName").ifBlank { extractString(obj, "name") }
+            val groupId = extractLong(obj, "groupId")
+            if (memberName.isNotBlank() && groupId > 0) {
+                groupMembers.add(
+                    GroupMemberEntity(
+                        groupId = groupId,
+                        memberName = memberName
+                    )
+                )
+            }
+        }
+
+        // 8. Split Expenses
+        val expArrayStr = extractArray(jsonStr, "splitExpenses")
+        val expObjects = splitJsonObjects(expArrayStr)
+        for (obj in expObjects) {
+            val title = extractString(obj, "title")
+            val groupId = extractLong(obj, "groupId")
+            if (title.isNotBlank() && groupId > 0) {
+                splitExpenses.add(
+                    SplitExpenseEntity(
+                        id = extractLong(obj, "id"),
+                        groupId = groupId,
+                        title = title,
+                        totalAmount = extractDouble(obj, "totalAmount"),
+                        paidByMember = extractString(obj, "paidByMember").ifBlank { extractString(obj, "paidByMemberName") },
+                        category = extractString(obj, "category").ifBlank { "General Expense" },
+                        timestamp = extractLong(obj, "timestamp").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        // 9. Split Shares
+        val shareArrayStr = extractArray(jsonStr, "splitShares")
+        val shareObjects = splitJsonObjects(shareArrayStr)
+        for (obj in shareObjects) {
+            val expenseId = extractLong(obj, "expenseId")
+            val memberName = extractString(obj, "memberName")
+            if (expenseId > 0 && memberName.isNotBlank()) {
+                splitShares.add(
+                    ExpenseSplitShareEntity(
+                        expenseId = expenseId,
+                        memberName = memberName,
+                        shareAmount = extractDouble(obj, "shareAmount")
+                    )
+                )
+            }
+        }
+
+        // 10. Group Settlements
+        val setArrayStr = extractArray(jsonStr, "groupSettlements")
+        val setObjects = splitJsonObjects(setArrayStr)
+        for (obj in setObjects) {
+            val groupId = extractLong(obj, "groupId")
+            val from = extractString(obj, "fromMember").ifBlank { extractString(obj, "fromMemberName") }
+            val to = extractString(obj, "toMember").ifBlank { extractString(obj, "toMemberName") }
+            if (groupId > 0 && from.isNotBlank() && to.isNotBlank()) {
+                groupSettlements.add(
+                    GroupSettlementEntity(
+                        groupId = groupId,
+                        fromMember = from,
+                        toMember = to,
+                        amount = extractDouble(obj, "amount"),
+                        timestamp = extractLong(obj, "timestamp").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements)
     }
 
     fun parseBackupJson(jsonStr: String): Triple<List<TransactionEntity>, List<CategoryEntity>, List<BudgetEntity>> {

@@ -24,6 +24,12 @@ class TransactionDeduplicatorTest {
             return income - expense
         }
 
+        override suspend fun getNetBalanceSince(startTimestamp: Long): Double {
+            val income = storedTransactions.filter { it.type == "CREDIT" && it.timestamp >= startTimestamp }.sumOf { it.amount }
+            val expense = storedTransactions.filter { it.type == "DEBIT" && it.timestamp >= startTimestamp }.sumOf { it.amount }
+            return income - expense
+        }
+
         override suspend fun getTodaySpend(startOfDayTimestamp: Long): Double? {
             val spend = storedTransactions.filter { it.type == "DEBIT" && it.timestamp >= startOfDayTimestamp }.sumOf { it.amount }
             return if (spend > 0) spend else null

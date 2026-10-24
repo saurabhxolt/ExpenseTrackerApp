@@ -21,12 +21,16 @@
 * **Manual Transaction Entry**: Floating Action Button modal to manually record cash expenses or offline transfers with category assignment.
 
 ### 3. Budgets & Category Spending Caps
-* **Monthly Spending Thresholds**: Define custom monthly spending limits per category (e.g. ₹10,000 for Food & Dining).
+* **Monthly Spending Thresholds**: Define custom monthly spending limits per category (e.g. ₹10,000 for Food & Dining), strictly scoped to the active calendar month.
 * **Dynamic Visual Progress Indicators**: Animated progress bars color-coded by utilization:
   * 🟢 Green: < 80% of limit
   * 🟡 Amber: 80% – 99% of limit (warning zone)
   * 🔴 Red: ≥ 100% of limit (over-budget alert)
 * **Collision-Free Header Actions**: Delete/edit actions pinned to card headers to avoid Floating Action Button interference.
+
+### 4. Home Screen Live Cashflow Widget
+* **Glanceable Financial Stats**: Live Android Home Screen App Widget rendering current month net cashflow and today's total spend.
+* **Automatic Live Updates**: Seamlessly updates upon new transaction ingestion and manual additions.
 
 ### 4. Financial Analytics & Deep Insights
 * **Category Spending Leaderboard**: Ranked bar chart showing highest spending categories for the active period.
@@ -79,9 +83,10 @@
 ## 💾 Persona 4: System Maintenance & Data Pipeline
 
 ### 1. Storage Access Framework (SAF) Backup & Export
-* **Encrypted JSON Backup**: Full snapshot export and restore via native Android SAF file picker.
-* **CSV Spreadsheet Exporter**: Generates accounting-ready CSV files with headers (`Date`, `Merchant`, `Amount`, `Type`, `Category`, `Account`).
+* **Disaster-Recovery JSON Backup (Schema v3)**: Full snapshot export and restore via native Android SAF file picker, encompassing transactions, budgets, categories, subscriptions, merchant preference mappings, and all Splitwise P2P entities (groups, members, split expenses, shares, settlements).
+* **CSV & Summary Text Exporter**: Generates accounting-ready CSV files and formatted summary text reports with dedicated symbols for transfers and investments.
 
 ### 2. Background Automation
-* **Daily Review Worker (`DailyReviewWorker`)**: WorkManager periodic evening notification reminding users to inspect day's expenses.
+* **Smart Bill Reminder Worker (`BillReminderWorker`)**: Database-aware WorkManager worker evaluating active subscriptions due in 48 hours and alerting users with customized bill details.
+* **Contextual Daily Review Worker (`DailyReviewWorker`)**: WorkManager periodic evening notification reminding users to inspect day's expenses, dynamically tailored with today's actual spend amount.
 * **Custom Time Selection**: Full 24-hour/12-hour AM/PM `TimePickerDialog` for reminder scheduling.

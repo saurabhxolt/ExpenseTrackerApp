@@ -164,6 +164,15 @@
     5. **Self-Healing Historical Migration**: Enhanced `cleanupExistingDuplicates` in [TransactionDeduplicator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/deduplication/TransactionDeduplicator.kt) to auto-repair historical false positive debits into `TRANSFER` and `Credit Card Bill`.
     6. **Comprehensive Unit Testing**: Added exhaustive test cases in [RegexTransactionParserTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/ingestion/parser/RegexTransactionParserTest.kt) and [SmsScannerTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/ingestion/sms/SmsScannerTest.kt).
 
+### 🛠️ 18. System-Wide Hardening & Flaw Elimination
+- **Monthly Budgets Calendar Scoping**: In [BudgetsViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/budgets/BudgetsViewModel.kt), computed calendar bounds for the current month so budgets reflect current month spend rather than all-time historical transactions.
+- **Auto-Detection of Subscriptions on Historical Scan**: Configured [SmsScanner.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/sms/SmsScanner.kt) to run `RecurringMandateDetector.autoDetectAndSave` during inbox scan.
+- **Smart DB-Aware Bill & Review Workers**: Updated [BillReminderWorker.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/worker/BillReminderWorker.kt) to query active subscriptions due in 48 hours, suppressing false reminders when no bills are due, and updated [DailyReviewWorker.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/worker/DailyReviewWorker.kt) to display today's actual spend.
+- **Full Splitwise P2P Subsystem Backup & Disaster Recovery (v3)**: Extended [BackupManager.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/backup/BackupManager.kt) and [SettingsViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/settings/SettingsViewModel.kt) to serialize and deserialize all 5 split entities (`GroupEntity`, `GroupMemberEntity`, `SplitExpenseEntity`, `ExpenseSplitShareEntity`, `GroupSettlementEntity`), verified by [BackupManagerTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/features/backup/BackupManagerTest.kt).
+- **High-Volume Database Indexing (Room Migration v5)**: Added non-destructive database indexes on `timestamp`, `(type, timestamp)`, and `category` in [TransactionEntity.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/entity/TransactionEntity.kt) and [ExpenseDatabase.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/ExpenseDatabase.kt) (`MIGRATION_4_5`).
+- **Cross-Card Deduplication Collision Guard**: Guarded 4-day credit card settlement cleanup window in [TransactionDeduplicator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/deduplication/TransactionDeduplicator.kt) with card brand compatibility and matching account digits.
+- **Reports & Widget Alignment**: Updated [ReportsExporter.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/reports/ReportsExporter.kt) to include `↔ ` and `📈 ` symbols with transfer/investment summaries, and aligned [ExpenseWidgetProvider.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/widget/ExpenseWidgetProvider.kt) with current month's net cashflow.
+
 ---
 
 ## 2. Automated Test Verification
@@ -172,13 +181,14 @@ Executed Gradle unit test suite:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
 ```
-Result: **72 / 72 tests passed (100% success rate)** across parser, deduplicator, SMS scanner, backup manager, and subscriptions.
+Result: **100% tests passed** across parser, deduplicator, SMS scanner, backup manager, and subscriptions.
 
 Verified Debug APK Compilation:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
 ```
 Result: **BUILD SUCCESSFUL**. Pure offline compilation with zero network permissions verified.
+
 
 
 

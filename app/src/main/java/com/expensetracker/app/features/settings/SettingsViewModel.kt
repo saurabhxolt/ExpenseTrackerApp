@@ -40,6 +40,7 @@ class SettingsViewModel @Inject constructor(
     private val categoryDao: CategoryDao,
     private val subscriptionDao: SubscriptionDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
+    private val splitDao: com.expensetracker.app.core.database.dao.SplitDao,
     private val promotionManager: PromotionManager
 ) : ViewModel() {
 
@@ -111,12 +112,22 @@ class SettingsViewModel @Inject constructor(
         val categories = categoryDao.getAllCategories().first()
         val subscriptions = subscriptionDao.getAllSubscriptionsList()
         val merchantMappings = merchantCategoryMappingDao.getAllMappingsList()
+        val groups = splitDao.getAllGroupsList()
+        val groupMembers = splitDao.getAllGroupMembersList()
+        val splitExpenses = splitDao.getAllSplitExpensesList()
+        val splitShares = splitDao.getAllExpenseSharesList()
+        val groupSettlements = splitDao.getAllSettlementsList()
         return BackupManager.createBackupJson(
             transactions = transactions,
             categories = categories,
             budgets = budgets,
             subscriptions = subscriptions,
-            merchantMappings = merchantMappings
+            merchantMappings = merchantMappings,
+            groups = groups,
+            groupMembers = groupMembers,
+            splitExpenses = splitExpenses,
+            splitShares = splitShares,
+            groupSettlements = groupSettlements
         )
     }
 
@@ -135,6 +146,21 @@ class SettingsViewModel @Inject constructor(
             }
             for (m in data.merchantMappings) {
                 merchantCategoryMappingDao.insertMapping(m)
+            }
+            if (data.groups.isNotEmpty()) {
+                splitDao.insertGroups(data.groups)
+            }
+            if (data.groupMembers.isNotEmpty()) {
+                splitDao.insertMembers(data.groupMembers)
+            }
+            if (data.splitExpenses.isNotEmpty()) {
+                splitDao.insertExpenses(data.splitExpenses)
+            }
+            if (data.splitShares.isNotEmpty()) {
+                splitDao.insertShares(data.splitShares)
+            }
+            if (data.groupSettlements.isNotEmpty()) {
+                splitDao.insertSettlements(data.groupSettlements)
             }
         }
     }

@@ -12,11 +12,15 @@
 | **Android KeyStore SQLCipher Key Derivation** | Core Security | ✅ Completed | Security Auditor |
 | **Biometric Lifecycle Re-Lock (30s Grace)** | Security / UI | ✅ Completed | Android System |
 | **WorkManager Crash Fix (BillReminderWorker)**| Background | ✅ Completed | Android System |
-| **Multi-Entity Pure-Kotlin Backup Engine** | Backup / SAF | ✅ Completed | Storage Engine |
+| **Multi-Entity Pure-Kotlin Backup Engine (v3)**| Backup / SAF | ✅ Completed | Storage Engine |
 | **Category Preference Learning in Ingestion** | Ingestion / DB | ✅ Completed | `category_assignment_agent` |
-| **Home Screen App Widget Live Data** | UI / Widget | ✅ Completed | Android System |
+| **Home Screen App Widget Live Data Alignment** | UI / Widget | ✅ Completed | Android System |
 | **3-Month SMS Historical Scan on Install** | Ingestion / SMS | ✅ Completed | `sms_transaction_parser` |
 | **Credit Card Bill Identification Engine** | Ingestion / NLP | ✅ Completed | `sms_transaction_parser` |
+| **Monthly Budgets Calendar Scoping** | Feature / Budget | ✅ Completed | Core Architecture |
+| **Smart DB-Aware Bill & Review Workers** | Background | ✅ Completed | Android System |
+| **Database Indices & Migration v5** | Core / Room | ✅ Completed | Storage Engine |
+| **Cross-Card Deduplication Collision Guard** | Ingestion / DB | ✅ Completed | `sms_transaction_parser` |
 
 ---
 

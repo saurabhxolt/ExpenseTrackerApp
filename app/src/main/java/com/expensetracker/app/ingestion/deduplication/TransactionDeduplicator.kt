@@ -125,7 +125,9 @@ object TransactionDeduplicator {
                 val timeDiff = Math.abs(current.timestamp - candidate.timestamp)
 
                 // 1. Credit Card Settlement Cleanup within 4-day window
-                if (isCurrentCC && isCandidateCC && sameAmount && timeDiff <= CC_PAYMENT_DEDUPLICATION_WINDOW_MS) {
+                val sameOrBlankDigits = current.accountDigits.isBlank() || candidate.accountDigits.isBlank() || current.accountDigits == candidate.accountDigits
+                val compatibleCardBrands = areCardBrandsCompatible(current.rawText, candidate.rawText)
+                if (isCurrentCC && isCandidateCC && sameAmount && timeDiff <= CC_PAYMENT_DEDUPLICATION_WINDOW_MS && sameOrBlankDigits && compatibleCardBrands) {
                     toDelete.add(candidate)
                     continue
                 }
@@ -237,5 +239,18 @@ object TransactionDeduplicator {
                lowerText.contains("towards your credit card") || lowerText.contains("towards credit card") ||
                lowerText.contains("towards card") || lowerText.contains("cred.club") || lowerText.contains("cheq") ||
                lowerText.contains("cardbill@") || lowerText.contains("ccpay@") || lowerText.contains("billdesk") || lowerText.contains("bbps")
+    }
+
+    private fun areCardBrandsCompatible(text1: String, text2: String): Boolean {
+        val lower1 = text1.lowercase()
+        val lower2 = text2.lowercase()
+        val brands = listOf("hdfc", "sbi", "icici", "axis", "kotak", "bobcard", "onecard", "amex", "rbl", "indusind", "scapia")
+        val brand1 = brands.firstOrNull { lower1.contains(it) }
+        val brand2 = brands.firstOrNull { lower2.contains(it) }
+        return if (brand1 != null && brand2 != null) {
+            brand1 == brand2
+        } else {
+            true
+        }
     }
 }

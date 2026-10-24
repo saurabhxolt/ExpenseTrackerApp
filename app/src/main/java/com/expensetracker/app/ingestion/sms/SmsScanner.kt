@@ -79,6 +79,7 @@ object SmsScanner {
             }
 
             val cleanedCount = kotlinx.coroutines.runBlocking {
+                val subRepo = com.expensetracker.app.core.data.repository.SubscriptionRepository(db.subscriptionDao())
                 for (entity in pendingEntities) {
                     val normKey = com.expensetracker.app.ingestion.parser.CategoryClassifier.normalizeMerchantKey(entity.merchant)
                     val learnedCategory = if (normKey.isNotBlank()) {
@@ -93,6 +94,16 @@ object SmsScanner {
                     val rowId = TransactionDeduplicator.insertWithDeduplication(db.transactionDao(), finalEntity)
                     if (rowId > 0) {
                         newTransactionsCount++
+                        val parsedTrx = com.expensetracker.app.ingestion.parser.ParsedTransaction(
+                            amount = finalEntity.amount,
+                            type = finalEntity.type,
+                            merchant = finalEntity.merchant,
+                            rawText = finalEntity.rawText,
+                            category = finalEntity.category,
+                            timestamp = finalEntity.timestamp,
+                            accountDigits = finalEntity.accountDigits
+                        )
+                        com.expensetracker.app.ingestion.parser.RecurringMandateDetector.autoDetectAndSave(subRepo, parsedTrx)
                     }
                 }
                 TransactionDeduplicator.cleanupExistingDuplicates(db.transactionDao())

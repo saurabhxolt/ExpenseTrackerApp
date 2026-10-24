@@ -60,16 +60,18 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - **1-Click WhatsApp Settlement Summary Exporter**: Exports formatted markdown summary directly to Android clipboard for instant WhatsApp group pasting.
 - **Settlement Payments**: Record direct settlement payments between group members.
 
-## Phase 4: Privacy, Security & Data Export (COMPLETED)
-- Biometric App Lock (Fingerprint, Face Unlock, PIN).
-- Encrypted JSON Backup & Restore via SAF.
-- CSV Spreadsheet Reports Exporter.
+## Phase 4: Privacy, Security & Data Export (COMPLETED & HARDENED)
+- Biometric App Lock (Fingerprint, Face Unlock, PIN) with 30s background re-lock grace period.
+- Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions, categories, budgets, subscriptions, merchant mappings, and all Splitwise P2P groups, members, split expenses, shares, and settlements.
+- High-Throughput Database Indexing (Room Schema v5): Indexed `timestamp`, `(type, timestamp)`, and `category` via non-destructive `MIGRATION_4_5`.
+- CSV & Formatted Summary Text Reports Exporter with dedicated transfer (`↔ `) and investment (`📈 `) indicators.
 
 ## Phase 5: Customization & Subscriptions (COMPLETED & OVERHAULED)
 - Unified Editable Category Management (`CategoriesScreen.kt`, `CategoriesViewModel.kt`): Merged system and custom categories into a single editable management list where users can edit category names, transaction types, and emojis.
 - System Color Auto-Assignment (`CategoryColorProvider.kt`): Guarantees unique, non-conflicting vibrant colors for all categories, preventing duplicate color assignments across the app.
 - Smart Name-Based Category Emojis (`CategoryEmojiProvider.kt`): Maps category names and keywords to visual emojis (🍕 Food, 🛒 Groceries, 🚗 Transportation, ⛽ Fuel, 💡 Bills, 📈 Investments, 🏠 Rent, 💳 EMI, 💰 Income, 💸 Transfers).
-- Recurring Subscriptions & Mandates Architecture (`SubscriptionEntity`, `SubscriptionDao`, `SubscriptionDetector`): Full database-backed management of recurring mandates (Netflix, Rent, SIPs, Autopays) with automated SMS/notification NLP detection, manual creation dialogs, cycle billing (Monthly, Yearly, Weekly, Quarterly), pause/resume toggles, and status due badges (*Due Today*, *Overdue*, *Due in X Days*).
+- Recurring Subscriptions & Mandates Architecture (`SubscriptionEntity`, `SubscriptionDao`, `RecurringMandateDetector`): Full database-backed management of recurring mandates (Netflix, Rent, SIPs, Autopays) with automated SMS/notification NLP detection, auto-detection during 3-month historical scan, manual creation dialogs, cycle billing (Monthly, Yearly, Weekly, Quarterly), pause/resume toggles, and status due badges (*Due Today*, *Overdue*, *Due in X Days*).
+- Monthly Budget Calendar Scoping: Category spent calculations in `BudgetsViewModel.kt` are strictly bounded to the active calendar month.
 - Custom Transaction Date Selection: `AddTransactionDialog` supports an interactive Date Picker allowing manual logging of expenses, income, or investments for any historical date/time.
 
 ## Phase 6: Visual Canvas Charts & Quick Stats (COMPLETED & ENHANCED)
@@ -78,9 +80,10 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - Financial Analytics Date & Period Filtering Bar: Single unified Period Selector dropdown ("All Time", "This Month", "Last Month", "Quarter", "6 Months", "Yearly", "Custom Dates", Specific Month choices).
 - Today's Spend & This Week's Spend quick summary cards on Dashboard.
 
-## Phase 7: Push Reminders & Widget (COMPLETED)
-- Bill & EMI Due Date Notification Reminders (scheduled 24-hourly via WorkManager).
-- Android Home Screen App Widget.
+## Phase 7: Push Reminders & Widget (COMPLETED & SMART-ENABLED)
+- Smart Bill & EMI Notification Reminders (`BillReminderWorker.kt`): Database-aware WorkManager worker evaluating active subscriptions due in 48 hours and alerting users with customized bill details, suppressing false notifications when no bills are due.
+- Contextual Daily Expense Review Notification (`DailyReviewWorker.kt`): Tailored evening reminder reflecting actual recorded spend for the day.
+- Android Home Screen App Widget (`ExpenseWidgetProvider.kt`): Live widget dynamically rendering current month's net cashflow and today's spend with auto-refresh on transaction events.
 
 ## Phase 8: In-House Privacy-First Promotion System (COMPLETED)
 - Backend-Independent Static JSON (`PromotionManager.kt`).
