@@ -29,6 +29,7 @@ data class SplitUiState(
     val selectedGroupSettlements: List<GroupSettlementEntity> = emptyList()
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SplitViewModel @Inject constructor(
     private val splitRepository: SplitRepository

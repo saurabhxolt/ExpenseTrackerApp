@@ -61,13 +61,14 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - **Settlement Payments**: Record direct settlement payments between group members.
 
 ## Phase 4: Privacy, Security & Data Export (COMPLETED & HARDENED)
-- Biometric App Lock (Fingerprint, Face Unlock, PIN) with 30s background re-lock grace period.
-- Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions, categories, budgets, subscriptions, merchant mappings, and all Splitwise P2P groups, members, split expenses, shares, and settlements.
+- Biometric App Lock (Fingerprint, Face Unlock, PIN) with 30s background re-lock grace period and single-prompt debouncing to eliminate duplicate prompt race conditions during cold start.
+- Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions, categories (with `isCustom`, `emoji`), budgets (with `period`), subscriptions (with `autoMatched`, `lastPaidDateMs`), merchant mappings, and all Splitwise P2P groups, members, split expenses, shares, and settlements, with name-based upsert avoiding duplicate key violations.
 - High-Throughput Database Indexing (Room Schema v5): Indexed `timestamp`, `(type, timestamp)`, and `category` via non-destructive `MIGRATION_4_5`.
 - CSV & Formatted Summary Text Reports Exporter with dedicated transfer (`↔ `) and investment (`📈 `) indicators.
 
 ## Phase 5: Customization & Subscriptions (COMPLETED & OVERHAULED)
 - Unified Editable Category Management (`CategoriesScreen.kt`, `CategoriesViewModel.kt`): Merged system and custom categories into a single editable management list where users can edit category names, transaction types, and emojis.
+- Dynamic Budget Categories & Safe Upsert (`BudgetsViewModel.kt`, `BudgetRepository.kt`): Dynamically surfaces user custom and system categories in Add Budget dialog and ensures idempotent upserting by category name to eliminate duplicate entries.
 - System Color Auto-Assignment (`CategoryColorProvider.kt`): Guarantees unique, non-conflicting vibrant colors for all categories, preventing duplicate color assignments across the app.
 - Smart Name-Based Category Emojis (`CategoryEmojiProvider.kt`): Maps category names and keywords to visual emojis (🍕 Food, 🛒 Groceries, 🚗 Transportation, ⛽ Fuel, 💡 Bills, 📈 Investments, 🏠 Rent, 💳 EMI, 💰 Income, 💸 Transfers).
 - Recurring Subscriptions & Mandates Architecture (`SubscriptionEntity`, `SubscriptionDao`, `RecurringMandateDetector`): Full database-backed management of recurring mandates (Netflix, Rent, SIPs, Autopays) with automated SMS/notification NLP detection, auto-detection during 3-month historical scan, manual creation dialogs, cycle billing (Monthly, Yearly, Weekly, Quarterly), pause/resume toggles, and status due badges (*Due Today*, *Overdue*, *Due in X Days*).
@@ -83,7 +84,7 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 ## Phase 7: Push Reminders & Widget (COMPLETED & SMART-ENABLED)
 - Smart Bill & EMI Notification Reminders (`BillReminderWorker.kt`): Database-aware WorkManager worker evaluating active subscriptions due in 48 hours and alerting users with customized bill details, suppressing false notifications when no bills are due.
 - Contextual Daily Expense Review Notification (`DailyReviewWorker.kt`): Tailored evening reminder reflecting actual recorded spend for the day.
-- Android Home Screen App Widget (`ExpenseWidgetProvider.kt`): Live widget dynamically rendering current month's net cashflow and today's spend with auto-refresh on transaction events.
+- Android Home Screen App Widget (`ExpenseWidgetProvider.kt`): Live widget dynamically rendering current month's net cashflow and today's spend with auto-refresh across all repository mutations (SMS/notifications, manual entry, edits, deletes) and direct root app launch intent.
 
 ## Phase 8: In-House Privacy-First Promotion System (COMPLETED)
 - Backend-Independent Static JSON (`PromotionManager.kt`).

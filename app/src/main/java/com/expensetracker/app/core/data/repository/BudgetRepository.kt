@@ -12,8 +12,21 @@ class BudgetRepository @Inject constructor(
 ) {
     val allBudgets: Flow<List<BudgetEntity>> = budgetDao.getAllBudgets()
 
+    suspend fun getBudgetByCategory(categoryName: String): BudgetEntity? {
+        return budgetDao.getBudgetByCategory(categoryName)
+    }
+
     suspend fun saveBudget(budget: BudgetEntity) {
-        budgetDao.insertBudget(budget)
+        val existing = budgetDao.getBudgetByCategory(budget.categoryName)
+        if (existing != null) {
+            budgetDao.updateBudget(existing.copy(limitAmount = budget.limitAmount, period = budget.period))
+        } else {
+            budgetDao.insertBudget(budget)
+        }
+    }
+
+    suspend fun updateBudget(budget: BudgetEntity) {
+        budgetDao.updateBudget(budget)
     }
 
     suspend fun deleteBudget(budget: BudgetEntity) {

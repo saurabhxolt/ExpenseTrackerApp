@@ -58,6 +58,7 @@ class ExpenseWidgetProvider : AppWidgetProvider() {
                         )
 
                         val views = RemoteViews(context.packageName, R.layout.widget_expense).apply {
+                            setOnClickPendingIntent(R.id.widget_root, pendingIntent)
                             setOnClickPendingIntent(R.id.widget_title, pendingIntent)
                             setOnClickPendingIntent(R.id.widget_net_balance, pendingIntent)
                             setOnClickPendingIntent(R.id.widget_today_spend, pendingIntent)

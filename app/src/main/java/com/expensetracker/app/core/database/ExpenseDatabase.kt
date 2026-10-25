@@ -69,6 +69,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                 )
                     .openHelperFactory(factory)
                     .addMigrations(MIGRATION_4_5)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

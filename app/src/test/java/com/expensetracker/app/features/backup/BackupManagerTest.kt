@@ -23,26 +23,52 @@ class BackupManagerTest {
             )
         )
         val categories = listOf(
-            CategoryEntity(name = "Food & Dining", type = "EXPENSE", iconName = "Food", colorHex = "#FF5722")
+            CategoryEntity(name = "Food & Dining", type = "EXPENSE", iconName = "Food", colorHex = "#FF5722", isCustom = true, emoji = "🍕")
         )
         val budgets = listOf(
-            BudgetEntity(categoryName = "Food & Dining", limitAmount = 10000.0)
+            BudgetEntity(categoryName = "Food & Dining", limitAmount = 10000.0, period = "MONTHLY")
+        )
+        val subscriptions = listOf(
+            com.expensetracker.app.core.database.entity.SubscriptionEntity(
+                name = "Netflix",
+                amount = 649.0,
+                billingCycle = "Monthly",
+                nextDueDateMs = 1725000000000L,
+                category = "Subscriptions",
+                isActive = true,
+                autoMatched = true,
+                lastPaidDateMs = 1722000000000L
+            )
         )
 
-        val jsonStr = BackupManager.createBackupJson(transactions, categories, budgets)
+        val jsonStr = BackupManager.createBackupJson(
+            transactions = transactions,
+            categories = categories,
+            budgets = budgets,
+            subscriptions = subscriptions
+        )
         assertNotNull(jsonStr)
 
-        val (importedTrx, importedCats, importedBgts) = BackupManager.parseBackupJson(jsonStr)
+        val restored = BackupManager.parseBackupData(jsonStr)
 
-        assertEquals(1, importedTrx.size)
-        assertEquals("Swiggy", importedTrx[0].merchant)
-        assertEquals(450.00, importedTrx[0].amount, 0.01)
+        assertEquals(1, restored.transactions.size)
+        assertEquals("Swiggy", restored.transactions[0].merchant)
+        assertEquals(450.00, restored.transactions[0].amount, 0.01)
 
-        assertEquals(1, importedCats.size)
-        assertEquals("Food & Dining", importedCats[0].name)
+        assertEquals(1, restored.categories.size)
+        assertEquals("Food & Dining", restored.categories[0].name)
+        assertEquals("🍕", restored.categories[0].emoji)
+        assertEquals(true, restored.categories[0].isCustom)
 
-        assertEquals(1, importedBgts.size)
-        assertEquals(10000.0, importedBgts[0].limitAmount, 0.01)
+        assertEquals(1, restored.budgets.size)
+        assertEquals(10000.0, restored.budgets[0].limitAmount, 0.01)
+        assertEquals("MONTHLY", restored.budgets[0].period)
+
+        assertEquals(1, restored.subscriptions.size)
+        assertEquals("Netflix", restored.subscriptions[0].name)
+        assertEquals(649.0, restored.subscriptions[0].amount, 0.01)
+        assertEquals(true, restored.subscriptions[0].autoMatched)
+        assertEquals(1722000000000L, restored.subscriptions[0].lastPaidDateMs)
     }
 
     @Test

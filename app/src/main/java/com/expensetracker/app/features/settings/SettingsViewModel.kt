@@ -131,36 +131,69 @@ class SettingsViewModel @Inject constructor(
         )
     }
 
-    fun restoreBackupJson(jsonStr: String) {
+    fun restoreBackupJson(
+        jsonStr: String,
+        context: Context? = null,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            val data = BackupManager.parseBackupData(jsonStr)
-            for (t in data.transactions) {
-                transactionRepository.insertTransaction(t)
-            }
-            for (b in data.budgets) {
-                budgetRepository.saveBudget(b)
-            }
-            categoryDao.insertCategories(data.categories)
-            for (s in data.subscriptions) {
-                subscriptionDao.insertSubscription(s)
-            }
-            for (m in data.merchantMappings) {
-                merchantCategoryMappingDao.insertMapping(m)
-            }
-            if (data.groups.isNotEmpty()) {
-                splitDao.insertGroups(data.groups)
-            }
-            if (data.groupMembers.isNotEmpty()) {
-                splitDao.insertMembers(data.groupMembers)
-            }
-            if (data.splitExpenses.isNotEmpty()) {
-                splitDao.insertExpenses(data.splitExpenses)
-            }
-            if (data.splitShares.isNotEmpty()) {
-                splitDao.insertShares(data.splitShares)
-            }
-            if (data.groupSettlements.isNotEmpty()) {
-                splitDao.insertSettlements(data.groupSettlements)
+            try {
+                val data = BackupManager.parseBackupData(jsonStr)
+                for (t in data.transactions) {
+                    transactionRepository.insertTransaction(t)
+                }
+                for (b in data.budgets) {
+                    budgetRepository.saveBudget(b)
+                }
+                for (c in data.categories) {
+                    val existing = categoryDao.getCategoryByName(c.name)
+                    if (existing != null) {
+                        if (existing.emoji.isBlank() && c.emoji.isNotBlank()) {
+                            categoryDao.updateCategoryInPlace(
+                                id = existing.id,
+                                newName = existing.name,
+                                newType = existing.type,
+                                newEmoji = c.emoji,
+                                newColorHex = existing.colorHex
+                            )
+                        }
+                    } else {
+                        categoryDao.insertCategories(listOf(c))
+                    }
+                }
+                for (s in data.subscriptions) {
+                    val existing = subscriptionDao.findSubscriptionByName(s.name)
+                    if (existing != null) {
+                        subscriptionDao.updateSubscription(existing.copy(amount = s.amount, nextDueDateMs = s.nextDueDateMs, billingCycle = s.billingCycle))
+                    } else {
+                        subscriptionDao.insertSubscription(s)
+                    }
+                }
+                for (m in data.merchantMappings) {
+                    merchantCategoryMappingDao.insertMapping(m)
+                }
+                if (data.groups.isNotEmpty()) {
+                    splitDao.insertGroups(data.groups)
+                }
+                if (data.groupMembers.isNotEmpty()) {
+                    splitDao.insertMembers(data.groupMembers)
+                }
+                if (data.splitExpenses.isNotEmpty()) {
+                    splitDao.insertExpenses(data.splitExpenses)
+                }
+                if (data.splitShares.isNotEmpty()) {
+                    splitDao.insertShares(data.splitShares)
+                }
+                if (data.groupSettlements.isNotEmpty()) {
+                    splitDao.insertSettlements(data.groupSettlements)
+                }
+                if (context != null) {
+                    com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)
+                }
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Failed to restore backup")
             }
         }
     }

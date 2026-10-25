@@ -916,12 +916,27 @@ fun TransactionDetailsDialog(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "Original SMS / Raw Statement Text:",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryBlue
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Original SMS / Raw Statement Text:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryBlue
+                                )
+                                if (!transaction.isManual) {
+                                    Text(
+                                        text = "Open App ✉️",
+                                        fontSize = 11.sp,
+                                        color = PrimaryBlue,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.clickable { onOpenSmsApp() }
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = transaction.rawText,
@@ -942,11 +957,22 @@ fun TransactionDetailsDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = onEdit,
-                colors = ButtonDefaults.buttonColors(containerColor = DarkCard)
-            ) {
-                Text("Edit")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        onDelete()
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete 🗑️")
+                }
+                Button(
+                    onClick = onEdit,
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkCard)
+                ) {
+                    Text("Edit ✏️")
+                }
             }
         },
         dismissButton = {

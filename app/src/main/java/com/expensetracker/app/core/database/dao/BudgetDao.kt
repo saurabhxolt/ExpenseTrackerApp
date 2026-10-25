@@ -20,6 +20,9 @@ interface BudgetDao {
     @Update
     suspend fun updateBudget(budget: BudgetEntity)
 
+    @Query("SELECT * FROM budgets WHERE LOWER(categoryName) = LOWER(:categoryName) LIMIT 1")
+    suspend fun getBudgetByCategory(categoryName: String): BudgetEntity?
+
     @Delete
     suspend fun deleteBudget(budget: BudgetEntity)
 }

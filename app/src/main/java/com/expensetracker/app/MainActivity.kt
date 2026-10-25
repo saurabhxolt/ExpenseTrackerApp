@@ -46,6 +46,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     private var isUnlocked by mutableStateOf(false)
+    private var isAuthenticating = false
     private var lastBackgroundTimestamp: Long = 0L
     private val lockGracePeriodMs: Long = 30_000L // 30 seconds
 
@@ -103,29 +104,28 @@ class MainActivity : FragmentActivity() {
             if (lastBackgroundTimestamp > 0 && (now - lastBackgroundTimestamp) > lockGracePeriodMs) {
                 isUnlocked = false
             }
-            if (!isUnlocked) {
+            if (!isUnlocked && !isAuthenticating) {
                 triggerBiometricUnlock()
             }
         }
     }
 
     private fun checkAppLockState() {
-        if (!BiometricLockManager.isBiometricLockEnabled(this)) {
-            isUnlocked = true
-        } else {
-            isUnlocked = false
-            triggerBiometricUnlock()
-        }
+        isUnlocked = !BiometricLockManager.isBiometricLockEnabled(this)
     }
 
     private fun triggerBiometricUnlock() {
+        if (isAuthenticating) return
         if (BiometricLockManager.canAuthenticate(this)) {
+            isAuthenticating = true
             BiometricLockManager.promptBiometric(
                 activity = this,
                 onSuccess = {
+                    isAuthenticating = false
                     isUnlocked = true
                 },
                 onError = {
+                    isAuthenticating = false
                     isUnlocked = false
                 }
             )

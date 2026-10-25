@@ -21,6 +21,10 @@
 | **Smart DB-Aware Bill & Review Workers** | Background | ✅ Completed | Android System |
 | **Database Indices & Migration v5** | Core / Room | ✅ Completed | Storage Engine |
 | **Cross-Card Deduplication Collision Guard** | Ingestion / DB | ✅ Completed | `sms_transaction_parser` |
+| **Safe Upsert Budgets & Dynamic Category Loading** | Feature / Budget | ✅ Completed | Core Architecture |
+| **Backup v3 Full Entity Serialization & Safe Upsert** | Backup / SAF | ✅ Completed | Storage Engine |
+| **Cold Start Biometric Debounce & Widget Live Sync** | UI / Widget | ✅ Completed | Android System |
+| **Fast Splash Launch & Dashboard Dialog Wiring** | UI / UX | ✅ Completed | Core Architecture |
 
 ---
 

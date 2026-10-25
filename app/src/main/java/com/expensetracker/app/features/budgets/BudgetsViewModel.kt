@@ -24,19 +24,22 @@ data class CategoryBudgetUiModel(
 data class BudgetsUiState(
     val budgetItems: List<CategoryBudgetUiModel> = emptyList(),
     val totalBudgetLimit: Double = 0.0,
-    val totalSpent: Double = 0.0
+    val totalSpent: Double = 0.0,
+    val availableCategories: List<String> = emptyList()
 )
 
 @HiltViewModel
 class BudgetsViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val categoryRepository: com.expensetracker.app.core.data.repository.CategoryRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<BudgetsUiState> = combine(
         budgetRepository.allBudgets,
-        transactionRepository.allTransactions
-    ) { budgets, transactions ->
+        transactionRepository.allTransactions,
+        categoryRepository.allCategories
+    ) { budgets, transactions, categoryEntities ->
         val cal = java.util.Calendar.getInstance()
         cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
         cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
@@ -67,10 +70,15 @@ class BudgetsViewModel @Inject constructor(
         val totalLimit = budgets.sumOf { it.limitAmount }
         val totalSpent = uiModels.sumOf { it.spentAmount }
 
+        val defaultCats = listOf("General Expense", "Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Rent", "EMI", "Groceries & Vegetables", "Subscriptions", "Entertainment", "Fuel", "Health & Medical", "Insurance", "Government & Fees", "Investments", "Other")
+        val customCatNames = categoryEntities.filter { it.type == "EXPENSE" || it.type == "INVESTMENT" }.map { it.name }
+        val allCategories = (defaultCats + customCatNames).distinct()
+
         BudgetsUiState(
             budgetItems = uiModels,
             totalBudgetLimit = totalLimit,
-            totalSpent = totalSpent
+            totalSpent = totalSpent,
+            availableCategories = allCategories
         )
     }.stateIn(
         scope = viewModelScope,

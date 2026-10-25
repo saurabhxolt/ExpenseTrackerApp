@@ -70,7 +70,9 @@ object BackupManager {
             sb.append("      \"name\": \"").append(escape(c.name)).append("\",\n")
             sb.append("      \"type\": \"").append(escape(c.type)).append("\",\n")
             sb.append("      \"iconName\": \"").append(escape(c.iconName)).append("\",\n")
-            sb.append("      \"colorHex\": \"").append(escape(c.colorHex)).append("\"\n")
+            sb.append("      \"colorHex\": \"").append(escape(c.colorHex)).append("\",\n")
+            sb.append("      \"isCustom\": ").append(c.isCustom).append(",\n")
+            sb.append("      \"emoji\": \"").append(escape(c.emoji)).append("\"\n")
             sb.append("    }").append(if (idx < categories.size - 1) "," else "").append("\n")
         }
         sb.append("  ],\n")
@@ -80,7 +82,8 @@ object BackupManager {
         budgets.forEachIndexed { idx, b ->
             sb.append("    {\n")
             sb.append("      \"categoryName\": \"").append(escape(b.categoryName)).append("\",\n")
-            sb.append("      \"limitAmount\": ").append(b.limitAmount).append("\n")
+            sb.append("      \"limitAmount\": ").append(b.limitAmount).append(",\n")
+            sb.append("      \"period\": \"").append(escape(b.period)).append("\"\n")
             sb.append("    }").append(if (idx < budgets.size - 1) "," else "").append("\n")
         }
         sb.append("  ],\n")
@@ -96,7 +99,9 @@ object BackupManager {
             sb.append("      \"category\": \"").append(escape(s.category)).append("\",\n")
             sb.append("      \"isActive\": ").append(s.isActive).append(",\n")
             sb.append("      \"isAutoDetected\": ").append(s.isAutoDetected).append(",\n")
-            sb.append("      \"rawText\": \"").append(escape(s.rawText)).append("\"\n")
+            sb.append("      \"rawText\": \"").append(escape(s.rawText)).append("\",\n")
+            sb.append("      \"autoMatched\": ").append(s.autoMatched).append(",\n")
+            sb.append("      \"lastPaidDateMs\": ").append(s.lastPaidDateMs ?: 0L).append("\n")
             sb.append("    }").append(if (idx < subscriptions.size - 1) "," else "").append("\n")
         }
         sb.append("  ],\n")
@@ -230,7 +235,9 @@ object BackupManager {
                         name = name,
                         type = extractString(obj, "type").ifBlank { "EXPENSE" },
                         iconName = extractString(obj, "iconName").ifBlank { "Category" },
-                        colorHex = extractString(obj, "colorHex").ifBlank { "#2563EB" }
+                        colorHex = extractString(obj, "colorHex").ifBlank { "#2563EB" },
+                        isCustom = extractBoolean(obj, "isCustom"),
+                        emoji = extractString(obj, "emoji")
                     )
                 )
             }
@@ -242,8 +249,9 @@ object BackupManager {
         for (obj in bgtObjects) {
             val catName = extractString(obj, "categoryName")
             val limit = extractDouble(obj, "limitAmount")
+            val period = extractString(obj, "period").ifBlank { "MONTHLY" }
             if (catName.isNotBlank() && limit > 0) {
-                budgets.add(BudgetEntity(categoryName = catName, limitAmount = limit))
+                budgets.add(BudgetEntity(categoryName = catName, limitAmount = limit, period = period))
             }
         }
 
@@ -253,6 +261,7 @@ object BackupManager {
         for (obj in subObjects) {
             val name = extractString(obj, "name")
             if (name.isNotBlank()) {
+                val lastPaidMs = extractLong(obj, "lastPaidDateMs").takeIf { it > 0 }
                 subscriptions.add(
                     SubscriptionEntity(
                         name = name,
@@ -262,7 +271,9 @@ object BackupManager {
                         category = extractString(obj, "category").ifBlank { "Subscriptions" },
                         isActive = extractBoolean(obj, "isActive"),
                         isAutoDetected = extractBoolean(obj, "isAutoDetected"),
-                        rawText = extractString(obj, "rawText")
+                        rawText = extractString(obj, "rawText"),
+                        autoMatched = extractBoolean(obj, "autoMatched"),
+                        lastPaidDateMs = lastPaidMs
                     )
                 )
             }

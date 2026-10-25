@@ -34,10 +34,12 @@ object RecurringMandateDetector {
         val allSubs = repository.getAllSubscriptionsList()
         val targetNorm = normalizeBrandName(parsedTransaction.merchant)
 
-        val existing = allSubs.firstOrNull { sub ->
-            val subNorm = normalizeBrandName(sub.name)
-            subNorm == targetNorm || (subNorm.length >= 4 && targetNorm.contains(subNorm)) || (targetNorm.length >= 4 && subNorm.contains(targetNorm))
-        }
+        val existing = if (targetNorm.isNotBlank()) {
+            allSubs.firstOrNull { sub ->
+                val subNorm = normalizeBrandName(sub.name)
+                subNorm.isNotBlank() && (subNorm == targetNorm || (subNorm.length >= 4 && targetNorm.contains(subNorm)) || (targetNorm.length >= 4 && subNorm.contains(targetNorm)))
+            }
+        } else null
 
         val cycle = detectBillingCycle(parsedTransaction.rawText)
         val nextDueMs = computeNextDueDate(parsedTransaction.rawText)

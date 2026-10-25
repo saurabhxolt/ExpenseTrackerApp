@@ -17,8 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Android KeyStore SQLCipher Key Derivation**: Implemented `SecurityKeyManager.kt` sealing 256-bit AES master keys in hardware KeyStore.
 - **Biometric App Lock Background Grace Period**: Added 30-second lifecycle background tracking in `MainActivity.kt` to re-lock automatically on return.
 - **Merchant Category Memory in Live Ingestion**: Connected `merchantCategoryMappingDao` to `SmsReceiver`, `ExpenseNotificationListenerService`, and `SmsScanner`.
+- **Dynamic Category Loading in Budgets**: Connected `BudgetsViewModel` and `BudgetsScreen` to `CategoryRepository` to dynamically populate custom and system categories in the Add/Edit Budget dialog.
+- **Homescreen Widget Full-Spectrum Sync Hook**: Integrated `ExpenseWidgetProvider.updateAllWidgets(context)` into `TransactionRepository` across all manual and ingestion writes, updates, and deletes.
+- **Homescreen Widget Root Click-Through**: Bound `R.id.widget_root` with a `PendingIntent` to launch `MainActivity` directly upon tapping the widget surface.
 
 ### Changed
+- **Snappy Splash Screen Response**: Reduced hardcoded splash display delay from 5000ms to 1200ms in `SplashScreen.kt` for instant app responsiveness.
+- **Room Database Migration Resilience**: Configured `fallbackToDestructiveMigration()` in `ExpenseDatabase.kt` builder to safeguard against crashes when migrating from legacy pre-v4 schemas.
 - **Monthly Budgets Calendar Scoping**: Bound `BudgetsViewModel` category spend totals to the current active calendar month, preventing historical multi-month transaction scans from skewing monthly budget gauges.
 - **Smart DB-Aware Background Workers**: Upgraded `BillReminderWorker` to evaluate upcoming active subscriptions within 48h and `DailyReviewWorker` to tailor evening reminders with actual recorded spend amounts.
 - **Reports & Widget Alignment**: Enhanced `ReportsExporter` to render distinct symbols (`↔` and `📈`) and summary totals for transfers and investments, aligning with Dashboard cashflow metrics.
@@ -29,6 +34,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Filter Loop Performance Optimization**: Precomputed calendar period bounds in `TransactionsViewModel` to eliminate allocations in search/filter loops.
 
 ### Fixed
+- **Budget Category Duplication**: Implemented safe upsert logic in `BudgetRepository` via `BudgetDao.getBudgetByCategory` to update existing budget amounts instead of inserting duplicate rows for the same category.
+- **Backup v3 Serialization Field Truncation**: Extended `BackupManager.kt` to serialize and parse `isCustom` and `emoji` for Categories, `period` for Budgets, and `autoMatched` and `lastPaidDateMs` for Subscriptions, ensuring complete roundtrip fidelity.
+- **Backup Restore Constraint Violations & False Success Toast**: Overhauled `SettingsViewModel.restoreBackupJson` with safe entity upsert by name, robust `try/catch` error handling with informative error toasts, and automatic widget data synchronization upon restore.
+- **Cold-Start Biometric Prompt Race Condition**: Added `isAuthenticating` atomic lifecycle guard in `MainActivity.kt` and consolidated prompt launching in `onResume()`, eliminating concurrent `BiometricPrompt.authenticate()` invocations on cold launch.
+- **Dashboard Transaction Details Dialog Incomplete Actions**: Connected `onDelete` (with confirmation dialog) and `onOpenSmsApp` (with system SMS app launcher intent) in `DashboardScreen.kt`.
+- **Subscription Radar Blank Brand Guard**: Added `targetNorm.isNotBlank()` safety guard in `SubscriptionDetector.kt` to prevent false matches against empty recipient fields.
 - **Timeless Duplicate Suppression & Repeat Purchase Dropping**: Replaced blind `LIMIT 1` duplicate query with windowed checks (2-hour dual-channel window and 4-day CC settlement window), ensuring repeat legitimate purchases are never suppressed.
 - **WorkManager Crash in `BillReminderWorker`**: Removed unneeded `transactionDao` argument from constructor to eliminate reflection `NoSuchMethodException`.
 - **Hardcoded Plaintext Passphrase**: Replaced static string passphrase across all database call sites with KeyStore-derived keys.

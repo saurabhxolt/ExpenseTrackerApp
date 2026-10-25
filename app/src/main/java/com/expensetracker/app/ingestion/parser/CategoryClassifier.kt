@@ -108,7 +108,7 @@ class CategoryClassifier @Inject constructor(
     suspend fun classify(merchant: String, rawText: String, type: String): String {
         // 1. Check user preference learning memory FIRST
         val normalizedKey = normalizeMerchantKey(merchant)
-        if (normalizedKey.isNotBlank() && merchantCategoryMappingDao != null) {
+        if (normalizedKey.isNotBlank()) {
             val mapping = merchantCategoryMappingDao.getMappingForMerchant(normalizedKey)
             if (mapping != null && mapping.assignedCategory.isNotBlank()) {
                 return mapping.assignedCategory
@@ -121,7 +121,7 @@ class CategoryClassifier @Inject constructor(
 
     suspend fun saveUserMerchantPreference(merchant: String, assignedCategory: String) {
         val normalizedKey = normalizeMerchantKey(merchant)
-        if (normalizedKey.isNotBlank() && assignedCategory.isNotBlank() && merchantCategoryMappingDao != null) {
+        if (normalizedKey.isNotBlank() && assignedCategory.isNotBlank()) {
             merchantCategoryMappingDao.insertMapping(
                 MerchantCategoryMappingEntity(
                     merchantKey = normalizedKey,

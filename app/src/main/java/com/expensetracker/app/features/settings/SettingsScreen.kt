@@ -90,11 +90,19 @@ fun SettingsRoute(
                 val inputStream = context.contentResolver.openInputStream(it)
                 val jsonStr = inputStream?.bufferedReader()?.use { reader -> reader.readText() } ?: ""
                 if (jsonStr.isNotBlank()) {
-                    viewModel.restoreBackupJson(jsonStr)
-                    Toast.makeText(context, "Backup restored successfully!", Toast.LENGTH_SHORT).show()
+                    viewModel.restoreBackupJson(
+                        jsonStr = jsonStr,
+                        context = context,
+                        onSuccess = {
+                            Toast.makeText(context, "Backup restored successfully! 🎉", Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { errMsg ->
+                            Toast.makeText(context, "Restore failed: $errMsg", Toast.LENGTH_LONG).show()
+                        }
+                    )
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "Failed to restore backup", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Failed to read backup file: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
         }
     }

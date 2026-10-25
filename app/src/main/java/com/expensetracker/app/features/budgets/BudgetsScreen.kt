@@ -84,6 +84,7 @@ fun BudgetsRoute(
 
             if (showAddDialog) {
                 AddBudgetDialog(
+                    availableCategories = uiState.availableCategories,
                     onDismiss = { showAddDialog = false },
                     onConfirm = { category, limit ->
                         viewModel.saveBudget(category, limit)
@@ -332,14 +333,15 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddBudgetDialog(
+    availableCategories: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (category: String, limitAmount: Double) -> Unit
 ) {
-    var selectedCategory by remember { mutableStateOf("Food & Dining") }
+    val defaultCats = listOf("General Expense", "Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Rent", "EMI", "Groceries & Vegetables", "Subscriptions", "Entertainment", "Fuel", "Health & Medical", "Insurance", "Government & Fees", "Investments", "Other")
+    val categories = if (availableCategories.isNotEmpty()) availableCategories else defaultCats
+    var selectedCategory by remember { mutableStateOf(categories.firstOrNull() ?: "Food & Dining") }
     var limitText by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-
-    val categories = listOf("General Expense", "Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Rent", "EMI", "Groceries & Vegetables", "Subscriptions", "Entertainment", "Fuel", "Health & Medical", "Insurance", "Government & Fees", "Investments", "Other")
 
     AlertDialog(
         onDismissRequest = onDismiss,

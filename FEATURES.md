@@ -22,6 +22,7 @@
 
 ### 3. Budgets & Category Spending Caps
 * **Monthly Spending Thresholds**: Define custom monthly spending limits per category (e.g. ₹10,000 for Food & Dining), strictly scoped to the active calendar month.
+* **Dynamic Category Loading & Safe Upsert**: Pulls real categories dynamically from `CategoryRepository` (including custom user categories) rather than hardcoded lists, with safe upsert logic preventing duplicate category budget entries.
 * **Dynamic Visual Progress Indicators**: Animated progress bars color-coded by utilization:
   * 🟢 Green: < 80% of limit
   * 🟡 Amber: 80% – 99% of limit (warning zone)
@@ -30,7 +31,8 @@
 
 ### 4. Home Screen Live Cashflow Widget
 * **Glanceable Financial Stats**: Live Android Home Screen App Widget rendering current month net cashflow and today's total spend.
-* **Automatic Live Updates**: Seamlessly updates upon new transaction ingestion and manual additions.
+* **Automatic Live Updates Across All Writes**: Instant widget synchronization triggered across all transaction operations (SMS/notification ingestion, manual additions, category edits, and deletions) via repository hook.
+* **Direct App Launch**: Interactive tap anywhere on the widget immediately brings the main app to the foreground.
 
 ### 4. Financial Analytics & Deep Insights
 * **Category Spending Leaderboard**: Ranked bar chart showing highest spending categories for the active period.
@@ -75,15 +77,18 @@
 * **Android Keystore Passphrase Management**: Encryption key derived and securely sealed inside the Android hardware Keystore.
 
 ### 3. Biometric Gatekeeper
-* **BiometricPrompt Authentication**: Fingerprint and Face Unlock support on app launch.
+* **BiometricPrompt Authentication**: Fingerprint and Face Unlock support on app launch with single-prompt debouncing to eliminate duplicate prompt race conditions during cold start.
 * **Cryptographic Fallback**: Seamless fallback to device PIN, Pattern, or Password.
+* **30-Second Background Grace Window**: Automatic re-lock tracking ensures sensitive financial data remains protected when the app is backgrounded.
 
 ---
 
 ## 💾 Persona 4: System Maintenance & Data Pipeline
 
 ### 1. Storage Access Framework (SAF) Backup & Export
-* **Disaster-Recovery JSON Backup (Schema v3)**: Full snapshot export and restore via native Android SAF file picker, encompassing transactions, budgets, categories, subscriptions, merchant preference mappings, and all Splitwise P2P entities (groups, members, split expenses, shares, settlements).
+* **Disaster-Recovery JSON Backup (Schema v3)**: Full snapshot export and restore via native Android SAF file picker, encompassing transactions, budgets (with `period`), categories (with `isCustom` and `emoji`), subscriptions (with `autoMatched` and `lastPaidDateMs`), merchant preference mappings, and all Splitwise P2P entities (groups, members, split expenses, shares, settlements).
+* **Safe Name-Based Upsert on Restore**: Restores categories and budgets idempotently by name, preventing duplicate insertion crashes and preserving user-defined emojis.
+* **Verified Restore Callbacks & Widget Auto-Sync**: Toast notifications are bound strictly to verified restore completion, automatically synchronizing widget balances post-import.
 * **CSV & Summary Text Exporter**: Generates accounting-ready CSV files and formatted summary text reports with dedicated symbols for transfers and investments.
 
 ### 2. Background Automation
