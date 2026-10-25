@@ -38,6 +38,7 @@
 | **Quick Settings Tile & Instant Cash Logging** | Feature / QuickLog| ✅ Completed | Android System |
 | **Air-Gapped Offline QR Group Sync** | Feature / Split | ✅ Completed | Core Architecture |
 | **100% On-Device Receipt & Invoice OCR Scanner** | Feature / OCR | ✅ Completed | Core Architecture |
+| **OCR, Card Radar & Savings Jars Usability Overhaul** | OCR / Cards / Sinking | ✅ Completed | Core Architecture |
 
 ---
 

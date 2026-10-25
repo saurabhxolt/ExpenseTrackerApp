@@ -12,31 +12,40 @@ data class ParsedReceipt(
     val amount: Double,
     val dateMillis: Long,
     val suggestedCategory: String,
-    val rawText: String
+    val rawText: String,
+    val allDetectedAmounts: List<Double> = emptyList()
 )
 
 @Singleton
 class ReceiptOcrParser @Inject constructor() {
 
-    // Regex for amounts with currency symbols or standalone decimals
+    // Regex for amounts with optional currency symbols or decimals
     private val amountPattern = Pattern.compile(
-        "(?:(?:rs\\.?|inr|₹)\\s*)?([0-9]{1,3}(?:,[0-9]{3})*(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)",
+        """(?:(?:rs\.?|inr|₹)\s*)?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2}))""",
         Pattern.CASE_INSENSITIVE
+    )
+
+    // Lines to strictly reject as monetary totals (e.g. quantity or item count lines)
+    private val countNoiseKeywords = listOf(
+        "total item", "total qty", "total quantity", "total count",
+        "total pcs", "total piece", "item count", "items count",
+        "qty:", "qty.", "no of items", "no. of items"
     )
 
     // Keywords indicating final total payable
     private val totalKeywords = listOf(
         "grand total", "net payable", "net amount", "total payable",
         "total amount", "amount payable", "final total", "bill total",
-        "invoice total", "total", "sub total", "subtotal", "balance due"
+        "invoice total", "total due", "balance due", "sub total", "subtotal", "total"
     )
 
     // Lines to skip when identifying merchant name
     private val headerNoisePatterns = listOf(
         "tax invoice", "retail invoice", "cash receipt", "bill of supply",
         "welcome", "thank you", "visit again", "original for recipient",
-        "gstin", "fssai", "cin:", "pan:", "tel:", "phone:", "ph:", "order no",
-        "table no", "token no", "date:", "time:"
+        "duplicate copy", "customer copy",
+        "gstin", "gst no", "fssai", "cin:", "pan:", "tel:", "phone:", "ph:", "order no",
+        "table no", "token no", "date:", "time:", "cashier:", "pos id"
     )
 
     fun parse(rawText: String): ParsedReceipt {
@@ -44,7 +53,7 @@ class ReceiptOcrParser @Inject constructor() {
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
-        val amount = extractAmount(lines)
+        val (amount, candidates) = extractAmountAndCandidates(lines)
         val dateMillis = extractDate(lines)
         val merchant = extractMerchant(lines)
         val category = CategoryClassifier.predictCategoryStatic(merchant, rawText, "DEBIT")
@@ -54,48 +63,102 @@ class ReceiptOcrParser @Inject constructor() {
             amount = amount,
             dateMillis = dateMillis,
             suggestedCategory = category,
-            rawText = rawText
+            rawText = rawText,
+            allDetectedAmounts = candidates
         )
     }
 
-    private fun extractAmount(lines: List<String>): Double {
-        // Priority 1: Check lines explicitly containing total keywords
+    private fun extractAmountAndCandidates(lines: List<String>): Pair<Double, List<Double>> {
+        val allCandidates = mutableListOf<Double>()
+
+        for (line in lines) {
+            val amountsInLine = parseAllAmountsFromLine(line)
+            allCandidates.addAll(amountsInLine)
+        }
+
+        // Priority 1: Check lines containing total keywords (bottom up)
         for (keyword in totalKeywords) {
-            for (line in lines.reversed()) {
+            for (i in lines.indices.reversed()) {
+                val line = lines[i]
                 val lower = line.lowercase(Locale.ROOT)
+
+                // Skip if this line is just an item count e.g. "Total Items: 3"
+                if (countNoiseKeywords.any { lower.contains(it) }) {
+                    continue
+                }
+
                 if (lower.contains(keyword)) {
+                    // 1a. Try to parse amount from the exact line
                     val candidate = parseAmountFromLine(line)
                     if (candidate > 0.0) {
-                        return candidate
+                        val sortedCandidates = allCandidates.distinct().sortedDescending()
+                        return Pair(candidate, sortedCandidates)
+                    }
+
+                    // 1b. Proximity search: Check the immediately next line (e.g. line 1: "TOTAL", line 2: "₹1,450.00")
+                    if (i + 1 < lines.size) {
+                        val nextLine = lines[i + 1]
+                        val nextCandidate = parseAmountFromLine(nextLine)
+                        if (nextCandidate > 0.0) {
+                            val sortedCandidates = allCandidates.distinct().sortedDescending()
+                            return Pair(nextCandidate, sortedCandidates)
+                        }
+                    }
+
+                    // 1c. Proximity search 2 lines ahead if line i+1 was a symbol like "₹" or "INR"
+                    if (i + 2 < lines.size) {
+                        val secondLine = lines[i + 2]
+                        val secondCandidate = parseAmountFromLine(secondLine)
+                        if (secondCandidate > 0.0) {
+                            val sortedCandidates = allCandidates.distinct().sortedDescending()
+                            return Pair(secondCandidate, sortedCandidates)
+                        }
                     }
                 }
             }
         }
 
-        // Priority 2: Scan from bottom-up for the first valid monetary amount
-        val candidates = mutableListOf<Double>()
-        for (line in lines.reversed().take(12)) {
-            val candidate = parseAmountFromLine(line)
-            if (candidate > 0.0) {
-                candidates.add(candidate)
-            }
+        // Priority 2: Scan bottom-up for highest realistic monetary amount
+        val bottomCandidates = mutableListOf<Double>()
+        for (line in lines.reversed().take(15)) {
+            val lower = line.lowercase(Locale.ROOT)
+            if (countNoiseKeywords.any { lower.contains(it) }) continue
+            bottomCandidates.addAll(parseAllAmountsFromLine(line))
         }
 
-        return candidates.maxOrNull() ?: 0.0
+        val primary = bottomCandidates.maxOrNull() ?: allCandidates.maxOrNull() ?: 0.0
+        val sortedCandidates = allCandidates.distinct().sortedDescending()
+        return Pair(primary, sortedCandidates)
     }
 
     private fun parseAmountFromLine(line: String): Double {
+        val amounts = parseAllAmountsFromLine(line)
+        return amounts.lastOrNull() ?: 0.0
+    }
+
+    private fun parseAllAmountsFromLine(line: String): List<Double> {
+        val result = mutableListOf<Double>()
         val matcher = amountPattern.matcher(line)
-        var lastFound = 0.0
         while (matcher.find()) {
             val strVal = matcher.group(1)?.replace(",", "") ?: continue
             val candidate = strVal.toDoubleOrNull() ?: continue
-            // Ignore phone numbers, pin codes, or years formatted as integers (> 500,000 or 1900..2100)
-            if (candidate in 1.0..500000.0 && candidate != 2024.0 && candidate != 2025.0 && candidate != 2026.0) {
-                lastFound = candidate
+
+            // Filter out noise numbers:
+            // 1. Years (2020..2030)
+            // 2. Huge integers (> 500,000)
+            // 3. Tiny fractions (< 0.50)
+            // 4. Standalone 6-digit pin codes
+            val isYear = candidate in 2020.0..2030.0 && !strVal.contains(".")
+            val isPinCode = candidate in 100000.0..999999.0 && !strVal.contains(".")
+            val isInvalidRange = candidate < 0.50 || candidate > 500000.0
+
+            if (!isYear && !isPinCode && !isInvalidRange) {
+                // Round to 2 decimal places
+                val rounded = kotlin.math.round(candidate * 100.0) / 100.0
+                result.add(rounded)
             }
         }
-        return lastFound
+        return result
     }
 
     private fun extractDate(lines: List<String>): Long {
@@ -136,12 +199,13 @@ class ReceiptOcrParser @Inject constructor() {
     }
 
     private fun extractMerchant(lines: List<String>): String {
-        for (line in lines.take(6)) {
+        for (line in lines.take(8)) {
             val lower = line.lowercase(Locale.ROOT)
             val isNoise = headerNoisePatterns.any { lower.contains(it) }
-            val hasDigitsOnly = line.all { it.isDigit() || it.isWhitespace() || it == '-' || it == '/' }
+            val hasDigitsOnly = line.all { it.isDigit() || it.isWhitespace() || it == '-' || it == '/' || it == ':' }
+            val isUrlOrEmail = lower.contains("www.") || lower.contains(".com") || lower.contains(".in") || lower.contains("@")
 
-            if (!isNoise && !hasDigitsOnly && line.length >= 3) {
+            if (!isNoise && !hasDigitsOnly && !isUrlOrEmail && line.length >= 3) {
                 // Clean up any stray punctuation
                 return line.trim(',', ':', ';', '-', '*', '#')
             }

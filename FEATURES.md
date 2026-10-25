@@ -51,6 +51,9 @@
 * **Interactive Sinking Fund Jars**: Create visual savings goals with custom target amounts, emojis, colors, and deadline targets (Emergency Fund, Vacation, Down Payment, Gadgets).
 * **Dynamic Monthly Savings Pace**: Automatically calculates exact monthly savings pace required to hit the target before deadline.
 * **1-Tap Quick Deposit & Withdraw**: Fast deposit/withdrawal actions with quick rupee chips (`+₹500`, `+₹1,000`, `+₹2,000`, `+₹5,000`) and auto-completion when the target is achieved.
+* **Dashboard Live Overview Card**: Glanceable visual card on Dashboard displaying total saved across all jars, overall progress bar, and quick-tap jar chips.
+* **One-Tap Starter Templates**: 4 built-in starter templates (`🛡️ Emergency Fund`, `🏖️ Vacation Trip`, `💻 Gadget & Tech`, `🚗 Vehicle Down Payment`) for instant jar creation with pre-calibrated targets and emojis.
+* **Dual Ledger Synchronization**: Optional ledger-linking toggle (`recordInLedger`) recording deposits as `INVESTMENT` transactions and withdrawals as `CREDIT` transactions into the main financial ledger.
 
 ### 7. Indian Tax Season Deductions Organizer (80C / 80D / HRA)
 * **Automated Exemption Inference**: Identifies tax-deductible transactions under Sections 80C (PPF, ELSS, LIC, tuition fees), 80D (health insurance/mediclaim), Section 10(13A) (HRA rent payments), 80CCD (NPS), 80E, and 80G.
@@ -65,6 +68,10 @@
 * **30% CIBIL Utilization Guard**: Tracks active credit limits against current statement cycle debit spend, warning when utilization crosses 30% or 50% to shield credit scores from bureau penalties.
 * **Interest-Free Grace Period Countdown**: Computes dynamic statement cycles and payment deadlines, displaying exact remaining grace days before interest accrues.
 * **Auto-Discovery of Unregistered Cards**: Detects credit card mentions in incoming transactions and prompts 1-tap onboarding to track limits.
+* **Multi-Attribute Cycle Transaction Tracking**: Accurately attributes transactions to specific cards using cleaned account digits, note tags, SMS raw text masked patterns (`**4321`, `xx4321`), merchants, and bank identifiers.
+* **Expandable Cycle Transactions Drawer**: Dedicated collapsible drawer on every card showing all attributed transactions with amounts, merchants, dates, and empty state troubleshooting guides.
+* **Educational Issuer Setup**: Card setup dialog featuring 11 bank issuer chips (`HDFC`, `SBI`, `ICICI`, `Axis`, `Kotak`, `OneCard`, `BOB`, `Amex`, `RBL`, `IndusInd`, `Federal`), statement date vs due date educational helper texts, and offline security card.
+* **Linked Card Transaction Tagging**: 1-tap card selector in Dashboard Add Transaction dialog enabling manual expenses to be billed directly against registered credit cards.
 
 ### 10. Quick Settings Tile & Instant Cash Logging (<3s)
 * **Android Quick Settings Tile (`CashQuickLogTileService`)**: Launch rapid cash expense logging straight from Android notification shade / lockscreen.
@@ -77,9 +84,12 @@
 * **Idempotent Merge Engine**: Prevents duplicate insertions when re-scanning active groups, automatically creating missing members and syncing new expenses.
 
 ### 12. 100% On-Device Receipt & Invoice OCR Scanner
-* **Offline Optical Character Recognition**: Leverages Google ML Kit Text Recognition running entirely on-device without network permissions (`ReceiptScannerDialog`, `ReceiptOcrParser`).
-* **Intelligent Total & Merchant Extraction**: Robust regex parsing isolating final amounts from complex restaurant bills, supermarket receipts, and pharmacy invoices (accounting for GST, VAT, service charges, discounts).
-* **Automatic Category Inference**: Predicts transaction categories directly from parsed merchant headers and opens an editable draft review sheet before persisting into encrypted Room database.
+* **Offline Optical Character Recognition**: Leverages Google ML Kit Text Recognition with bundled offline model (`com.google.mlkit:text-recognition:16.0.0`) packaged within the APK, eliminating Google Play Services internet model download requirements.
+* **Sensor & EXIF Upright Rotation Correction**: Automatically compensates for Android camera landscape sensor mounting (`imageProxy.imageInfo.rotationDegrees`) and image gallery EXIF orientation (`android.media.ExifInterface`), preventing sideways OCR decoding errors.
+* **Multi-Line Proximity Total & Noise Rejection**: Identifies totals on adjacent lines, rejects item count / quantity noise ("Total items: 3"), and filters out year/pin code false amounts.
+* **Interactive Detected Amounts Chips**: Renders all candidate amounts found on the receipt as 1-tap selectable chips, allowing instant correction if ML Kit picked a subtotal.
+* **Paid With / Linked Card Selector**: Allows scanned receipts to be directly attributed to a registered credit card, automatically updating credit card radar utilization.
+* **Transparent Raw Text Drawer**: Expandable bottom sheet displaying full raw extracted OCR text for verification and debugging.
 
 ---
 

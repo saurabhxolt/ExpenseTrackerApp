@@ -85,4 +85,29 @@ class ReceiptOcrParserTest {
         assertEquals(Calendar.AUGUST, cal.get(Calendar.MONTH))
         assertEquals(15, cal.get(Calendar.DAY_OF_MONTH))
     }
+
+    @Test
+    fun testMultiLineTotalAndItemCountRejection() {
+        val sampleBill = """
+            CAFE COFFEE DAY
+            Store #402, Indiranagar
+            Date: 12/10/2026
+            Cappuccino Reg: 180.00
+            Blueberry Muffin: 140.00
+            Total Items: 2
+            Total Qty: 2
+            GRAND TOTAL
+            ₹ 320.00
+            Payment: Card
+        """.trimIndent()
+
+        val result = parser.parse(sampleBill)
+
+        assertEquals("CAFE COFFEE DAY", result.merchantName)
+        assertEquals(320.0, result.amount, 0.01)
+        assertTrue("Should not parse item count 2 as amount", result.amount > 10.0)
+        assertTrue(result.allDetectedAmounts.contains(320.0))
+        assertTrue(result.allDetectedAmounts.contains(180.0))
+        assertTrue(result.allDetectedAmounts.contains(140.0))
+    }
 }

@@ -352,3 +352,46 @@ cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.b
 ```
 Result: **BUILD SUCCESSFUL in 1m 6s**. Clean APK packaged with zero network permissions.
 
+---
+
+## 32. Usability & Accuracy Overhaul: OCR Scanner, Credit Card Radar & Visual Sinking Funds
+
+### 🧾 1. 100% On-Device Receipt OCR Scanner
+- **Root Cause Analysis**:
+  1. Google ML Kit unbundled library (`play-services-mlkit-text-recognition`) required Google Play Services to download machine learning models dynamically from the internet, which failed completely in our offline app (`android.permission.INTERNET` forbidden).
+  2. Camera sensors on Android devices are mounted in landscape (typically 90° clockwise relative to portrait). Because `imageProxy.imageInfo.rotationDegrees` was ignored during image processing, ML Kit processed a sideways-rotated image where text lines ran vertically, breaking word detection.
+  3. "Total items: 3" or item counts were being parsed as ₹3.00 instead of the real bill total due to keyword matching on "total".
+- **Implemented Fixes**:
+  - **Bundled Offline ML Model**: Switched dependency in [build.gradle.kts](file:///e:/ExpenseTrackerApp/app/build.gradle.kts) to `com.google.mlkit:text-recognition:16.0.0`, embedding `libmlkit_google_ocr_pipeline.so` directly inside the APK.
+  - **Upright Matrix Rotation**: Rotated camera preview bitmaps by `imageProxy.imageInfo.rotationDegrees` before feeding to ML Kit, and extracted EXIF orientation via `ExifInterface` for device gallery imports.
+  - **Multi-Line Total Proximity & Quantity Noise Filter**: In [ReceiptOcrParser.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/ocr/ReceiptOcrParser.kt), added filters rejecting item/quantity count lines (`"total item"`, `"total qty"`, `"qty:"`), candidate filters excluding years (2020..2030) and postal codes, and multi-line inspection checking subsequent lines when `"TOTAL"` is on a header line by itself.
+  - **1-Tap Detected Amounts Chips**: Surfaced all detected numerical candidates as interactive chips directly above the amount input in [ReceiptScannerDialog.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/ocr/ReceiptScannerDialog.kt).
+  - **Linked Credit Card Tagging**: Added "Paid With" payment selector attributing scanned expenses to registered cards.
+  - **Raw Text Drawer**: Added an expandable "View Raw Extracted Text" drawer showing raw OCR lines.
+
+### 💳 2. Credit Card Grace Period & 30% Utilization Radar
+- **Root Cause Analysis**:
+  1. Transactions matched only against an exact string comparison of `tx.accountDigits`, which failed when transactions were manually entered (where `accountDigits` was empty) or when SMS messages formatted account numbers as `**4321`, `xx4321`, or included the card name only in `rawText`/`merchant`.
+  2. Card setup dialog lacked clear explanations distinguishing between Statement Date (bill generation date) and Due Date (payment deadline).
+  3. Card carousel had no way to inspect which individual transactions contributed to the card's current cycle balance.
+- **Implemented Fixes**:
+  - **Multi-Attribute Transaction Tracking**: Enhanced [CreditCardRadarCalculator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/CreditCardRadarCalculator.kt) to match transactions using:
+    - Cleaned account digits (`tx.accountDigits.filter(Char::isDigit)`)
+    - Manual note tags (`tx.note` containing card digits or issuer name)
+    - SMS body raw text (`tx.rawText` containing `**4321`, `xx4321`, or `accountDigits`)
+    - Merchant and bank name indicators matching the card issuer.
+  - **Cycle Transactions Drawer**: In [CreditCardRadarCard.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/cards/CreditCardRadarCard.kt), added an expandable drawer showing every transaction attributed to the active billing cycle with dates, amounts, and merchant tags.
+  - **Overhauled Card Management Dialog**: Added 11 bank issuer chips (`HDFC`, `SBI`, `ICICI`, `Axis`, `Kotak`, `OneCard`, `BOB`, `Amex`, `RBL`, `IndusInd`, `Federal`), clear educational helper text explaining Statement Date vs Due Date, and an offline security advisory card.
+  - **Dashboard Card Linking**: Added linked card selector chips to [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) `AddTransactionDialog` to allow manual expenses to be billed against registered cards.
+
+### 🏺 3. Visual Sinking Funds (Interactive Savings Jars)
+- **Root Cause Analysis**:
+  1. The feature was tucked away on a secondary sub-tab of the Budgets screen without any glanceable presence on the primary Dashboard.
+  2. A new user faced an empty state with no guidance or starter templates.
+  3. Depositing or withdrawing money from a jar was isolated from the user's main transaction ledger, leaving users confused about whether money had actually been recorded.
+- **Implemented Fixes**:
+  - **Dashboard Live Overview Card**: Added a dedicated "Savings Jars (Sinking Funds) Overview" widget on [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) displaying aggregate saved amount, progress bar, and active jar chips.
+  - **4 One-Tap Starter Templates**: Built 4 ready-to-use templates (`🛡️ Emergency Fund`, `🏖️ Vacation Trip`, `💻 Gadget & Tech`, `🚗 Vehicle Down Payment`) in [SavingsGoalsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/savings/SavingsGoalsScreen.kt) for instant creation.
+  - **Dual Ledger Synchronization**: Added `recordInLedger` toggle in [SavingsGoalsViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/savings/SavingsGoalsViewModel.kt) and `DepositWithdrawDialog` to automatically insert `INVESTMENT` transactions (on deposit) and `CREDIT` transactions (on withdrawal) into the main financial ledger.
+
+

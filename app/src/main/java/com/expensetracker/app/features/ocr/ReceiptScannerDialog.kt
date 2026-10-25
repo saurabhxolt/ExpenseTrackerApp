@@ -92,8 +92,9 @@ import java.util.concurrent.Executors
 @Composable
 fun ReceiptScannerDialog(
     ocrParser: ReceiptOcrParser,
+    registeredCards: List<com.expensetracker.app.core.database.entity.CreditCardEntity> = emptyList(),
     onDismiss: () -> Unit,
-    onSaveTransaction: (amount: Double, merchant: String, category: String, timestamp: Long) -> Unit
+    onSaveTransaction: (amount: Double, merchant: String, category: String, timestamp: Long, cardLast4: String?) -> Unit
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -111,6 +112,9 @@ fun ReceiptScannerDialog(
     var amountText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Food & Dining") }
     var transactionTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    var selectedCardLast4 by remember { mutableStateOf<String?>(null) }
+    var showRawText by remember { mutableStateOf(false) }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -137,7 +141,9 @@ fun ReceiptScannerDialog(
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 parsedReceipt = parsed
                 merchantText = parsed.merchantName
-                amountText = if (parsed.amount > 0) String.format(Locale.ROOT, "%.2f", parsed.amount) else ""
+                amountText = if (parsed.amount > 0) {
+                    if (parsed.amount % 1.0 == 0.0) parsed.amount.toInt().toString() else String.format(Locale.ROOT, "%.2f", parsed.amount)
+                } else ""
                 selectedCategory = parsed.suggestedCategory
                 transactionTimestamp = parsed.dateMillis
             }
@@ -152,10 +158,34 @@ fun ReceiptScannerDialog(
     ) { uri ->
         if (uri != null) {
             try {
+                var rotation = 0
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    try {
+                        val exif = android.media.ExifInterface(stream)
+                        val orientation = exif.getAttributeInt(
+                            android.media.ExifInterface.TAG_ORIENTATION,
+                            android.media.ExifInterface.ORIENTATION_NORMAL
+                        )
+                        rotation = when (orientation) {
+                            android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                            android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                            android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                            else -> 0
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+
                 context.contentResolver.openInputStream(uri)?.use { stream ->
                     val bitmap = BitmapFactory.decodeStream(stream)
                     if (bitmap != null) {
-                        processBitmap(bitmap)
+                        val uprightBitmap = if (rotation != 0) {
+                            val matrix = android.graphics.Matrix().apply { postRotate(rotation.toFloat()) }
+                            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                        } else {
+                            bitmap
+                        }
+                        processBitmap(uprightBitmap)
                     }
                 }
             } catch (e: Exception) {
@@ -321,10 +351,17 @@ fun ReceiptScannerDialog(
                                     cameraExecutor,
                                     object : ImageCapture.OnImageCapturedCallback() {
                                         override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                                            val rotation = imageProxy.imageInfo.rotationDegrees
                                             val bitmap = imageProxy.toBitmap()
                                             imageProxy.close()
+                                            val uprightBitmap = if (rotation != 0) {
+                                                val matrix = android.graphics.Matrix().apply { postRotate(rotation.toFloat()) }
+                                                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                                            } else {
+                                                bitmap
+                                            }
                                             ContextCompat.getMainExecutor(context).execute {
-                                                processBitmap(bitmap)
+                                                processBitmap(uprightBitmap)
                                             }
                                         }
 
@@ -407,6 +444,55 @@ fun ReceiptScannerDialog(
                                 shape = RoundedCornerShape(12.dp)
                             )
 
+                            // Suggested Amounts Chips (if multiple detected)
+                            if (parsedReceipt != null && parsedReceipt!!.allDetectedAmounts.isNotEmpty()) {
+                                Text(
+                                    text = "Amounts Detected on Receipt (1-Tap to select):",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    parsedReceipt!!.allDetectedAmounts.forEach { candidate ->
+                                        val formatted = if (candidate % 1.0 == 0.0) candidate.toInt().toString() else String.format(Locale.ROOT, "%.2f", candidate)
+                                        val isSelected = amountText == formatted
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = { amountText = formatted },
+                                            label = { Text("₹$formatted", fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Payment Method / Card Selector
+                            if (registeredCards.isNotEmpty()) {
+                                Text(
+                                    text = "Paid With",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    FilterChip(
+                                        selected = selectedCardLast4 == null,
+                                        onClick = { selectedCardLast4 = null },
+                                        label = { Text("Cash / UPI / Account", fontSize = 11.sp) }
+                                    )
+                                    registeredCards.forEach { card ->
+                                        val isSelected = selectedCardLast4 == card.last4Digits
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = { selectedCardLast4 = if (isSelected) null else card.last4Digits },
+                                            label = { Text("${card.bankName} •••• ${card.last4Digits}", fontSize = 11.sp) }
+                                        )
+                                    }
+                                }
+                            }
+
                             // Date Display
                             val dateStr = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH).format(Date(transactionTimestamp))
                             Text(
@@ -434,10 +520,44 @@ fun ReceiptScannerDialog(
                                     )
                                 }
                             }
+
+                            // Expandable Raw OCR Text Preview
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showRawText = !showRawText }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = if (showRawText) "Hide Raw Extracted Text 🔼" else "View Raw Extracted Text 🔽",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (showRawText && parsedReceipt != null) {
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(100.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surface
+                                ) {
+                                    Text(
+                                        text = parsedReceipt!!.rawText.ifBlank { "No text recognized." },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(8.dp),
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Save Button
                     Button(
@@ -448,7 +568,7 @@ fun ReceiptScannerDialog(
                                 return@Button
                             }
                             val merchant = merchantText.trim().ifBlank { "Scanned Receipt" }
-                            onSaveTransaction(amount, merchant, selectedCategory, transactionTimestamp)
+                            onSaveTransaction(amount, merchant, selectedCategory, transactionTimestamp, selectedCardLast4)
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             Toast.makeText(context, "Expense saved from receipt!", Toast.LENGTH_SHORT).show()
                             onDismiss()

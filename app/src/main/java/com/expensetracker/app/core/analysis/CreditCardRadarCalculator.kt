@@ -109,23 +109,40 @@ object CreditCardRadarCalculator {
      * Checks if a transaction belongs to a given credit card.
      */
     fun isTransactionForCard(tx: TransactionEntity, card: CreditCardEntity): Boolean {
-        val last4 = card.last4Digits.trim()
+        val last4 = card.last4Digits.filter { it.isDigit() }
+        val accountClean = tx.accountDigits.filter { it.isDigit() }
+
+        // 1. Direct last 4 digits matching on accountDigits
         if (last4.isNotEmpty()) {
-            if (tx.accountDigits.endsWith(last4)) return true
-            if (tx.rawText.contains(last4)) return true
+            if (accountClean.endsWith(last4) || accountClean.contains(last4)) return true
+            if (tx.accountDigits.contains(last4, ignoreCase = true)) return true
         }
+
+        // 2. Note inspection (manual transactions, tagged receipts, or custom notes)
+        val note = tx.note.lowercase()
+        if (last4.isNotEmpty() && note.contains(last4)) return true
         val cardName = card.cardName.trim().lowercase()
-        val bank = card.bankName.trim().lowercase()
+        if (cardName.length >= 3 && note.contains(cardName)) return true
+
+        // 3. Raw SMS text inspection
         val raw = tx.rawText.lowercase()
-        val merchant = tx.merchant.lowercase()
-
-        if (cardName.isNotEmpty() && (raw.contains(cardName) || merchant.contains(cardName))) {
-            return true
+        if (last4.isNotEmpty()) {
+            if (raw.contains(last4)) return true
+            // Common masked representations: xx4321, **4321, x4321, *4321
+            if (raw.contains("xx$last4") || raw.contains("**$last4") || raw.contains("x$last4") || raw.contains("*$last4")) return true
         }
+        if (cardName.length >= 3 && raw.contains(cardName)) return true
 
-        if (bank.isNotEmpty() && bank != "bank" && (raw.contains(bank) || merchant.contains(bank))) {
+        // 4. Merchant text inspection
+        val merchant = tx.merchant.lowercase()
+        if (last4.isNotEmpty() && merchant.contains(last4)) return true
+        if (cardName.length >= 3 && merchant.contains(cardName)) return true
+
+        // 5. Bank name indicator check
+        val bank = card.bankName.trim().lowercase()
+        if (bank.isNotEmpty() && bank != "bank" && (raw.contains(bank) || merchant.contains(bank) || note.contains(bank))) {
             val hasCardIndicator = raw.contains("credit card") || raw.contains("card") ||
-                    raw.contains("cc") || merchant.contains("card")
+                    raw.contains("cc") || merchant.contains("card") || note.contains("card")
             if (hasCardIndicator) return true
         }
 

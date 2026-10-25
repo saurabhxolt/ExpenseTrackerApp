@@ -126,10 +126,14 @@ fun BudgetsRoute(
                         uiState = uiState,
                         onDeleteBudget = { item -> viewModel.deleteBudget(item.categoryName, item.limitAmount, item.budgetId) }
                     )
-                } else {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     com.expensetracker.app.features.savings.SavingsGoalsContent(
                         uiState = savingsUiState,
                         onAddGoalClick = { showAddGoalDialog = true },
+                        onAddTemplateGoal = { idx ->
+                            savingsViewModel.createStarterTemplate(idx)
+                            android.widget.Toast.makeText(context, "Starter Savings Jar created! 🏺", android.widget.Toast.LENGTH_SHORT).show()
+                        },
                         onDepositClick = { depositGoal = it },
                         onWithdrawClick = { withdrawGoal = it },
                         onEditGoalClick = { editingGoal = it },
@@ -185,13 +189,15 @@ fun BudgetsRoute(
             )
         }
 
+        val ctx = androidx.compose.ui.platform.LocalContext.current
         depositGoal?.let { goal ->
             com.expensetracker.app.features.savings.DepositWithdrawDialog(
                 goal = goal,
                 isDeposit = true,
                 onDismiss = { depositGoal = null },
-                onConfirm = { amount ->
-                    savingsViewModel.depositAmount(goal.id, amount)
+                onConfirm = { amount, recordInLedger ->
+                    savingsViewModel.depositAmount(goal.id, amount, recordInLedger)
+                    android.widget.Toast.makeText(ctx, "Deposited ₹${amount.toInt()} into ${goal.title} Jar! 🎯", android.widget.Toast.LENGTH_SHORT).show()
                     depositGoal = null
                 }
             )
@@ -202,8 +208,9 @@ fun BudgetsRoute(
                 goal = goal,
                 isDeposit = false,
                 onDismiss = { withdrawGoal = null },
-                onConfirm = { amount ->
-                    savingsViewModel.withdrawAmount(goal.id, amount)
+                onConfirm = { amount, recordInLedger ->
+                    savingsViewModel.withdrawAmount(goal.id, amount, recordInLedger)
+                    android.widget.Toast.makeText(ctx, "Withdrew ₹${amount.toInt()} from ${goal.title} Jar", android.widget.Toast.LENGTH_SHORT).show()
                     withdrawGoal = null
                 }
             )

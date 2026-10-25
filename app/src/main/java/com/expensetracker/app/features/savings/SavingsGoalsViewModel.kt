@@ -23,7 +23,8 @@ data class SavingsGoalsUiState(
 
 @HiltViewModel
 class SavingsGoalsViewModel @Inject constructor(
-    private val savingsGoalRepository: SavingsGoalRepository
+    private val savingsGoalRepository: SavingsGoalRepository,
+    private val transactionRepository: com.expensetracker.app.core.data.repository.TransactionRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<SavingsGoalsUiState> = savingsGoalRepository.allGoals
@@ -69,7 +70,34 @@ class SavingsGoalsViewModel @Inject constructor(
                 note = note.trim(),
                 isCompleted = initialAmount >= targetAmount && targetAmount > 0
             )
-            savingsGoalRepository.createGoal(goal)
+            val id = savingsGoalRepository.createGoal(goal)
+            if (initialAmount > 0) {
+                val now = System.currentTimeMillis()
+                transactionRepository.insertTransaction(
+                    com.expensetracker.app.core.database.entity.TransactionEntity(
+                        amount = initialAmount,
+                        type = "INVESTMENT",
+                        merchant = "Savings Jar: ${goal.title}",
+                        rawText = "Initial deposit into ${goal.title} Jar",
+                        category = "Investments",
+                        timestamp = now,
+                        note = "Initial fund for ${goal.emoji} ${goal.title}",
+                        transactionHash = "savings_init_${now}_${goal.title}_$initialAmount",
+                        isManual = true
+                    )
+                )
+            }
+        }
+    }
+
+    fun createStarterTemplate(templateIndex: Int) {
+        val now = System.currentTimeMillis()
+        val dayMs = 24 * 60 * 60 * 1000L
+        when (templateIndex) {
+            0 -> createGoal("Emergency Fund", 100000.0, 5000.0, now + 180 * dayMs, "#10B981", "🛡️", "Safety buffer for 3-6 months")
+            1 -> createGoal("Vacation & Travel", 50000.0, 2000.0, now + 180 * dayMs, "#3B82F6", "🏖️", "Holiday getaway with family/friends")
+            2 -> createGoal("Gadget & Tech", 60000.0, 1000.0, now + 90 * dayMs, "#8B5CF6", "💻", "Upgrade phone or computer")
+            3 -> createGoal("Vehicle Down Payment", 150000.0, 10000.0, now + 365 * dayMs, "#F59E0B", "🚗", "Car or bike down payment fund")
         }
     }
 
@@ -85,15 +113,49 @@ class SavingsGoalsViewModel @Inject constructor(
         }
     }
 
-    fun depositAmount(goalId: Long, amount: Double) {
+    fun depositAmount(goalId: Long, amount: Double, recordInLedger: Boolean = true) {
         viewModelScope.launch {
+            val goal = savingsGoalRepository.getGoalById(goalId)
             savingsGoalRepository.depositAmount(goalId, amount)
+            if (recordInLedger && goal != null && amount > 0) {
+                val now = System.currentTimeMillis()
+                transactionRepository.insertTransaction(
+                    com.expensetracker.app.core.database.entity.TransactionEntity(
+                        amount = amount,
+                        type = "INVESTMENT",
+                        merchant = "Savings Jar: ${goal.title}",
+                        rawText = "Deposit into ${goal.title} Jar",
+                        category = "Investments",
+                        timestamp = now,
+                        note = "Deposited into ${goal.emoji} ${goal.title}",
+                        transactionHash = "savings_dep_${now}_${goalId}_$amount",
+                        isManual = true
+                    )
+                )
+            }
         }
     }
 
-    fun withdrawAmount(goalId: Long, amount: Double) {
+    fun withdrawAmount(goalId: Long, amount: Double, recordInLedger: Boolean = true) {
         viewModelScope.launch {
+            val goal = savingsGoalRepository.getGoalById(goalId)
             savingsGoalRepository.withdrawAmount(goalId, amount)
+            if (recordInLedger && goal != null && amount > 0) {
+                val now = System.currentTimeMillis()
+                transactionRepository.insertTransaction(
+                    com.expensetracker.app.core.database.entity.TransactionEntity(
+                        amount = amount,
+                        type = "CREDIT",
+                        merchant = "Savings Jar: ${goal.title}",
+                        rawText = "Withdrawal from ${goal.title} Jar",
+                        category = "Savings Withdrawal",
+                        timestamp = now,
+                        note = "Withdrawn from ${goal.emoji} ${goal.title}",
+                        transactionHash = "savings_wdr_${now}_${goalId}_$amount",
+                        isManual = true
+                    )
+                )
+            }
         }
     }
 

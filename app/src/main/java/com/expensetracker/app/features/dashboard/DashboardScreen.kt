@@ -81,6 +81,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -107,6 +108,9 @@ fun DashboardRoute(
     viewModel: DashboardViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val registeredCards by viewModel.registeredCards.collectAsState()
+    val savingsGoals by viewModel.savingsGoals.collectAsState()
+
     var showAddDialog by remember { mutableStateOf(false) }
     var showQuickCashLog by remember { mutableStateOf(false) }
     var showReceiptScanner by remember { mutableStateOf(false) }
@@ -194,6 +198,7 @@ fun DashboardRoute(
         Box(modifier = Modifier.padding(padding)) {
             DashboardScreen(
                 uiState = uiState,
+                savingsGoals = savingsGoals,
                 onPeriodFilterSelected = { viewModel.setPeriodFilter(it) },
                 onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
                 onSortOrderSelected = { viewModel.setSortOrder(it) },
@@ -221,9 +226,17 @@ fun DashboardRoute(
             if (showReceiptScanner) {
                 com.expensetracker.app.features.ocr.ReceiptScannerDialog(
                     ocrParser = viewModel.receiptOcrParser,
+                    registeredCards = registeredCards,
                     onDismiss = { showReceiptScanner = false },
-                    onSaveTransaction = { amount, merchant, category, timestamp ->
-                        viewModel.addTransaction(merchant, amount, "DEBIT", category, timestamp = timestamp)
+                    onSaveTransaction = { amount, merchant, category, timestamp, cardLast4 ->
+                        viewModel.addTransaction(
+                            merchant = merchant,
+                            amount = amount,
+                            type = "DEBIT",
+                            category = category,
+                            timestamp = timestamp,
+                            accountDigits = cardLast4 ?: ""
+                        )
                         scope.launch {
                             snackbarHostState.showSnackbar("Saved ₹${amount.toInt()} from receipt! 🧾")
                         }
@@ -246,9 +259,17 @@ fun DashboardRoute(
             if (showAddDialog) {
                 AddTransactionDialog(
                     availableCategories = uiState.categories,
+                    registeredCards = registeredCards,
                     onDismiss = { showAddDialog = false },
-                    onConfirm = { merchant, amount, type, category, timestamp ->
-                        viewModel.addTransaction(merchant, amount, type, category, timestamp = timestamp)
+                    onConfirm = { merchant, amount, type, category, timestamp, accountDigits ->
+                        viewModel.addTransaction(
+                            merchant = merchant,
+                            amount = amount,
+                            type = type,
+                            category = category,
+                            timestamp = timestamp,
+                            accountDigits = accountDigits
+                        )
                         showAddDialog = false
                     }
                 )
@@ -301,6 +322,7 @@ fun DashboardRoute(
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
+    savingsGoals: List<com.expensetracker.app.core.database.entity.SavingsGoalEntity> = emptyList(),
     onPeriodFilterSelected: (PeriodFilter) -> Unit = {},
     onMonthYearSelected: (String) -> Unit = {},
     onSortOrderSelected: (String) -> Unit = {},
@@ -810,6 +832,118 @@ fun DashboardScreen(
             }
         }
 
+        // 🏺 Visual Sinking Funds (Interactive Savings Jars) Overview
+        item {
+            val isPrivacy = LocalPrivacyMode.current
+            val totalSaved = savingsGoals.sumOf { it.currentAmount }
+            val totalTarget = savingsGoals.sumOf { it.targetAmount }
+            val overallProgress = if (totalTarget > 0) (totalSaved / totalTarget).toFloat().coerceIn(0f, 1f) else 0f
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(GreenSuccess.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🏺", fontSize = 18.sp)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Savings Jars (Sinking Funds)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (savingsGoals.isEmpty()) "Visual Targets • Active in Budgets tab" else "${savingsGoals.size} active jars • ${(overallProgress * 100).toInt()}% achieved",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (savingsGoals.isNotEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = GreenSuccess.copy(alpha = 0.15f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%,.0f", totalSaved)}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GreenSuccess
+                                )
+                            }
+                        }
+                    }
+
+                    if (savingsGoals.isEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Track Emergency Fund, Vacations, or Gadgets in dedicated visual sinking jars. Switch to Budgets > Savings Jars to get started with 1-tap starter templates!",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 15.sp
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LinearProgressIndicator(
+                            progress = { overallProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(CircleShape),
+                            color = GreenSuccess,
+                            trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(savingsGoals) { goal ->
+                                val goalProgress = if (goal.targetAmount > 0) (goal.currentAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(goal.emoji.ifBlank { "🎯" }, fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column {
+                                            Text(goal.title, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(
+                                                text = if (isPrivacy) "₹•••••" else "₹${goal.currentAmount.toInt()} (${(goalProgress * 100).toInt()}%)",
+                                                fontSize = 9.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Quick Stats: Today's Spend & Avg Daily Spend
         item {
             val isPrivacy = LocalPrivacyMode.current
@@ -1277,18 +1411,20 @@ fun openMessagesApp(context: Context) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun AddTransactionDialog(
     availableCategories: List<String>,
+    registeredCards: List<com.expensetracker.app.core.database.entity.CreditCardEntity> = emptyList(),
     onDismiss: () -> Unit,
-    onConfirm: (merchant: String, amount: Double, type: String, category: String, timestamp: Long) -> Unit
+    onConfirm: (merchant: String, amount: Double, type: String, category: String, timestamp: Long, accountDigits: String) -> Unit
 ) {
     var merchant by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("DEBIT") }
     var selectedCategory by remember { mutableStateOf(availableCategories.firstOrNull() ?: "Food & Dining") }
     var selectedTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+    var selectedCardLast4 by remember { mutableStateOf<String?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
@@ -1428,6 +1564,34 @@ fun AddTransactionDialog(
                         }
                     }
                 }
+
+                // Payment Method / Card Selector
+                if (registeredCards.isNotEmpty() && selectedType == "DEBIT") {
+                    Text(
+                        text = "Payment Method / Linked Card",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    androidx.compose.foundation.layout.FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedCardLast4 == null,
+                            onClick = { selectedCardLast4 = null },
+                            label = { Text("Cash / Account", fontSize = 11.sp) }
+                        )
+                        registeredCards.forEach { card ->
+                            val isSelected = selectedCardLast4 == card.last4Digits
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { selectedCardLast4 = if (isSelected) null else card.last4Digits },
+                                label = { Text("${card.bankName} •••• ${card.last4Digits}", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -1436,7 +1600,7 @@ fun AddTransactionDialog(
                     val amount = amountText.toDoubleOrNull() ?: 0.0
                     val finalType = if (selectedCategory.equals("Investments", ignoreCase = true) || selectedCategory.equals("Investment", ignoreCase = true)) "INVESTMENT" else selectedType
                     if (merchant.isNotBlank() && amount > 0) {
-                        onConfirm(merchant, amount, finalType, selectedCategory, selectedTimestamp)
+                        onConfirm(merchant, amount, finalType, selectedCategory, selectedTimestamp, selectedCardLast4 ?: "")
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)

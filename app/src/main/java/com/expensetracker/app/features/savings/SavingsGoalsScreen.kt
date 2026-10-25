@@ -72,6 +72,7 @@ import java.util.concurrent.TimeUnit
 fun SavingsGoalsContent(
     uiState: SavingsGoalsUiState,
     onAddGoalClick: () -> Unit,
+    onAddTemplateGoal: (Int) -> Unit = {},
     onDepositClick: (SavingsGoalEntity) -> Unit,
     onWithdrawClick: (SavingsGoalEntity) -> Unit,
     onEditGoalClick: (SavingsGoalEntity) -> Unit,
@@ -119,7 +120,10 @@ fun SavingsGoalsContent(
         // 3. Goals List or Empty State
         if (uiState.goals.isEmpty()) {
             item {
-                EmptySavingsGoalsCard(onAddGoalClick = onAddGoalClick)
+                EmptySavingsGoalsCard(
+                    onAddGoalClick = onAddGoalClick,
+                    onAddTemplateGoal = onAddTemplateGoal
+                )
             }
         } else {
             items(uiState.goals, key = { it.id }) { goal ->
@@ -542,7 +546,8 @@ private fun SavingsGoalJarCard(
 
 @Composable
 private fun EmptySavingsGoalsCard(
-    onAddGoalClick: () -> Unit
+    onAddGoalClick: () -> Unit,
+    onAddTemplateGoal: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -552,34 +557,85 @@ private fun EmptySavingsGoalsCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = "🎯", fontSize = 42.sp)
-            Spacer(modifier = Modifier.height(10.dp))
+            Text(text = "🏺", fontSize = 42.sp)
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "No Savings Jars Configured",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Create interactive visual sinking funds for Emergency Funds, Vacations, Gadgets, or Down Payments.",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Start with a 1-tap starter template or create a custom jar to visually track your sinking funds.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "⚡ Quick-Start Templates (1-Tap):",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val starterTemplates = listOf(
+                Triple("🛡️ Emergency Fund", "Target ₹1,00,000 • 6 Mos", 0),
+                Triple("🏖️ Vacation Trip", "Target ₹50,000 • 6 Mos", 1),
+                Triple("💻 Gadget & Tech", "Target ₹60,000 • 3 Mos", 2),
+                Triple("🚗 Vehicle Down Payment", "Target ₹1,50,000 • 12 Mos", 3)
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                starterTemplates.forEach { (name, desc, idx) ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAddTemplateGoal(idx) },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(text = name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(text = desc, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Button(
+                                onClick = { onAddTemplateGoal(idx) },
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text("+ Add", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            OutlinedButton(
                 onClick = onAddGoalClick,
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Create First Goal Jar", fontWeight = FontWeight.Bold)
+                Text("Create Custom Savings Jar", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -741,9 +797,10 @@ fun DepositWithdrawDialog(
     goal: SavingsGoalEntity,
     isDeposit: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (amount: Double) -> Unit
+    onConfirm: (amount: Double, recordInLedger: Boolean) -> Unit
 ) {
     var amountStr by remember { mutableStateOf("") }
+    var recordInLedger by remember { mutableStateOf(true) }
     val quickChips = listOf(500.0, 1000.0, 2000.0, 5000.0)
 
     AlertDialog(
@@ -796,6 +853,25 @@ fun DepositWithdrawDialog(
                         }
                     }
                 }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { recordInLedger = !recordInLedger }
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.Checkbox(
+                        checked = recordInLedger,
+                        onCheckedChange = { recordInLedger = it }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (isDeposit) "Record in ledger as Investment" else "Record in ledger as Income",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {
@@ -803,7 +879,7 @@ fun DepositWithdrawDialog(
                 onClick = {
                     val amount = amountStr.toDoubleOrNull() ?: 0.0
                     if (amount > 0) {
-                        onConfirm(amount)
+                        onConfirm(amount, recordInLedger)
                     }
                 },
                 enabled = (amountStr.toDoubleOrNull() ?: 0.0) > 0,

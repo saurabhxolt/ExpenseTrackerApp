@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -448,6 +450,77 @@ fun CreditCardItem(
                         color = Color(0xFF6EE7B7)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Inspect Matched Transactions
+                var showTransactions by remember { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showTransactions = !showTransactions }
+                        .background(Color.White.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Cycle Transactions (${status.matchingTransactions.size})",
+                        fontSize = 10.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (showTransactions) "▲ Hide" else "▼ Inspect",
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+
+                if (showTransactions) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    if (status.matchingTransactions.isEmpty()) {
+                        val startStr = java.text.SimpleDateFormat("dd MMM", java.util.Locale.getDefault()).format(java.util.Date(status.cycleStartDateMs))
+                        Text(
+                            text = "No transactions matched yet in this cycle ($startStr – Today). SMS alerts for •••• ${card.last4Digits} or manual expenses linked to this card appear here automatically.",
+                            fontSize = 9.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            lineHeight = 13.sp
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            status.matchingTransactions.take(6).forEach { tx ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val txDateStr = java.text.SimpleDateFormat("dd MMM", java.util.Locale.getDefault()).format(java.util.Date(tx.timestamp))
+                                    Text(
+                                        text = "$txDateStr • ${tx.merchant.take(16)}",
+                                        fontSize = 9.sp,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = "₹${tx.amount.toInt()}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (tx.type == "DEBIT") Color.White else Color(0xFF6EE7B7)
+                                    )
+                                }
+                            }
+                            if (status.matchingTransactions.size > 6) {
+                                Text(
+                                    text = "+ ${status.matchingTransactions.size - 6} more transactions in this cycle",
+                                    fontSize = 9.sp,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -472,7 +545,7 @@ fun CreditCardEditDialog(
     var dueDayText by remember { mutableStateOf(initialDueDay) }
     var bank by remember { mutableStateOf(initialBank) }
 
-    val bankPresets = listOf("HDFC", "SBI", "ICICI", "Axis", "Kotak", "OneCard", "BOB", "Amex")
+    val bankPresets = listOf("HDFC", "SBI", "ICICI", "Axis", "Kotak", "OneCard", "BOB", "Amex", "RBL", "IndusInd", "Federal")
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -481,7 +554,11 @@ fun CreditCardEditDialog(
             tonalElevation = 8.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
@@ -489,10 +566,29 @@ fun CreditCardEditDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Explanatory helper banner
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("💡", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Card details are used 100% offline to calculate 30% CIBIL score utilization and interest-free grace period countdown.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Bank Chips
-                Text("Select Bank:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Select Bank Issuer:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(bankPresets.size) { idx ->
@@ -516,12 +612,14 @@ fun CreditCardEditDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
+                // Card Name
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Card Name (e.g. Regalia Gold)") },
+                    label = { Text("Card Nickname / Variant") },
+                    supportingText = { Text("e.g. HDFC Regalia Gold, Amazon Pay ICICI, Millennia", fontSize = 10.sp) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -529,11 +627,13 @@ fun CreditCardEditDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Last 4 Digits & Limit
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = digits,
                         onValueChange = { if (it.length <= 4) digits = it.filter { c -> c.isDigit() } },
                         label = { Text("Last 4 Digits") },
+                        supportingText = { Text("For SMS match", fontSize = 10.sp) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
@@ -544,6 +644,7 @@ fun CreditCardEditDialog(
                         value = limitText,
                         onValueChange = { limitText = it.filter { c -> c.isDigit() } },
                         label = { Text("Total Limit (₹)") },
+                        supportingText = { Text("For 30% CIBIL guard", fontSize = 10.sp) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1.5f),
@@ -553,11 +654,13 @@ fun CreditCardEditDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Statement Date & Due Date
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = stmtDayText,
                         onValueChange = { stmtDayText = it.filter { c -> c.isDigit() } },
-                        label = { Text("Statement Day (1-31)") },
+                        label = { Text("Bill Date (1-31)") },
+                        supportingText = { Text("Bill generation date", fontSize = 10.sp) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
@@ -567,7 +670,8 @@ fun CreditCardEditDialog(
                     OutlinedTextField(
                         value = dueDayText,
                         onValueChange = { dueDayText = it.filter { c -> c.isDigit() } },
-                        label = { Text("Due Day (1-31)") },
+                        label = { Text("Due Date (1-31)") },
+                        supportingText = { Text("Last day to pay", fontSize = 10.sp) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
@@ -593,8 +697,8 @@ fun CreditCardEditDialog(
                     Button(
                         onClick = {
                             val limit = limitText.toDoubleOrNull() ?: 100000.0
-                            val stmtDay = stmtDayText.toIntOrNull() ?: 15
-                            val dueDay = dueDayText.toIntOrNull() ?: 5
+                            val stmtDay = (stmtDayText.toIntOrNull() ?: 15).coerceIn(1, 31)
+                            val dueDay = (dueDayText.toIntOrNull() ?: 5).coerceIn(1, 31)
                             onConfirm(name.ifBlank { "$bank Card" }, digits, limit, stmtDay, dueDay, bank)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),

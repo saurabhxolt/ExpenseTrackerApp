@@ -205,4 +205,60 @@ class CreditCardRadarCalculatorTest {
         assertEquals("SBI", discovered[0].suggestedBank)
         assertEquals(1200.0, discovered[0].totalSpendRecorded, 0.01)
     }
+
+    @Test
+    fun testIsTransactionForCardWithNotesAndMaskedDigits() {
+        val card = CreditCardEntity(
+            id = 1L,
+            cardName = "HDFC Regalia Gold",
+            last4Digits = "4321",
+            totalLimit = 200000.0,
+            bankName = "HDFC"
+        )
+
+        // 1. Transaction tagged in note
+        val txWithNote = TransactionEntity(
+            id = 10L,
+            amount = 1500.0,
+            type = "DEBIT",
+            merchant = "Fine Dine",
+            rawText = "Manual expense",
+            category = "Food & Dining",
+            timestamp = System.currentTimeMillis(),
+            note = "Paid with HDFC Regalia 4321",
+            accountDigits = "",
+            transactionHash = "hash10"
+        )
+        assertTrue(CreditCardRadarCalculator.isTransactionForCard(txWithNote, card))
+
+        // 2. Transaction with masked account digits
+        val txWithMask = TransactionEntity(
+            id = 11L,
+            amount = 3000.0,
+            type = "DEBIT",
+            merchant = "Blinkit",
+            rawText = "Paid via CC **4321",
+            category = "Groceries",
+            timestamp = System.currentTimeMillis(),
+            note = "",
+            accountDigits = "**4321",
+            transactionHash = "hash11"
+        )
+        assertTrue(CreditCardRadarCalculator.isTransactionForCard(txWithMask, card))
+
+        // 3. Unrelated transaction
+        val txUnrelated = TransactionEntity(
+            id = 12L,
+            amount = 500.0,
+            type = "DEBIT",
+            merchant = "Chai Point",
+            rawText = "UPI payment to Chai Point",
+            category = "Food & Dining",
+            timestamp = System.currentTimeMillis(),
+            note = "Paid via GPay UPI",
+            accountDigits = "9876",
+            transactionHash = "hash12"
+        )
+        assertFalse(CreditCardRadarCalculator.isTransactionForCard(txUnrelated, card))
+    }
 }

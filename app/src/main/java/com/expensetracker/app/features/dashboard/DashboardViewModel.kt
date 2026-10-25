@@ -72,10 +72,18 @@ class DashboardViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val budgetRepository: com.expensetracker.app.core.data.repository.BudgetRepository,
+    private val creditCardRepository: com.expensetracker.app.core.data.repository.CreditCardRepository,
+    private val savingsGoalRepository: com.expensetracker.app.core.data.repository.SavingsGoalRepository,
     private val promotionManager: PromotionManager,
     private val categoryClassifier: CategoryClassifier,
     val receiptOcrParser: com.expensetracker.app.core.ocr.ReceiptOcrParser
 ) : ViewModel() {
+
+    val registeredCards: StateFlow<List<com.expensetracker.app.core.database.entity.CreditCardEntity>> = creditCardRepository.allCards
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val savingsGoals: StateFlow<List<com.expensetracker.app.core.database.entity.SavingsGoalEntity>> = savingsGoalRepository.allGoals
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isScanning = MutableStateFlow(false)
     private val _isAutoTrackingEnabled = MutableStateFlow(false)
@@ -276,21 +284,38 @@ class DashboardViewModel @Inject constructor(
         _selectedSortOrder.value = sortOrder
     }
 
-    fun addTransaction(merchant: String, amount: Double, type: String = "DEBIT", category: String = "General Expense", note: String = "", timestamp: Long = System.currentTimeMillis()) {
-        addManualTransaction(merchant, category, amount, type, note, timestamp)
+    fun addTransaction(
+        merchant: String,
+        amount: Double,
+        type: String = "DEBIT",
+        category: String = "General Expense",
+        note: String = "",
+        timestamp: Long = System.currentTimeMillis(),
+        accountDigits: String = ""
+    ) {
+        addManualTransaction(merchant, category, amount, type, note, timestamp, accountDigits)
     }
 
-    fun addManualTransaction(merchant: String, category: String, amount: Double, type: String = "DEBIT", note: String = "", timestamp: Long = System.currentTimeMillis()) {
+    fun addManualTransaction(
+        merchant: String,
+        category: String,
+        amount: Double,
+        type: String = "DEBIT",
+        note: String = "",
+        timestamp: Long = System.currentTimeMillis(),
+        accountDigits: String = ""
+    ) {
         viewModelScope.launch {
-            val hash = "manual_${timestamp}_${amount}_$merchant"
+            val hash = "manual_${timestamp}_${amount}_${merchant}_${accountDigits}"
             val entity = TransactionEntity(
                 amount = amount,
                 type = type,
                 merchant = merchant,
-                rawText = "Manual Entry: $merchant ₹$amount",
+                rawText = if (accountDigits.isNotEmpty()) "Manual Entry: $merchant ₹$amount (Card $accountDigits)" else "Manual Entry: $merchant ₹$amount",
                 category = category,
                 timestamp = timestamp,
                 note = note,
+                accountDigits = accountDigits,
                 transactionHash = hash,
                 isManual = true
             )

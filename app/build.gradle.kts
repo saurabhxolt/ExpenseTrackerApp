@@ -114,8 +114,8 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
-    // ML Kit On-Device Text Recognition (Offline Receipt OCR)
-    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
+    // ML Kit On-Device Text Recognition (100% Bundled Offline OCR - Zero Network Required)
+    implementation("com.google.mlkit:text-recognition:16.0.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
