@@ -46,4 +46,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSavingsGoalDao(db: ExpenseDatabase): com.expensetracker.app.core.database.dao.SavingsGoalDao = db.savingsGoalDao()
+
+    @Provides
+    fun provideCreditCardDao(db: ExpenseDatabase): com.expensetracker.app.core.database.dao.CreditCardDao = db.creditCardDao()
 }

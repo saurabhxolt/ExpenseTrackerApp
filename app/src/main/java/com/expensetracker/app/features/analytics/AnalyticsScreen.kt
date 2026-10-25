@@ -50,16 +50,23 @@ import com.expensetracker.app.core.ui.theme.PrimaryBlue
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsRoute(
-    viewModel: AnalyticsViewModel
+    viewModel: AnalyticsViewModel,
+    creditCardViewModel: com.expensetracker.app.features.cards.CreditCardViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val cardUiState by creditCardViewModel.uiState.collectAsState()
 
     AnalyticsScreen(
         uiState = uiState,
+        cardUiState = cardUiState,
         onPeriodPresetSelected = viewModel::onPeriodPresetSelected,
         onMonthYearSelected = viewModel::onMonthYearSelected,
         onTransactionTypeSelected = viewModel::onTransactionTypeSelected,
-        onCustomDateRangeSelected = viewModel::onCustomDateRangeSelected
+        onCustomDateRangeSelected = viewModel::onCustomDateRangeSelected,
+        onAddCard = creditCardViewModel::addCard,
+        onUpdateCard = creditCardViewModel::updateCard,
+        onDeleteCard = creditCardViewModel::deleteCard,
+        onOnboardDiscovered = creditCardViewModel::onboardDiscoveredCard
     )
 }
 
@@ -67,10 +74,15 @@ fun AnalyticsRoute(
 @Composable
 fun AnalyticsScreen(
     uiState: AnalyticsUiState,
+    cardUiState: com.expensetracker.app.features.cards.CreditCardRadarUiState = com.expensetracker.app.features.cards.CreditCardRadarUiState(),
     onPeriodPresetSelected: (String) -> Unit = {},
     onMonthYearSelected: (String) -> Unit = {},
     onTransactionTypeSelected: (String) -> Unit = {},
-    onCustomDateRangeSelected: (startMs: Long?, endMs: Long?) -> Unit = { _, _ -> }
+    onCustomDateRangeSelected: (startMs: Long?, endMs: Long?) -> Unit = { _, _ -> },
+    onAddCard: (name: String, digits: String, limit: Double, stmtDay: Int, dueDay: Int, bank: String) -> Unit = { _, _, _, _, _, _ -> },
+    onUpdateCard: (com.expensetracker.app.core.database.entity.CreditCardEntity) -> Unit = {},
+    onDeleteCard: (com.expensetracker.app.core.database.entity.CreditCardEntity) -> Unit = {},
+    onOnboardDiscovered: (com.expensetracker.app.core.analysis.DiscoveredCreditCard, limit: Double, stmtDay: Int, dueDay: Int) -> Unit = { _, _, _, _ -> }
 ) {
     var showCustomDatePicker by remember { mutableStateOf(false) }
 
@@ -374,6 +386,17 @@ fun AnalyticsScreen(
         // 🏛️ Indian Tax Season Deductions Organizer
         item {
             TaxSeasonDeductionsCard(taxSummary = uiState.taxSummary)
+        }
+
+        // 💳 Credit Card Health & 30% Utilization Radar
+        item {
+            com.expensetracker.app.features.cards.CreditCardRadarCard(
+                uiState = cardUiState,
+                onAddCard = onAddCard,
+                onUpdateCard = onUpdateCard,
+                onDeleteCard = onDeleteCard,
+                onOnboardDiscovered = onOnboardDiscovered
+            )
         }
 
         // Top Category Badge Card

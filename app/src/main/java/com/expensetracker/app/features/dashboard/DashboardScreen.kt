@@ -108,6 +108,7 @@ fun DashboardRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var showQuickCashLog by remember { mutableStateOf(false) }
     var selectedTransactionDetails by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
 
@@ -211,8 +212,21 @@ fun DashboardRoute(
                     }
                 },
                 onScanInbox = { viewModel.triggerSmsInboxScan(context) },
-                onRequestPermissions = { requestPermissionsAndScan() }
+                onRequestPermissions = { requestPermissionsAndScan() },
+                onQuickCashClick = { showQuickCashLog = true }
             )
+
+            if (showQuickCashLog) {
+                com.expensetracker.app.features.quicklog.QuickCashLogDialog(
+                    onDismiss = { showQuickCashLog = false },
+                    onSaveCashSpend = { amount, category, merchant, note ->
+                        viewModel.saveCashSpend(amount, category, merchant, note)
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Cash spend ₹${amount.toInt()} logged! 💵")
+                        }
+                    }
+                )
+            }
 
             if (showAddDialog) {
                 AddTransactionDialog(
@@ -279,7 +293,8 @@ fun DashboardScreen(
     onEditTransaction: (TransactionEntity) -> Unit = {},
     onDeleteTransaction: (TransactionEntity) -> Unit = {},
     onScanInbox: () -> Unit = {},
-    onRequestPermissions: () -> Unit = {}
+    onRequestPermissions: () -> Unit = {},
+    onQuickCashClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -302,23 +317,37 @@ fun DashboardScreen(
                     style = MaterialTheme.typography.headlineLarge
                 )
 
-                if (uiState.isScanning) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = PrimaryBlue,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Scanning...", style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = onQuickCashClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Text("💵 +Cash", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
-                } else if (uiState.isAutoTrackingEnabled) {
-                    IconButton(onClick = onScanInbox) {
-                        Icon(
-                            imageVector = Icons.Default.Sync,
-                            contentDescription = "Scan SMS Inbox",
-                            tint = PrimaryBlue
-                        )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    if (uiState.isScanning) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = PrimaryBlue,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Scanning...", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else if (uiState.isAutoTrackingEnabled) {
+                        IconButton(onClick = onScanInbox) {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = "Scan SMS Inbox",
+                                tint = PrimaryBlue
+                            )
+                        }
                     }
                 }
             }

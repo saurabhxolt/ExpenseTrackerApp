@@ -94,14 +94,24 @@ data class NavItem(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
-    mainViewModel: MainViewModel = hiltViewModel()
+    mainViewModel: MainViewModel = hiltViewModel(),
+    initialQuickCashLog: Boolean = false,
+    onQuickCashConsumed: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     val promotions by mainViewModel.promotions.collectAsState()
     val isPrivacyMode by mainViewModel.isPrivacyMode.collectAsState()
+    val showQuickCashLog by mainViewModel.showQuickCashLog.collectAsState()
     val context = LocalContext.current
     var backPressedTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+
+    LaunchedEffect(initialQuickCashLog) {
+        if (initialQuickCashLog) {
+            mainViewModel.openQuickCashLog()
+            onQuickCashConsumed()
+        }
+    }
 
     val navItems = listOf(
         NavItem("Dashboard", Icons.Default.Dashboard),
@@ -234,6 +244,9 @@ fun MainScreen(
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { mainViewModel.openQuickCashLog() }) {
+                            Text("💵", fontSize = 18.sp)
+                        }
                         IconButton(onClick = { mainViewModel.togglePrivacyMode() }) {
                             Icon(
                                 imageVector = if (isPrivacyMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -245,6 +258,16 @@ fun MainScreen(
                             Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings", tint = PrimaryBlue)
                         }
                     }
+                }
+
+                if (showQuickCashLog) {
+                    com.expensetracker.app.features.quicklog.QuickCashLogDialog(
+                        onDismiss = { mainViewModel.closeQuickCashLog() },
+                        onSaveCashSpend = { amount, category, merchant, note ->
+                            mainViewModel.saveCashSpend(amount, category, merchant, note)
+                            Toast.makeText(context, "Cash spend ₹${amount.toInt()} logged! 💵", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
 
                 // Global Header Banner Carousel

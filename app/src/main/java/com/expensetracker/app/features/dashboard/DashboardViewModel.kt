@@ -327,6 +327,23 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun saveCashSpend(amount: Double, category: String, merchant: String, note: String) {
+        viewModelScope.launch {
+            val tx = TransactionEntity(
+                amount = amount,
+                type = "DEBIT",
+                merchant = if (merchant.isBlank()) "Cash Spend" else merchant,
+                rawText = "Cash spend: $note",
+                category = category,
+                timestamp = System.currentTimeMillis(),
+                note = note,
+                isManual = true,
+                transactionHash = "cash_${System.currentTimeMillis()}_${(1000..9999).random()}"
+            )
+            repository.insertTransaction(tx)
+        }
+    }
+
     private fun getStartOfTodayTimestamp(): Long {
         val c = Calendar.getInstance()
         c.set(Calendar.HOUR_OF_DAY, 0)

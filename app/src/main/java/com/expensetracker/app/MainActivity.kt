@@ -58,9 +58,15 @@ class MainActivity : FragmentActivity() {
     private val lockGracePeriodMs: Long = 30_000L // 30 seconds
     private var shakeDetector: ShakeDetector? = null
 
+    private var pendingQuickCashLog by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        if (intent?.action == com.expensetracker.app.features.quicklog.CashQuickLogTileService.ACTION_QUICK_LOG_CASH) {
+            pendingQuickCashLog = true
+        }
+
         // Enable Fullscreen Layout
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -100,7 +106,10 @@ class MainActivity : FragmentActivity() {
                         )
                     } else {
                         if (isUnlocked) {
-                            MainScreen()
+                            MainScreen(
+                                initialQuickCashLog = pendingQuickCashLog,
+                                onQuickCashConsumed = { pendingQuickCashLog = false }
+                            )
                         } else {
                             LockedScreen(
                                 onUnlockClick = { triggerBiometricUnlock() }
@@ -109,6 +118,14 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent?.action == com.expensetracker.app.features.quicklog.CashQuickLogTileService.ACTION_QUICK_LOG_CASH) {
+            pendingQuickCashLog = true
         }
     }
 

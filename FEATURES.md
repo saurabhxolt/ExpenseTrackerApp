@@ -61,6 +61,15 @@
 * **Proportional Tax & Tip Distribution**: Eliminates awkward dining math by allocating individual and shared dishes, then proportionally dividing GST, VAT, service charges, and tips based on each diner's exact subtotal ratio.
 * **1-Click Ledger Import & WhatsApp Summary**: Converts computed itemized shares directly into an active group expense or copies a clean, formatted breakdown to the clipboard for group chats.
 
+### 9. Credit Card Grace Period & 30% Utilization Radar
+* **30% CIBIL Utilization Guard**: Tracks active credit limits against current statement cycle debit spend, warning when utilization crosses 30% or 50% to shield credit scores from bureau penalties.
+* **Interest-Free Grace Period Countdown**: Computes dynamic statement cycles and payment deadlines, displaying exact remaining grace days before interest accrues.
+* **Auto-Discovery of Unregistered Cards**: Detects credit card mentions in incoming transactions and prompts 1-tap onboarding to track limits.
+
+### 10. Quick Settings Tile & Instant Cash Logging (<3s)
+* **Android Quick Settings Tile (`CashQuickLogTileService`)**: Launch rapid cash expense logging straight from Android notification shade / lockscreen.
+* **1-Tap Fast Presets**: Rapidly logs common cash outlays (`☕ Chai ₹20`, `🛺 Auto ₹50`, `🥪 Snacks ₹100`, `🍛 Lunch ₹150`, `🛒 Groceries ₹500`, `⛽ Fuel ₹500`) with zero app navigation.
+
 ---
 
 ## 🤖 Persona 2: Autonomous Ingestion Daemon

@@ -8,6 +8,7 @@ import com.expensetracker.app.core.database.entity.GroupMemberEntity
 import com.expensetracker.app.core.database.entity.GroupSettlementEntity
 import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
 import com.expensetracker.app.core.database.entity.SavingsGoalEntity
+import com.expensetracker.app.core.database.entity.CreditCardEntity
 import com.expensetracker.app.core.database.entity.SplitExpenseEntity
 import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
@@ -23,7 +24,8 @@ data class BackupData(
     val splitExpenses: List<SplitExpenseEntity> = emptyList(),
     val splitShares: List<ExpenseSplitShareEntity> = emptyList(),
     val groupSettlements: List<GroupSettlementEntity> = emptyList(),
-    val savingsGoals: List<SavingsGoalEntity> = emptyList()
+    val savingsGoals: List<SavingsGoalEntity> = emptyList(),
+    val creditCards: List<CreditCardEntity> = emptyList()
 )
 
 object BackupManager {
@@ -41,7 +43,8 @@ object BackupManager {
         splitExpenses: List<SplitExpenseEntity> = emptyList(),
         splitShares: List<ExpenseSplitShareEntity> = emptyList(),
         groupSettlements: List<GroupSettlementEntity> = emptyList(),
-        savingsGoals: List<SavingsGoalEntity> = emptyList()
+        savingsGoals: List<SavingsGoalEntity> = emptyList(),
+        creditCards: List<CreditCardEntity> = emptyList()
     ): String {
         val sb = StringBuilder()
         sb.append("{\n")
@@ -197,6 +200,23 @@ object BackupManager {
             sb.append("      \"isCompleted\": ").append(g.isCompleted).append(",\n")
             sb.append("      \"createdAt\": ").append(g.createdAt).append("\n")
             sb.append("    }").append(if (idx < savingsGoals.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 12. Credit Cards
+        sb.append("  \"creditCards\": [\n")
+        creditCards.forEachIndexed { idx, c ->
+            sb.append("    {\n")
+            sb.append("      \"cardName\": \"").append(escape(c.cardName)).append("\",\n")
+            sb.append("      \"last4Digits\": \"").append(escape(c.last4Digits)).append("\",\n")
+            sb.append("      \"totalLimit\": ").append(c.totalLimit).append(",\n")
+            sb.append("      \"statementDayOfMonth\": ").append(c.statementDayOfMonth).append(",\n")
+            sb.append("      \"dueDayOfMonth\": ").append(c.dueDayOfMonth).append(",\n")
+            sb.append("      \"cardColorHex\": ").append(c.cardColorHex).append(",\n")
+            sb.append("      \"bankName\": \"").append(escape(c.bankName)).append("\",\n")
+            sb.append("      \"isActive\": ").append(c.isActive).append(",\n")
+            sb.append("      \"createdAt\": ").append(c.createdAt).append("\n")
+            sb.append("    }").append(if (idx < creditCards.size - 1) "," else "").append("\n")
         }
         sb.append("  ]\n")
         sb.append("}")
@@ -434,7 +454,32 @@ object BackupManager {
             }
         }
 
-        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements, savingsGoals)
+        // 12. Credit Cards
+        val creditCards = mutableListOf<CreditCardEntity>()
+        val cardArrayStr = extractArray(jsonStr, "creditCards")
+        val cardObjects = splitJsonObjects(cardArrayStr)
+        for (obj in cardObjects) {
+            val cardName = extractString(obj, "cardName")
+            val digits = extractString(obj, "last4Digits")
+            val limit = extractDouble(obj, "totalLimit")
+            if (cardName.isNotBlank() || digits.isNotBlank()) {
+                creditCards.add(
+                    CreditCardEntity(
+                        cardName = cardName.ifBlank { "Card" },
+                        last4Digits = digits,
+                        totalLimit = if (limit > 0) limit else 50000.0,
+                        statementDayOfMonth = extractLong(obj, "statementDayOfMonth").toInt().coerceIn(1, 31).takeIf { it > 0 } ?: 15,
+                        dueDayOfMonth = extractLong(obj, "dueDayOfMonth").toInt().coerceIn(1, 31).takeIf { it > 0 } ?: 5,
+                        cardColorHex = extractLong(obj, "cardColorHex").takeIf { it != 0L } ?: 0xFF1E3A8A,
+                        bankName = extractString(obj, "bankName").ifBlank { "Bank" },
+                        isActive = extractBoolean(obj, "isActive"),
+                        createdAt = extractLong(obj, "createdAt").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements, savingsGoals, creditCards)
     }
 
     fun parseBackupJson(jsonStr: String): Triple<List<TransactionEntity>, List<CategoryEntity>, List<BudgetEntity>> {

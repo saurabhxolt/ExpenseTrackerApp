@@ -25,15 +25,17 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - features/categories/ (CategoriesScreen, CategoriesViewModel, CategoryEmojiProvider, CategoryColorProvider)
 - features/subscriptions/ (SubscriptionsScreen, SubscriptionsViewModel, AddEditSubscriptionDialog, SubscriptionRadarBanner, AutoPaidBadges)
 - features/savings/ (SavingsGoalsScreen, SavingsGoalsViewModel, AddEditSavingsGoalDialog, DepositWithdrawDialog)
+- features/cards/ (CreditCardRadarCard, CreditCardViewModel, CreditCardItem, CreditCardEditDialog)
+- features/quicklog/ (CashQuickLogTileService, QuickCashLogDialog)
 - features/split/ (SplitScreen, SplitViewModel, ItemizedBillSplitterDialog)
 - features/settings/ (SettingsScreen, SettingsViewModel, EcosystemPromotionCard)
 - features/security/ (BiometricLockManager)
 - core/security/ (PrivacyModeManager, ShakeDetector)
-- core/analysis/ (PriceCreepDetector, TaxDeductionAnalyzer, ItemizedSplitCalculator)
+- core/analysis/ (PriceCreepDetector, TaxDeductionAnalyzer, ItemizedSplitCalculator, CreditCardRadarCalculator)
 - features/backup/ (BackupManager)
 - features/reports/ (ReportsExporter)
-- core/database/ (ExpenseDatabase v6, SavingsGoalEntity, GroupEntity, GroupMemberEntity, SplitExpenseEntity, ExpenseSplitShareEntity, GroupSettlementEntity, SubscriptionEntity, CategoryEntity, MerchantCategoryMappingEntity, SavingsGoalDao, SplitDao, SubscriptionDao, CategoryDao, MerchantCategoryMappingDao, MIGRATION_5_6)
-- core/data/repository/ (SavingsGoalRepository, SplitRepository, SubscriptionRepository, CategoryRepository, RecurringMandateDetector)
+- core/database/ (ExpenseDatabase v7, CreditCardEntity, SavingsGoalEntity, GroupEntity, GroupMemberEntity, SplitExpenseEntity, ExpenseSplitShareEntity, GroupSettlementEntity, SubscriptionEntity, CategoryEntity, MerchantCategoryMappingEntity, CreditCardDao, SavingsGoalDao, SplitDao, SubscriptionDao, CategoryDao, MerchantCategoryMappingDao, MIGRATION_5_6, MIGRATION_6_7)
+- core/data/repository/ (CreditCardRepository, SavingsGoalRepository, SplitRepository, SubscriptionRepository, CategoryRepository, RecurringMandateDetector)
 - core/promotions/ (PromotionModel, PromotionManager)
 - ingestion/parser/ (RegexTransactionParser, CategoryClassifier, SubscriptionMatcher: Auto SMS Mandate Matching & Cycle Advancement)
 - ingestion/deduplication/ (TransactionDeduplicator: Timeless & Windowed Deduplication & DB False Positive Purging)
@@ -61,7 +63,9 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - **Visual Sinking Funds & Savings Goals Subsystem (`SavingsGoalEntity.kt`, `SavingsGoalDao.kt`, `SavingsGoalRepository.kt`, `SavingsGoalsViewModel.kt`, `SavingsGoalsScreen.kt`)**: Implements interactive savings jars in `BudgetsScreen.kt` with custom target amounts, emojis, colors, deadline timeframes, dynamic monthly saving pace calculators, and 1-tap quick deposit/withdraw dialogs (`+₹500`, `+₹1,000`, `+₹2,000`, `+₹5,000`).
 - **Indian Tax Season Deductions Organizer (`TaxDeductionAnalyzer.kt`, `TaxSeasonDeductionsCard.kt`)**: Automatically identifies and groups tax-exempt debits under Sections 80C (₹1.5L cap), 80D (₹25k cap), Section 10(13A) HRA, 80CCD, 80E, and 80G, tracks statutory limits, estimates tax savings at 20% slab, and provides 1-tap CA/ITR export.
 - **Itemized Restaurant & Group Bill Splitter Subsystem (`ItemizedSplitCalculator.kt`, `ItemizedBillSplitterDialog.kt`)**: Proportionally divides dining bills, GST/taxes, and tips according to individual dish consumption, with 1-click import into group ledgers and formatted WhatsApp summaries.
-- **Room v6 Database Migration & Backup Synchronization**: Schema version 6 introduces `savings_goals` table, `taxDeductibleSection` column on `transactions`, and `MIGRATION_5_6`. Full entity roundtrip serialization added to `BackupManager.kt` and `ScheduledBackupWorker.kt`.
+- **Credit Card Grace Period & 30% Utilization Radar Subsystem (`CreditCardRadarCalculator.kt`, `CreditCardRadarCard.kt`, `CreditCardViewModel.kt`, `CreditCardRepository.kt`)**: Real-time statement cycle tracking, interest-free grace days countdown ticker, 30% CIBIL utilization limit guard with headroom calculation, multi-bank gradient visual card carousel, auto-discovery of unregistered cards from SMS history, and full backup/restore integration.
+- **Android Quick Settings Tile & Instant Cash Logging Subsystem (`CashQuickLogTileService.kt`, `QuickCashLogDialog.kt`)**: Notification quick tile enabling instant cash transaction logging with 1-tap presets (`☕ Chai ₹20`, `🛺 Auto ₹50`, `🥪 Snacks ₹100`, `🍛 Lunch ₹150`, `🛒 Groceries ₹500`, `⛽ Fuel ₹500`) directly from lockscreen or dashboard.
+- **Room v7 Database Migration & Backup Synchronization**: Schema version 7 introduces `credit_cards` table, `savings_goals` table, `taxDeductibleSection` column on `transactions`, and `MIGRATION_6_7`. Full entity roundtrip serialization added to `BackupManager.kt` and `ScheduledBackupWorker.kt`.
 
 # 4. Multi-AI Governance & Modular Documentation Architecture
 - **Master Adapted AI System Prompt**: `PromptForCleanAndroidAppDevelopmentFromAIAgent.md` custom-tailored for offline-first native Android architecture.

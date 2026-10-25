@@ -50,6 +50,7 @@ class SettingsViewModel @Inject constructor(
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val splitDao: com.expensetracker.app.core.database.dao.SplitDao,
     private val savingsGoalDao: com.expensetracker.app.core.database.dao.SavingsGoalDao,
+    private val creditCardDao: com.expensetracker.app.core.database.dao.CreditCardDao,
     private val promotionManager: PromotionManager,
     private val privacyModeManager: com.expensetracker.app.core.security.PrivacyModeManager
 ) : ViewModel() {
@@ -189,6 +190,8 @@ class SettingsViewModel @Inject constructor(
         val splitExpenses = splitDao.getAllSplitExpensesList()
         val splitShares = splitDao.getAllExpenseSharesList()
         val groupSettlements = splitDao.getAllSettlementsList()
+        val savingsGoals = savingsGoalDao.getAllGoalsList()
+        val creditCards = creditCardDao.getActiveCards()
         return BackupManager.createBackupJson(
             transactions = transactions,
             categories = categories,
@@ -199,7 +202,9 @@ class SettingsViewModel @Inject constructor(
             groupMembers = groupMembers,
             splitExpenses = splitExpenses,
             splitShares = splitShares,
-            groupSettlements = groupSettlements
+            groupSettlements = groupSettlements,
+            savingsGoals = savingsGoals,
+            creditCards = creditCards
         )
     }
 
@@ -262,6 +267,9 @@ class SettingsViewModel @Inject constructor(
                 }
                 if (data.savingsGoals.isNotEmpty()) {
                     savingsGoalDao.insertAll(data.savingsGoals)
+                }
+                if (data.creditCards.isNotEmpty()) {
+                    creditCardDao.insertAll(data.creditCards)
                 }
                 if (context != null) {
                     com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)

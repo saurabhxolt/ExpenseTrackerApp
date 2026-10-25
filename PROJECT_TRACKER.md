@@ -33,6 +33,9 @@
 | **Visual Sinking Funds & Savings Jars** | Feature / Savings | ✅ Completed | Core Architecture |
 | **Indian Tax Season Deductions Organizer** | Analysis / Tax | ✅ Completed | Core Architecture |
 | **Itemized Restaurant / Group Bill Splitter** | Feature / Split | ✅ Completed | Core Architecture |
+| **Room v7 Schema Migration & CreditCardEntity**| Core / Room | ✅ Completed | Storage Engine |
+| **Credit Card 30% Utilization & Grace Radar** | Feature / Cards | ✅ Completed | Core Architecture |
+| **Quick Settings Tile & Instant Cash Logging** | Feature / QuickLog| ✅ Completed | Android System |
 
 ---
 

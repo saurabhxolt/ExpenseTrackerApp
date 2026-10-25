@@ -275,19 +275,48 @@
 
 ---
 
-## 2. Automated Test Verification
+## 26. Credit Card Grace Period & 30% Utilization Radar (Phase 4)
+
+- **Pure-Logic Calculation Engine**: [CreditCardRadarCalculator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/CreditCardRadarCalculator.kt):
+  - `computeBillingCycleBounds`: Computes exact billing cycle start and end dates based on user statement day (1..31).
+  - `computePaymentDueDate` & `calculateGraceDays`: Calculates remaining interest-free grace days before the payment deadline.
+  - `analyzeCard`: Evaluates current statement cycle debits against payments/transfers to calculate outstanding balance, available credit limit, 30% utilization limit, safe spending headroom, and tier status (`OPTIMAL`, `CAUTION`, `CRITICAL`).
+  - `discoverUnregisteredCards`: Automatically scans incoming transaction SMS patterns (`credit card ending XXXX`, `card no XXXX`, `sbi card`, `bobcard`, `onecard`) and extracts candidate cards not yet in Room for 1-tap onboarding.
+- **Room Database Schema v7**: Added `credit_cards` table and non-destructive `MIGRATION_6_7` in [ExpenseDatabase.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/ExpenseDatabase.kt).
+- **Interactive Credit Card Radar UI**: Built [CreditCardRadarCard.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/cards/CreditCardRadarCard.kt) integrated into [AnalyticsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/AnalyticsScreen.kt):
+  - Multi-bank gradient visual cards (HDFC Navy, SBI Teal, ICICI Crimson, Axis Purple, OneCard Charcoal).
+  - 30% Utilization Progress Gauge with tick mark and safe spending headroom indicator.
+  - Interest-free grace period countdown ticker (`⏳ 14d grace left • Due Day 5`).
+  - Add, edit limit/statement dates, and delete dialogs.
+  - 1-Tap "Track" button for auto-discovered cards found from SMS history.
+
+---
+
+## 27. Android Quick Settings Tile & Instant Cash Logging (<3s) (Phase 4)
+
+- **Android Quick Settings Tile**: Built [CashQuickLogTileService.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/quicklog/CashQuickLogTileService.kt) registered in `AndroidManifest.xml` with `BIND_QUICK_SETTINGS_TILE`. Collapses notification shade and launches the instant cash logger.
+- **Fast 1-Tap Cash Presets**: Built [QuickCashLogDialog.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/quicklog/QuickCashLogDialog.kt):
+  - Fast 1-tap presets: `☕ Chai ₹20`, `🛺 Auto ₹50`, `🥪 Snacks ₹100`, `🍛 Lunch ₹150`, `🛒 Groceries ₹500`, `⛽ Fuel ₹500`.
+  - Custom amount keypad, category selector, and note field.
+  - 1-Tap "Save Cash Spend" inserting directly into Room as a manual debit.
+- **Global In-App Access**: Connected to `MainActivity` (handling `ACTION_QUICK_LOG_CASH`), `MainScreen` top bar header (`💵` button), and `DashboardScreen` header (`💵 +Cash` button).
+
+---
+
+## 28. Automated Test Verification (Phase 4)
 
 Executed full Gradle unit test suite:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
 ```
-Result: **BUILD SUCCESSFUL in 35s**. 30 actionable tasks executed with 0 errors across 100% of unit tests.
+Result: **BUILD SUCCESSFUL**. 30 actionable tasks executed with 0 errors across 100% of unit tests, including [CreditCardRadarCalculatorTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/analysis/CreditCardRadarCalculatorTest.kt) and [CashQuickLogTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/features/quicklog/CashQuickLogTest.kt).
 
 Verified Debug APK Compilation:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
 ```
-Result: **BUILD SUCCESSFUL in 38s**. 40 actionable tasks completed, APK packaged cleanly with zero network permissions.
+Result: **BUILD SUCCESSFUL**. Room Schema 7 exported cleanly, APK packaged with zero network permissions.
+
 
 
 
