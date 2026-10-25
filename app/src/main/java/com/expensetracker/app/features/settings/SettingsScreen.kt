@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -130,6 +132,8 @@ fun SettingsRoute(
             SettingsScreen(
                 uiState = uiState,
                 onToggleBiometric = { viewModel.toggleBiometric(context, it) },
+                onToggleShakeToHide = { viewModel.toggleShakeToHide(it) },
+                onToggleDefaultPrivacyMode = { viewModel.toggleDefaultPrivacyMode(it) },
                 onToggleDailyReview = { enabled ->
                     if (enabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                         if (androidx.core.content.ContextCompat.checkSelfPermission(
@@ -169,6 +173,8 @@ fun SettingsRoute(
 fun SettingsScreen(
     uiState: SettingsUiState,
     onToggleBiometric: (Boolean) -> Unit = {},
+    onToggleShakeToHide: (Boolean) -> Unit = {},
+    onToggleDefaultPrivacyMode: (Boolean) -> Unit = {},
     onToggleDailyReview: (Boolean) -> Unit = {},
     onSetDailyReviewTime: (hour: Int, minute: Int) -> Unit = { _, _ -> },
     onExportCsv: () -> Unit = {},
@@ -386,26 +392,82 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = PrimaryBlue)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Biometric / PIN App Lock", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Require fingerprint or PIN on app open", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = PrimaryBlue)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Biometric / PIN App Lock", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Require fingerprint or PIN on app open", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
+                        Switch(
+                            checked = uiState.isBiometricEnabled,
+                            onCheckedChange = onToggleBiometric,
+                            colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+                        )
                     }
-                    Switch(
-                        checked = uiState.isBiometricEnabled,
-                        onCheckedChange = onToggleBiometric,
-                        colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+
+                    androidx.compose.material3.Divider(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(imageVector = Icons.Default.Vibration, contentDescription = null, tint = PrimaryBlue)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Shake to Mask Amounts 📳", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Shake phone to toggle public privacy mode", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Switch(
+                            checked = uiState.isShakeToHideEnabled,
+                            onCheckedChange = onToggleShakeToHide,
+                            colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+                        )
+                    }
+
+                    androidx.compose.material3.Divider(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(imageVector = Icons.Default.VisibilityOff, contentDescription = null, tint = PrimaryBlue)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Default to Masked Privacy 🛡️", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Always launch app with amounts blurred", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Switch(
+                            checked = uiState.isDefaultPrivacyModeEnabled,
+                            onCheckedChange = onToggleDefaultPrivacyMode,
+                            colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+                        )
+                    }
                 }
             }
         }

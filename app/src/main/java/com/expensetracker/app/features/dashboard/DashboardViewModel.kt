@@ -57,7 +57,13 @@ data class DashboardUiState(
     val upcomingSubscriptions: List<SubscriptionEntity> = emptyList(),
     val totalMonthlyCommitted: Double = 0.0,
     val totalPaidCommitted: Double = 0.0,
-    val totalPendingCommitted: Double = 0.0
+    val totalPendingCommitted: Double = 0.0,
+    val safeToSpendToday: Double = 0.0,
+    val daysRemainingInMonth: Int = 1,
+    val totalBudgetLimit: Double = 0.0,
+    val remainingMonthlyBudget: Double = 0.0,
+    val hasBudgetSet: Boolean = false,
+    val totalPendingBillsThisMonth: Double = 0.0
 )
 
 @HiltViewModel
@@ -65,6 +71,7 @@ class DashboardViewModel @Inject constructor(
     private val repository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val subscriptionRepository: SubscriptionRepository,
+    private val budgetRepository: com.expensetracker.app.core.data.repository.BudgetRepository,
     private val promotionManager: PromotionManager,
     private val categoryClassifier: CategoryClassifier
 ) : ViewModel() {
@@ -98,8 +105,9 @@ class DashboardViewModel @Inject constructor(
         repository.allTransactions,
         categoryRepository.allCategories,
         subscriptionRepository.allSubscriptions,
+        budgetRepository.allBudgets,
         _filterState
-    ) { transactions, categoryEntities, subscriptions, filterState ->
+    ) { transactions, categoryEntities, subscriptions, budgets, filterState ->
 
         val startOfToday = getStartOfTodayTimestamp()
         val startOf7DaysAgo = getStartOf7DaysAgoTimestamp()
@@ -156,6 +164,39 @@ class DashboardViewModel @Inject constructor(
 
         val upcomingSubs = activeSubs.sortedBy { it.nextDueDateMs }.take(4)
 
+        // Safe-to-Spend Today Radar Calculations (Current Calendar Month Scoped)
+        val calendar = Calendar.getInstance()
+        val totalDaysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
+        val daysRemaining = (totalDaysInMonth - currentDay + 1).coerceAtLeast(1)
+
+        val monthStartCal = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val currentMonthStartMs = monthStartCal.timeInMillis
+
+        val currentMonthDebits = transactions.filter { it.type == "DEBIT" && it.timestamp >= currentMonthStartMs }.sumOf { it.amount }
+        val currentMonthIncome = transactions.filter { it.type == "CREDIT" && it.timestamp >= currentMonthStartMs }.sumOf { it.amount }
+
+        val totalBudget = budgets.sumOf { it.limitAmount }
+        val hasBudget = totalBudget > 0.0
+
+        val (safeSpendToday, remainingBudget) = if (hasBudget) {
+            val rem = (totalBudget - currentMonthDebits - totalPendingComm).coerceAtLeast(0.0)
+            Pair(rem / daysRemaining, rem)
+        } else {
+            if (currentMonthIncome > 0.0) {
+                val rem = (currentMonthIncome - currentMonthDebits - totalPendingComm).coerceAtLeast(0.0)
+                Pair(rem / daysRemaining, rem)
+            } else {
+                Pair(0.0, 0.0)
+            }
+        }
+
         DashboardUiState(
             transactions = sortedTransactions,
             categories = combinedCategories,
@@ -178,7 +219,13 @@ class DashboardViewModel @Inject constructor(
             upcomingSubscriptions = upcomingSubs,
             totalMonthlyCommitted = totalMonthlyComm,
             totalPaidCommitted = totalPaidComm,
-            totalPendingCommitted = totalPendingComm
+            totalPendingCommitted = totalPendingComm,
+            safeToSpendToday = safeSpendToday,
+            daysRemainingInMonth = daysRemaining,
+            totalBudgetLimit = totalBudget,
+            remainingMonthlyBudget = remainingBudget,
+            hasBudgetSet = hasBudget,
+            totalPendingBillsThisMonth = totalPendingComm
         )
     }.stateIn(
         scope = viewModelScope,

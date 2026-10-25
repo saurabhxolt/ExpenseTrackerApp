@@ -37,18 +37,26 @@ import androidx.fragment.app.FragmentActivity
 import com.expensetracker.app.core.ui.theme.ExpenseTrackerTheme
 import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.features.main.MainScreen
+import com.expensetracker.app.core.security.PrivacyModeManager
+import com.expensetracker.app.core.security.ShakeDetector
 import com.expensetracker.app.features.security.BiometricLockManager
 import com.expensetracker.app.features.splash.SplashScreen
 import com.expensetracker.app.ingestion.worker.BillReminderWorker
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import android.widget.Toast
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+
+    @Inject
+    lateinit var privacyModeManager: PrivacyModeManager
 
     private var isUnlocked by mutableStateOf(false)
     private var isAuthenticating = false
     private var lastBackgroundTimestamp: Long = 0L
     private val lockGracePeriodMs: Long = 30_000L // 30 seconds
+    private var shakeDetector: ShakeDetector? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +65,15 @@ class MainActivity : FragmentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         checkAppLockState()
+
+        shakeDetector = ShakeDetector(this) {
+            if (privacyModeManager.isShakeToHideEnabled() && isUnlocked) {
+                window.decorView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                privacyModeManager.toggle()
+                val status = if (privacyModeManager.isPrivacyMode.value) "Peek Privacy: Active 🛡️" else "Peek Privacy: Revealed 👁️"
+                Toast.makeText(this, status, Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Schedule periodic 24-hour Bill & EMI Due Date Reminder Worker
         BillReminderWorker.schedulePeriodicReminders(this)
@@ -99,6 +116,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        shakeDetector?.start()
         if (BiometricLockManager.isBiometricLockEnabled(this)) {
             val now = System.currentTimeMillis()
             if (lastBackgroundTimestamp > 0 && (now - lastBackgroundTimestamp) > lockGracePeriodMs) {
@@ -108,6 +126,11 @@ class MainActivity : FragmentActivity() {
                 triggerBiometricUnlock()
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        shakeDetector?.stop()
     }
 
     private fun checkAppLockState() {

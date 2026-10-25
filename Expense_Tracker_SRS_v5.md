@@ -62,6 +62,7 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 
 ## Phase 4: Privacy, Security & Data Export (COMPLETED & HARDENED)
 - Biometric App Lock (Fingerprint, Face Unlock, PIN) with 30s background re-lock grace period and single-prompt debouncing to eliminate duplicate prompt race conditions during cold start.
+- **Peek Privacy Mode & Shake-to-Hide (`PrivacyModeManager.kt`, `ShakeDetector.kt`)**: Hardware accelerometer listener (2.6g threshold, 1200ms debounce, haptic vibration feedback) and top bar eye toggle. Exposes `LocalPrivacyMode` CompositionLocal to mask all sensitive balances, budgets, and transaction amounts with `₹•••••` across Dashboard, History, and Budgets, with configurable user preferences in Settings.
 - Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions, categories (with `isCustom`, `emoji`), budgets (with `period`), subscriptions (with `autoMatched`, `lastPaidDateMs`), merchant mappings, and all Splitwise P2P groups, members, split expenses, shares, and settlements, with name-based upsert avoiding duplicate key violations.
 - High-Throughput Database Indexing (Room Schema v5): Indexed `timestamp`, `(type, timestamp)`, and `category` via non-destructive `MIGRATION_4_5`.
 - CSV & Formatted Summary Text Reports Exporter with dedicated transfer (`↔ `) and investment (`📈 `) indicators.
@@ -76,6 +77,7 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - Custom Transaction Date Selection: `AddTransactionDialog` supports an interactive Date Picker allowing manual logging of expenses, income, or investments for any historical date/time.
 
 ## Phase 6: Visual Canvas Charts & Quick Stats (COMPLETED & ENHANCED)
+- **Safe-to-Spend Today Radar (`DashboardScreen.kt`, `DashboardViewModel.kt`)**: Real-time daily discretionary allowance calculation pacing remaining monthly budgets against remaining calendar days in the month, dynamically deducting committed upcoming subscriptions/bills with status badges (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
 - Interactive Donut Breakdown by Transaction Type (`AnalyticsScreen.kt`, `AnalyticsViewModel.kt`): Calculates Donut chart percentages strictly relative to the selected Transaction Type (`Expenses 💸`, `Income 💰`, `Investments 📈`, `Transfers 🔄`, or `All 🌐`).
 - Interactive Jetpack Compose Canvas Income vs Expense Bar Chart.
 - Financial Analytics Date & Period Filtering Bar: Single unified Period Selector dropdown ("All Time", "This Month", "Last Month", "Quarter", "6 Months", "Yearly", "Custom Dates", Specific Month choices).

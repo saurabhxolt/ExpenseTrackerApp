@@ -11,6 +11,7 @@
 * **Period-Aware Horizon Filter**: Toggle between Today, This Week, This Month, Last Month, and Custom Date Ranges.
 * **Financial Metrics Bar**: Displays granular summaries for Total Income (₹), Total Expenses (₹), Investments (₹), and calculated Savings Rate (%).
 * **Average Daily Spend**: Automatic calculation of burn rate across the selected timeframe.
+* **Safe-to-Spend Today Radar**: Real-time daily discretionary allowance calculation pacing remaining monthly budgets against remaining calendar days in the month, dynamically deducting committed upcoming subscriptions/bills with status badges (Abundant, Balanced, Tight, Exhausted).
 * **Recent Activity Feed**: Chronological transaction stream with 44dp vibrant category avatars, formatted timestamps, and container pill badges.
 
 ### 2. Transaction Ledger & In-Place Management
@@ -80,6 +81,11 @@
 * **BiometricPrompt Authentication**: Fingerprint and Face Unlock support on app launch with single-prompt debouncing to eliminate duplicate prompt race conditions during cold start.
 * **Cryptographic Fallback**: Seamless fallback to device PIN, Pattern, or Password.
 * **30-Second Background Grace Window**: Automatic re-lock tracking ensures sensitive financial data remains protected when the app is backgrounded.
+
+### 4. Peek Privacy Mode & Shake-to-Hide
+* **1-Tap Peek Privacy Toggle**: Top app bar eye toggle (`Visibility` / `VisibilityOff`) with `CompositionLocal` provider (`LocalPrivacyMode`) masking all sensitive currency values across Dashboard, Ledger, and Budgets to `₹•••••`.
+* **Shake-to-Hide Accelerometer Gesture**: Device accelerometer listener detecting deliberate shake motions (2.6g threshold with 1200ms debounce and haptic feedback) to instantly mask or reveal financial figures.
+* **Configurable Privacy Preferences**: Settings toggles for "Shake to Mask Amounts" and "Default to Masked Privacy" on launch.
 
 ---
 

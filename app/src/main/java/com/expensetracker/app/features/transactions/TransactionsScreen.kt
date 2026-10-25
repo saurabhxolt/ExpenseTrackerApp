@@ -1,6 +1,7 @@
 package com.expensetracker.app.features.transactions
 
 import androidx.compose.foundation.background
+import com.expensetracker.app.core.security.LocalPrivacyMode
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -432,12 +433,14 @@ fun TransactionHistoryItem(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val isPrivacy = LocalPrivacyMode.current
+                val displayedAmount = if (isPrivacy) "${amountPrefix}₹•••••" else "${amountPrefix}₹${String.format("%.2f", transaction.amount)}"
                 Card(
                     colors = CardDefaults.cardColors(containerColor = amountColor.copy(alpha = 0.12f)),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
+                        text = displayedAmount,
                         fontWeight = FontWeight.Bold,
                         color = amountColor,
                         fontSize = 14.sp,

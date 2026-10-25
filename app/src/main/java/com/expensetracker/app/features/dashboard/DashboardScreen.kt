@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import com.expensetracker.app.core.security.LocalPrivacyMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -561,9 +562,169 @@ fun DashboardScreen(
             }
         }
 
+        // ⚡ Safe-to-Spend Today Radar Card
+        item {
+            val isPrivacy = LocalPrivacyMode.current
+            val radarStatus = when {
+                uiState.safeToSpendToday >= 500.0 -> "On Track 🟢"
+                uiState.safeToSpendToday > 0.0 -> "Pacing Tight 🟡"
+                else -> "Cap Reached 🔴"
+            }
+            val radarColor = when {
+                uiState.safeToSpendToday >= 500.0 -> GreenSuccess
+                uiState.safeToSpendToday > 0.0 -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+                else -> MaterialTheme.colorScheme.error
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .background(PrimaryBlue.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "⚡", fontSize = 20.sp)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Safe-to-Spend Today",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Daily discretionary pacing",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = radarColor.copy(alpha = 0.15f)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = radarStatus,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = radarColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column {
+                            Text(
+                                text = "Daily Allowance",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            AnimatedCurrencyText(
+                                value = uiState.safeToSpendToday,
+                                prefix = "₹",
+                                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold),
+                                color = if (uiState.safeToSpendToday > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            )
+                        }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "${uiState.daysRemainingInMonth} days left in cycle",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = PrimaryBlue
+                            )
+                            Text(
+                                text = if (uiState.hasBudgetSet) {
+                                    if (isPrivacy) "Budget: ₹•••••" else "Budget: ₹${String.format("%.0f", uiState.totalBudgetLimit)}"
+                                } else {
+                                    "Paced from income"
+                                },
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("Unspent Pool", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.remainingMonthlyBudget)}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("Bills Reserved", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.totalPendingBillsThisMonth)}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                    }
+
+                    if (!uiState.hasBudgetSet) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "💡 Tip: Set monthly budgets in Budgets tab for a custom daily spending cap.",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+        }
+
         // Upcoming Mandates & Monthly Bills Commitment Card
         if (uiState.totalMonthlyCommitted > 0 || uiState.upcomingSubscriptions.isNotEmpty()) {
             item {
+                val isPrivacy = LocalPrivacyMode.current
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -575,7 +736,7 @@ fun DashboardScreen(
                             Text("Monthly Mandates & Subscriptions 🔄", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                             Spacer(Modifier.weight(1f))
                             Text(
-                                "Total ₹${String.format("%.0f", uiState.totalMonthlyCommitted)}/mo",
+                                if (isPrivacy) "Total ₹•••••/mo" else "Total ₹${String.format("%.0f", uiState.totalMonthlyCommitted)}/mo",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryBlue
@@ -583,8 +744,8 @@ fun DashboardScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Paid: ₹${String.format("%.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
-                            Text("Pending: ₹${String.format("%.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                            Text(if (isPrivacy) "Paid: ₹••••• 🟢" else "Paid: ₹${String.format("%.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
+                            Text(if (isPrivacy) "Pending: ₹••••• ⏳" else "Pending: ₹${String.format("%.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -593,6 +754,7 @@ fun DashboardScreen(
 
         // Quick Stats: Today's Spend & Avg Daily Spend
         item {
+            val isPrivacy = LocalPrivacyMode.current
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -606,7 +768,7 @@ fun DashboardScreen(
                         Text(text = "Today's Spend 📅", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "₹${String.format("%.2f", uiState.todayExpenses)}",
+                            text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.todayExpenses)}",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -623,7 +785,7 @@ fun DashboardScreen(
                         Text(text = "Avg Daily Spend 📊", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "₹${String.format("%.2f", uiState.avgDailySpend)}",
+                            text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.avgDailySpend)}",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -775,12 +937,14 @@ fun TransactionItem(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val isPrivacy = LocalPrivacyMode.current
+                val displayedAmount = if (isPrivacy) "${amountPrefix}₹•••••" else "${amountPrefix}₹${String.format("%.2f", transaction.amount)}"
                 Card(
                     colors = CardDefaults.cardColors(containerColor = amountColor.copy(alpha = 0.12f)),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "${amountPrefix}₹${String.format("%.2f", transaction.amount)}",
+                        text = displayedAmount,
                         fontWeight = FontWeight.Bold,
                         color = amountColor,
                         fontSize = 14.sp,
@@ -1331,6 +1495,15 @@ fun AnimatedCurrencyText(
     style: androidx.compose.ui.text.TextStyle,
     color: Color
 ) {
+    val isPrivacy = LocalPrivacyMode.current
+    if (isPrivacy) {
+        Text(
+            text = "${prefix}•••••",
+            style = style,
+            color = color
+        )
+        return
+    }
     val animatedValue by androidx.compose.animation.core.animateFloatAsState(
         targetValue = value.toFloat(),
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 550, easing = androidx.compose.animation.core.FastOutSlowInEasing),

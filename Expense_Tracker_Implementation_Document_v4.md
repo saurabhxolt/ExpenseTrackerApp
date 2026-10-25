@@ -17,7 +17,7 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 
 # 2. Modular Package Structure
 - features/main/ (MainScreen, Top Header Settings Button, Bottom NavigationBar)
-- features/dashboard/ (DashboardScreen, DashboardViewModel, TransactionDetailsDialog, QuickStatsCards, MonthlyMandatesCard)
+- features/dashboard/ (DashboardScreen, DashboardViewModel, TransactionDetailsDialog, QuickStatsCards, MonthlyMandatesCard, SafeToSpendCard)
 - features/transactions/ (TransactionsScreen, TransactionsViewModel, CategoryFilterChips)
 - features/split/ (SplitScreen, SplitViewModel: Group List, Group Detail, Add Expense, Settle Up, WhatsApp Exporter)
 - features/budgets/ (BudgetsScreen, BudgetsViewModel)
@@ -26,6 +26,7 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - features/subscriptions/ (SubscriptionsScreen, SubscriptionsViewModel, AddEditSubscriptionDialog, SubscriptionRadarBanner, AutoPaidBadges)
 - features/settings/ (SettingsScreen, SettingsViewModel, EcosystemPromotionCard)
 - features/security/ (BiometricLockManager)
+- core/security/ (PrivacyModeManager, ShakeDetector)
 - features/backup/ (BackupManager)
 - features/reports/ (ReportsExporter)
 - core/database/ (ExpenseDatabase v4, GroupEntity, GroupMemberEntity, SplitExpenseEntity, ExpenseSplitShareEntity, GroupSettlementEntity, SubscriptionEntity, CategoryEntity, MerchantCategoryMappingEntity, SplitDao, SubscriptionDao, CategoryDao, MerchantCategoryMappingDao)
@@ -50,6 +51,8 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - **Header Settings & Bottom Navigation**: Settings moved to a prominent top app bar IconButton (`Icons.Default.Settings`). Bottom Navigation Bar updated to 5 main tabs: Dashboard, History, Split Bills, Budgets, Analytics.
 - **Unified Categories**: Standardized 18 system category definitions across ViewModels and UI modals with dynamic color assignment via `CategoryColorProvider`.
 - **Analytics Date Filter Pipeline**: StateFlow-driven reactive period filtering ("ALL", "THIS_MONTH", "LAST_MONTH", "LAST_3_MONTHS", "LAST_6_MONTHS", "YEARLY", "CUSTOM") connected directly to Canvas donut and bar chart calculations.
+- **Peek Privacy Mode & Shake-to-Hide Subsystem (`PrivacyModeManager.kt`, `ShakeDetector.kt`)**: Leverages device accelerometer (`Sensor.TYPE_ACCELEROMETER`, 2.6g threshold, 1200ms debounce, haptic feedback) and top bar eye icon. Injects `LocalPrivacyMode` `CompositionLocal` across the Composable hierarchy to mask monetary figures (`₹•••••`) across Dashboard, History, and Budgets, with user preferences configured via DataStore.
+- **Safe-to-Spend Today Radar (`DashboardViewModel.kt`, `DashboardScreen.kt`)**: Calculates real-time daily discretionary allowance pacing remaining monthly budget limits against remaining days in the active month while reserving funds for upcoming committed bills/mandates, surfacing status chips (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
 
 # 4. Multi-AI Governance & Modular Documentation Architecture
 - **Master Adapted AI System Prompt**: `PromptForCleanAndroidAppDevelopmentFromAIAgent.md` custom-tailored for offline-first native Android architecture.

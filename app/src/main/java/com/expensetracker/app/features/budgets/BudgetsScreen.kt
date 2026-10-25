@@ -1,6 +1,7 @@
 package com.expensetracker.app.features.budgets
 
 import androidx.compose.animation.core.animateFloatAsState
+import com.expensetracker.app.core.security.LocalPrivacyMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -138,19 +139,20 @@ fun BudgetsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val isPrivacy = LocalPrivacyMode.current
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Bottom
                     ) {
                         Text(
-                            text = "₹${String.format("%.2f", uiState.totalSpent)}",
+                            text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.totalSpent)}",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "of ₹${String.format("%.2f", uiState.totalBudgetLimit)}",
+                            text = if (isPrivacy) "of ₹•••••" else "of ₹${String.format("%.2f", uiState.totalBudgetLimit)}",
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -293,8 +295,9 @@ fun BudgetItem(item: CategoryBudgetUiModel, onDelete: () -> Unit) {
                             }
                         }
                         Spacer(modifier = Modifier.height(2.dp))
+                        val isPrivacy = LocalPrivacyMode.current
                         Text(
-                            text = "₹${String.format("%.2f", item.spentAmount)} spent of ₹${String.format("%.2f", item.limitAmount)}",
+                            text = if (isPrivacy) "₹••••• of ₹•••••" else "₹${String.format("%.2f", item.spentAmount)} spent of ₹${String.format("%.2f", item.limitAmount)}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant

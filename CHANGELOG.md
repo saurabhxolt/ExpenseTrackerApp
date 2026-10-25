@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased] - Branch `Dev`
 
 ### Added
+- **Peek Privacy Mode & Shake-to-Hide**: Introduced `PrivacyModeManager` and `ShakeDetector` with hardware accelerometer listener (2.6g threshold, 1200ms debounce, haptic feedback) and top bar eye toggle. Exposes `LocalPrivacyMode` CompositionLocal to mask all sensitive balances, budgets, and transaction amounts with `₹•••••` across Dashboard, History, and Budgets, with configurable user preferences in Settings.
+- **Safe-to-Spend Today Radar**: Added daily discretionary spending calculator and UI card in `DashboardViewModel` and `DashboardScreen`. Dynamically paces remaining monthly budget against calendar days remaining in the month while factoring in reserved committed subscriptions and bills, complete with visual status chips (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
 - **3-Month Historical SMS Lookback on Install**: Configured initial inbox scan in `SmsScanner` to fetch from the 1st of 3 months prior (e.g. July 1st if installed in October) instead of only the current month.
 - **Auto-Detection of Subscriptions on Historical Scan**: Configured `SmsScanner` to run `RecurringMandateDetector.autoDetectAndSave` during inbox scan.
 - **Full Splitwise P2P Subsystem Backup & Disaster Recovery (v3)**: Added support in `BackupManager` and `SettingsViewModel` for groups, group members, split expenses, split shares, and group settlements with complete roundtrip fidelity.

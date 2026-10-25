@@ -195,6 +195,29 @@
 
 ---
 
+### 🛡️ 19. Peek Privacy Mode (Shake-to-Hide & CompositionLocal Masking)
+- **Top App Bar Quick Toggle**: Added an eye icon button (`Visibility` / `VisibilityOff`) with tertiary container tint in [MainScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/main/MainScreen.kt) to toggle privacy masking with a single tap.
+- **Hardware Accelerometer Shake-to-Hide**: Implemented [ShakeDetector.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/security/ShakeDetector.kt) using `Sensor.TYPE_ACCELEROMETER` calculating normalized g-force vector magnitudes with a 2.6g acceleration threshold, 1200ms debounce, and haptic vibration feedback. Bound to `MainActivity.onResume()` and `onPause()` lifecycles.
+- **Zero-Boilerplate CompositionLocal Architecture**: Provided `LocalPrivacyMode` composition local in [PrivacyModeManager.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/security/PrivacyModeManager.kt), seamlessly propagating privacy state through the entire Jetpack Compose hierarchy without prop drilling.
+- **Comprehensive Value Masking**: Applied `LocalPrivacyMode.current` masking (`₹•••••`) to all sensitive financial figures:
+  - Dashboard Net Cashflow, Hero Cards, Income/Expense row, Quick Stats, and Recent Transactions in [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt).
+  - Transaction Ledger amounts in [TransactionsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/transactions/TransactionsScreen.kt).
+  - Monthly budget limit and spent gauges in [BudgetsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/budgets/BudgetsScreen.kt).
+- **Persistent User Controls**: Added DataStore preferences and switches in [SettingsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/settings/SettingsScreen.kt) for *"Shake to Mask Amounts 📳"* and *"Default to Masked Privacy 🛡️"*.
+
+---
+
+### 🎯 20. Safe-to-Spend Today Radar (Daily Discretionary Allowance)
+- **Daily Budget Pacing Formula**: Implemented real-time calendar pacing in [DashboardViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardViewModel.kt):
+  $$\text{Safe-to-Spend Today} = \frac{\max(0, \text{Discretionary Pool} - \text{Committed Bills})}{\text{Days Remaining in Month}}$$
+  Falls back gracefully to pacing remaining monthly income when no explicit category budgets are configured.
+- **Interactive Radar Card**: Built the Safe-to-Spend Radar Card in [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt):
+  - **Dynamic Health Status Chips**: *Abundant 🟢* ($\ge ₹1,000/\text{day}$), *Balanced 🟡* ($₹300 - ₹1,000/\text{day}$), *Tight 🟠* ($₹1 - ₹300/\text{day}$), and *Budget Exhausted 🔴* ($₹0/\text{day}$).
+  - **Pacing Metrics Chips**: Displays days remaining in month (`📅 X days left`), remaining monthly pool (`💰 ₹... unspent`), and committed upcoming mandates/bills (`💡 ₹... reserved`).
+  - **Privacy Masking**: Fully integrated with `LocalPrivacyMode` to mask today's safe allowance when privacy mode is engaged.
+
+---
+
 ## 2. Automated Test Verification
 
 Executed full Gradle unit test suite:

@@ -30,6 +30,8 @@ data class SettingsUiState(
     val isDailyReviewEnabled: Boolean = true,
     val dailyReviewHour: Int = 21,
     val dailyReviewMinute: Int = 0,
+    val isShakeToHideEnabled: Boolean = true,
+    val isDefaultPrivacyModeEnabled: Boolean = false,
     val announcements: List<Announcement> = emptyList()
 )
 
@@ -41,20 +43,24 @@ class SettingsViewModel @Inject constructor(
     private val subscriptionDao: SubscriptionDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val splitDao: com.expensetracker.app.core.database.dao.SplitDao,
-    private val promotionManager: PromotionManager
+    private val promotionManager: PromotionManager,
+    private val privacyModeManager: com.expensetracker.app.core.security.PrivacyModeManager
 ) : ViewModel() {
 
     private val _isBiometricEnabled = MutableStateFlow(false)
     private val _isDailyReviewEnabled = MutableStateFlow(true)
     private val _dailyReviewHour = MutableStateFlow(21)
     private val _dailyReviewMinute = MutableStateFlow(0)
+    private val _isShakeToHideEnabled = MutableStateFlow(true)
+    private val _isDefaultPrivacyModeEnabled = MutableStateFlow(false)
     private val _announcements = MutableStateFlow<List<Announcement>>(emptyList())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         combine(transactionRepository.allTransactions, budgetRepository.allBudgets) { t, b -> Pair(t, b) },
         combine(_isBiometricEnabled, _isDailyReviewEnabled, _dailyReviewHour, _dailyReviewMinute) { bio, dr, h, m -> Quad(bio, dr, h, m) },
+        combine(_isShakeToHideEnabled, _isDefaultPrivacyModeEnabled) { s, d -> Pair(s, d) },
         _announcements
-    ) { tb, settings, announcementsList ->
+    ) { tb, settings, privacyPrefs, announcementsList ->
         SettingsUiState(
             transactionCount = tb.first.size,
             budgetCount = tb.second.size,
@@ -62,6 +68,8 @@ class SettingsViewModel @Inject constructor(
             isDailyReviewEnabled = settings.dr,
             dailyReviewHour = settings.h,
             dailyReviewMinute = settings.m,
+            isShakeToHideEnabled = privacyPrefs.first,
+            isDefaultPrivacyModeEnabled = privacyPrefs.second,
             announcements = announcementsList
         )
     }.stateIn(
@@ -76,9 +84,21 @@ class SettingsViewModel @Inject constructor(
         val (h, m) = com.expensetracker.app.ingestion.worker.DailyReviewWorker.getDailyReviewTime(context)
         _dailyReviewHour.value = h
         _dailyReviewMinute.value = m
+        _isShakeToHideEnabled.value = privacyModeManager.isShakeToHideEnabled()
+        _isDefaultPrivacyModeEnabled.value = privacyModeManager.isDefaultPrivacyModeEnabled()
         viewModelScope.launch {
             _announcements.value = promotionManager.getActiveAnnouncements()
         }
+    }
+
+    fun toggleShakeToHide(enabled: Boolean) {
+        privacyModeManager.setShakeToHideEnabled(enabled)
+        _isShakeToHideEnabled.value = enabled
+    }
+
+    fun toggleDefaultPrivacyMode(enabled: Boolean) {
+        privacyModeManager.setDefaultPrivacyModeEnabled(enabled)
+        _isDefaultPrivacyModeEnabled.value = enabled
     }
 
     fun toggleBiometric(context: Context, enabled: Boolean) {

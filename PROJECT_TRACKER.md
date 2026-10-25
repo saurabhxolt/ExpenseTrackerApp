@@ -25,6 +25,8 @@
 | **Backup v3 Full Entity Serialization & Safe Upsert** | Backup / SAF | ✅ Completed | Storage Engine |
 | **Cold Start Biometric Debounce & Widget Live Sync** | UI / Widget | ✅ Completed | Android System |
 | **Fast Splash Launch & Dashboard Dialog Wiring** | UI / UX | ✅ Completed | Core Architecture |
+| **Peek Privacy Mode & Shake-to-Hide** | Security / UI | ✅ Completed | Android System |
+| **Safe-to-Spend Today Radar** | Feature / Dashboard | ✅ Completed | Core Architecture |
 
 ---
 

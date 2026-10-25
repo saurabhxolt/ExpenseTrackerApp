@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -47,8 +49,10 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import com.expensetracker.app.core.security.LocalPrivacyMode
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +99,7 @@ fun MainScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     val promotions by mainViewModel.promotions.collectAsState()
+    val isPrivacyMode by mainViewModel.isPrivacyMode.collectAsState()
     val context = LocalContext.current
     var backPressedTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
 
@@ -128,8 +133,9 @@ fun MainScreen(
         }
     }
 
-    if (isSettingsOpen) {
-        Scaffold { innerPadding ->
+    CompositionLocalProvider(LocalPrivacyMode provides isPrivacyMode) {
+        if (isSettingsOpen) {
+            Scaffold { innerPadding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -228,6 +234,13 @@ fun MainScreen(
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { mainViewModel.togglePrivacyMode() }) {
+                            Icon(
+                                imageVector = if (isPrivacyMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (isPrivacyMode) "Privacy Mode Active (Amounts Hidden)" else "Privacy Mode Off (Amounts Visible)",
+                                tint = if (isPrivacyMode) MaterialTheme.colorScheme.tertiary else PrimaryBlue
+                            )
+                        }
                         IconButton(onClick = { isSettingsOpen = true }) {
                             Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings", tint = PrimaryBlue)
                         }
@@ -272,6 +285,7 @@ fun MainScreen(
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalFoundationApi::class)
