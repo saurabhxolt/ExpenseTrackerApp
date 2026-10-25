@@ -395,35 +395,53 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Dashboard",
-                    style = MaterialTheme.typography.headlineLarge
-                )
+                Column {
+                    val dateFormat = remember { SimpleDateFormat("EEEE, dd MMM", Locale.getDefault()) }
+                    val todayFormatted = remember { dateFormat.format(Date()) }
+                    Text(
+                        text = todayFormatted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Dashboard",
+                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black)
+                    )
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
                         onClick = onQuickCashClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.height(34.dp)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF10B981).copy(alpha = 0.15f),
+                            contentColor = Color(0xFF10B981)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.3f)),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
                     ) {
-                        Text("💵 Cash", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("💵 Cash", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Button(
                         onClick = onScanReceiptClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.height(34.dp)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryBlue.copy(alpha = 0.15f),
+                            contentColor = PrimaryBlue
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.3f)),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
                     ) {
-                        Text("🧾 Scan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("🧾 Scan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     if (uiState.isScanning) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -506,8 +524,8 @@ fun DashboardScreen(
             val cashflowColor = if (isPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
 
             val healthStatus = when {
-                uiState.savingsRate >= 30.0 -> "Optimal Savings 🟢"
-                uiState.savingsRate > 0.0 -> "Balanced Flow 🟡"
+                uiState.savingsRate >= 30.0 -> "Optimal 🟢"
+                uiState.savingsRate > 0.0 -> "Balanced 🟡"
                 else -> "High Outflow 🔴"
             }
             val healthColor = when {
@@ -517,29 +535,30 @@ fun DashboardScreen(
             }
 
             val gradientStart = if (isPositive) {
-                if (isDark) Color(0xFF0F2942) else Color(0xFFEFF6FF)
+                if (isDark) Color(0xFF0C243B) else Color(0xFFE8F3FF)
             } else {
-                if (isDark) Color(0xFF3B1E2B) else Color(0xFFFFF1F2)
+                if (isDark) Color(0xFF3B1523) else Color(0xFFFFECEF)
             }
-            val gradientEnd = MaterialTheme.colorScheme.surfaceVariant
+            val gradientEnd = if (isDark) Color(0xFF141E28) else Color(0xFFF8FAFC)
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                shape = RoundedCornerShape(24.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(gradientStart, gradientEnd)
                             )
                         )
                         .padding(20.dp)
                 ) {
                     Column {
+                        // Top Header Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -547,147 +566,161 @@ fun DashboardScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Executive Financial Summary",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = "NET CASHFLOW",
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    letterSpacing = 1.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = uiState.selectedPeriodFilter.label,
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                 )
                             }
 
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = healthColor.copy(alpha = 0.15f)),
-                                shape = RoundedCornerShape(12.dp)
+                            Surface(
+                                color = healthColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(20.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, healthColor.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(healthColor, CircleShape)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = healthStatus,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = healthColor
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Large Net Cashflow Amount
+                        AnimatedCurrencyText(
+                            value = uiState.netCashflow,
+                            prefix = if (isPositive) "+₹" else "-₹",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Black
+                            ),
+                            color = cashflowColor
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Savings Rate & Progress Bar
+                        if (uiState.totalIncome > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = healthStatus,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = healthColor
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Net Cashflow",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                AnimatedCurrencyText(
-                                    value = uiState.netCashflow,
-                                    prefix = if (isPositive) "+" else "",
-                                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
-                                    color = cashflowColor
-                                )
-                            }
-
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = "Avg Daily: ₹${String.format("%.1f", uiState.avgDailySpend)}/day",
+                                    text = "Savings: ${String.format(Locale.getDefault(), "%.1f", uiState.savingsRate)}%",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "Savings: ${String.format("%.1f", uiState.savingsRate)}%",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
                                     color = PrimaryBlue
                                 )
+                                Text(
+                                    text = "Avg Pace: ₹${String.format(Locale.getDefault(), "%.0f", uiState.avgDailySpend)}/day",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        }
-
-                        if (uiState.totalIncome > 0) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             LinearProgressIndicator(
                                 progress = { (uiState.savingsRate.toFloat() / 100f).coerceIn(0f, 1f) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(6.dp),
+                                    .height(6.dp)
+                                    .clip(CircleShape),
                                 color = PrimaryBlue,
-                                trackColor = PrimaryBlue.copy(alpha = 0.15f),
+                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Sleek Embedded 3-Pill Breakdown Ribbon
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDark) 0.5f else 0.7f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Inflow
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    Text("Income 💰", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    AnimatedCurrencyText(
+                                        value = uiState.totalIncome,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .height(24.dp)
+                                        .width(1.dp)
+                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                )
+
+                                // Outflow
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    Text("Expenses 💸", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    AnimatedCurrencyText(
+                                        value = uiState.totalExpenses,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .height(24.dp)
+                                        .width(1.dp)
+                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                )
+
+                                // Investments
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    Text("Invested 📈", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    AnimatedCurrencyText(
+                                        value = uiState.totalInvestments,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                        color = PrimaryBlue
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Financial Breakdown: Incomes vs Expenses vs Investments Cards
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Income 💰", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AnimatedCurrencyText(
-                            value = uiState.totalIncome,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Expenses 💸", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AnimatedCurrencyText(
-                            value = uiState.totalExpenses,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Investments 📈", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AnimatedCurrencyText(
-                            value = uiState.totalInvestments,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-                            color = PrimaryBlue
-                        )
-                    }
-                }
-            }
-        }
-
-        // ⚡ Safe-to-Spend Today Radar Card
+        // ⚡ Daily Spending Radar & Real-Time Pacing Card
         item {
             val isPrivacy = LocalPrivacyMode.current
             val radarStatus = when {
@@ -697,7 +730,7 @@ fun DashboardScreen(
             }
             val radarColor = when {
                 uiState.safeToSpendToday >= 500.0 -> GreenSuccess
-                uiState.safeToSpendToday > 0.0 -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+                uiState.safeToSpendToday > 0.0 -> Color(0xFFF59E0B)
                 else -> MaterialTheme.colorScheme.error
             }
 
@@ -725,22 +758,22 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Safe-to-Spend Today",
+                                    text = "Daily Spending Radar",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Daily discretionary pacing",
+                                    text = "${uiState.daysRemainingInMonth} days remaining in cycle",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = radarColor.copy(alpha = 0.15f)),
-                            shape = RoundedCornerShape(10.dp)
+                        Surface(
+                            color = radarColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
                                 text = radarStatus,
@@ -761,7 +794,7 @@ fun DashboardScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Daily Allowance",
+                                text = "Safe-to-Spend Today",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -776,71 +809,104 @@ fun DashboardScreen(
 
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = "${uiState.daysRemainingInMonth} days left in cycle",
+                                text = if (uiState.hasBudgetSet) {
+                                    if (isPrivacy) "Budget: ₹•••••" else "Budget: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalBudgetLimit)}"
+                                } else {
+                                    "Paced from income"
+                                },
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = PrimaryBlue
                             )
                             Text(
-                                text = if (uiState.hasBudgetSet) {
-                                    if (isPrivacy) "Budget: ₹•••••" else "Budget: ₹${String.format("%.0f", uiState.totalBudgetLimit)}"
-                                } else {
-                                    "Paced from income"
-                                },
+                                text = if (uiState.todayExpenses > 0) "Today: ₹${String.format(Locale.getDefault(), "%.0f", uiState.todayExpenses)}" else "No spend today yet",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
+                    // 4-cell matrix: Spent Today | Avg Daily Spend | Unspent Pool | Bills Reserved
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Card(
+                        Surface(
                             modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
-                                Text("Unspent Pool", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                Text("Spent Today 📅", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.remainingMonthlyBudget)}",
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.2f", uiState.todayExpenses)}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (uiState.todayExpenses > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("Avg Daily 📊", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.1f", uiState.avgDailySpend)}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
+                    }
 
-                        Card(
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
                             modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("Unspent Pool", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.2f", uiState.remainingMonthlyBudget)}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
                                 Text("Bills Reserved", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.totalPendingBillsThisMonth)}",
+                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.2f", uiState.totalPendingBillsThisMonth)}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                         }
-                    }
-
-                    if (!uiState.hasBudgetSet) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "💡 Tip: Set monthly budgets in Budgets tab for a custom daily spending cap.",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                        )
                     }
                 }
             }
@@ -861,7 +927,7 @@ fun DashboardScreen(
                             Text("Monthly Mandates & Subscriptions 🔄", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                             Spacer(Modifier.weight(1f))
                             Text(
-                                if (isPrivacy) "Total ₹•••••/mo" else "Total ₹${String.format("%.0f", uiState.totalMonthlyCommitted)}/mo",
+                                if (isPrivacy) "Total ₹•••••/mo" else "Total ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalMonthlyCommitted)}/mo",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryBlue
@@ -869,72 +935,176 @@ fun DashboardScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(if (isPrivacy) "Paid: ₹••••• 🟢" else "Paid: ₹${String.format("%.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
-                            Text(if (isPrivacy) "Pending: ₹••••• ⏳" else "Pending: ₹${String.format("%.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                            Text(if (isPrivacy) "Paid: ₹••••• 🟢" else "Paid: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
+                            Text(if (isPrivacy) "Pending: ₹••••• ⏳" else "Pending: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
             }
         }
 
-        // 💰 Scheduled Inflows & Salary Day Radar Card
-        item {
-            val isPrivacy = LocalPrivacyMode.current
-            val activeIncomes = recurringIncomes.filter { it.isActive }
-            val totalExpectedInflow = activeIncomes.sumOf { it.amount }
-            val cal = Calendar.getInstance()
-            val currentMonth = cal.get(Calendar.MONTH)
-            val currentYear = cal.get(Calendar.YEAR)
+        val activeIncomes = recurringIncomes.filter { it.isActive }
+        val hasInflows = activeIncomes.isNotEmpty()
+        val hasPolicies = insurancePolicies.isNotEmpty()
+        val hasJars = savingsGoals.isNotEmpty()
 
-            val realizedThisCycle = activeIncomes.filter { income ->
-                income.lastReceivedDateMs?.let { lastMs ->
-                    val c = Calendar.getInstance().apply { timeInMillis = lastMs }
-                    c.get(Calendar.MONTH) == currentMonth && c.get(Calendar.YEAR) == currentYear
-                } ?: false
-            }.sumOf { it.amount }
-
-            val pendingInflow = (totalExpectedInflow - realizedThisCycle).coerceAtLeast(0.0)
-            val inflowProgress = if (totalExpectedInflow > 0) (realizedThisCycle / totalExpectedInflow).toFloat().coerceIn(0f, 1f) else 0f
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+        // 🎯 Financial Horizons: Shown as a single sleek action hub when nothing is set up yet
+        if (!hasInflows && !hasPolicies && !hasJars) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(GreenSuccess.copy(alpha = 0.15f)),
+                                    .background(PrimaryBlue.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("💰", fontSize = 18.sp)
+                                Text("🎯", fontSize = 18.sp)
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Scheduled Inflows & Salary",
+                                    text = "Financial Horizons & Planning",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = if (activeIncomes.isEmpty()) "Anticipated recurring income streams" else "${activeIncomes.size} active stream(s) • ${(inflowProgress * 100).toInt()}% realized",
+                                    text = "Automate salary day allocations, policy stashes & jars",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        if (activeIncomes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.25f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("💰", fontSize = 20.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Inflows", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Salary/Rent", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.25f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("🛡️", fontSize = 20.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Policy Vault", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("LIC/Mediclaim", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.25f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("🏺", fontSize = 20.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Savings Jars", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Sinking Funds", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 💰 Scheduled Inflows & Salary Day Radar Card (Rendered only when active)
+        if (hasInflows) {
+            item {
+                val isPrivacy = LocalPrivacyMode.current
+                val totalExpectedInflow = activeIncomes.sumOf { it.amount }
+                val cal = Calendar.getInstance()
+                val currentMonth = cal.get(Calendar.MONTH)
+                val currentYear = cal.get(Calendar.YEAR)
+
+                val realizedThisCycle = activeIncomes.filter { income ->
+                    income.lastReceivedDateMs?.let { lastMs ->
+                        val c = Calendar.getInstance().apply { timeInMillis = lastMs }
+                        c.get(Calendar.MONTH) == currentMonth && c.get(Calendar.YEAR) == currentYear
+                    } ?: false
+                }.sumOf { it.amount }
+
+                val pendingInflow = (totalExpectedInflow - realizedThisCycle).coerceAtLeast(0.0)
+                val inflowProgress = if (totalExpectedInflow > 0) (realizedThisCycle / totalExpectedInflow).toFloat().coerceIn(0f, 1f) else 0f
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(GreenSuccess.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("💰", fontSize = 18.sp)
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Scheduled Inflows & Salary",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${activeIncomes.size} stream(s) • ${(inflowProgress * 100).toInt()}% realized",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
                             Card(
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (pendingInflow == 0.0) GreenSuccess.copy(alpha = 0.15f) else PrimaryBlue.copy(alpha = 0.15f)
@@ -950,17 +1120,7 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    }
 
-                    if (activeIncomes.isEmpty()) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Track your Monthly Salary, Rental income, Dividends, or LIC payouts automatically against SMS credit alerts. Add under Subscriptions > Inflows tab.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 15.sp
-                        )
-                    } else {
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(
@@ -1040,133 +1200,126 @@ fun DashboardScreen(
             }
         }
 
-        // 🛡️ Annual Policy Vault & Salary Day Stash Card
-        item {
-            val isPrivacy = LocalPrivacyMode.current
-            val plan = salaryProvisioningPlan
-            val hasPolicies = insurancePolicies.isNotEmpty()
-            val totalMonthlyPace = plan?.totalRecommendedStash ?: 0.0
+        // 🛡️ Annual Policy Vault & Salary Day Stash Card (Rendered only when active)
+        if (hasPolicies) {
+            item {
+                val isPrivacy = LocalPrivacyMode.current
+                val plan = salaryProvisioningPlan
+                val totalMonthlyPace = plan?.totalRecommendedStash ?: 0.0
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(PrimaryBlue.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("🛡️", fontSize = 18.sp)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(PrimaryBlue.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🛡️", fontSize = 18.sp)
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Annual Policies & Salary Stash",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${insurancePolicies.size} policies • ₹${totalMonthlyPace.toInt()}/mo stash pace",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Annual Policies & Salary Stash",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (!hasPolicies) "Mediclaim, Term Life, Car, LIC Vault" else "${insurancePolicies.size} policies • ₹${totalMonthlyPace.toInt()}/mo provisioning pace",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
 
-                        if (hasPolicies && totalMonthlyPace > 0) {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f)),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text(
-                                    text = if (isPrivacy) "₹•••••/mo" else "₹${String.format(Locale.getDefault(), "%,.0f", totalMonthlyPace)}/mo",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PrimaryBlue
-                                )
-                            }
-                        }
-                    }
-
-                    if (!hasPolicies) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Never face annual premium shock. Register Mediclaim, Term Life, Car, Bike, or LIC policies to auto-create sinking jars and receive Salary Day stash prompts. Subscriptions > Policy Vault.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 15.sp
-                        )
-                    } else if (plan != null && plan.items.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Salary Day Stash Allocation 💡",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(plan.items) { item ->
-                                val p = item.policy
+                            if (totalMonthlyPace > 0) {
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f)),
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            when (p.policyType) {
-                                                "HEALTH" -> "🏥"
-                                                "TERM" -> "🛡️"
-                                                "CAR" -> "🚗"
-                                                "BIKE" -> "🏍️"
-                                                else -> "📜"
-                                            },
-                                            fontSize = 14.sp
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Column {
-                                            Text(p.policyName, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                            Text(
-                                                text = if (item.isFunded) {
-                                                    "Fully Funded 🟢"
-                                                } else {
-                                                    if (isPrivacy) "Pace: ₹•••••/mo" else "Pace: ₹${item.recommendedMonthlyStash.toInt()}/mo"
-                                                },
-                                                fontSize = 9.sp,
-                                                color = if (item.isFunded) GreenSuccess else PrimaryBlue
-                                            )
-                                        }
+                                    Text(
+                                        text = if (isPrivacy) "₹•••••/mo" else "₹${String.format(Locale.getDefault(), "%,.0f", totalMonthlyPace)}/mo",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryBlue
+                                    )
+                                }
+                            }
+                        }
 
-                                        if (item.linkedJar != null && !item.isFunded && item.recommendedMonthlyStash > 0) {
+                        if (plan != null && plan.items.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Salary Day Stash Allocation 💡",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(plan.items) { item ->
+                                    val p = item.policy
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                when (p.policyType) {
+                                                    "HEALTH" -> "🏥"
+                                                    "TERM" -> "🛡️"
+                                                    "CAR" -> "🚗"
+                                                    "BIKE" -> "🏍️"
+                                                    else -> "📜"
+                                                },
+                                                fontSize = 14.sp
+                                            )
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                color = PrimaryBlue.copy(alpha = 0.15f),
-                                                shape = RoundedCornerShape(6.dp),
-                                                modifier = Modifier.clickable { onStashPolicyClick(item) }
-                                            ) {
+                                            Column {
+                                                Text(p.policyName, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                                 Text(
-                                                    "Stash ₹${item.recommendedMonthlyStash.toInt()}",
-                                                    color = PrimaryBlue,
+                                                    text = if (item.isFunded) {
+                                                        "Fully Funded 🟢"
+                                                    } else {
+                                                        if (isPrivacy) "Pace: ₹•••••/mo" else "Pace: ₹${item.recommendedMonthlyStash.toInt()}/mo"
+                                                    },
                                                     fontSize = 9.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    color = if (item.isFunded) GreenSuccess else PrimaryBlue
                                                 )
+                                            }
+
+                                            if (item.linkedJar != null && !item.isFunded && item.recommendedMonthlyStash > 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = PrimaryBlue.copy(alpha = 0.15f),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    modifier = Modifier.clickable { onStashPolicyClick(item) }
+                                                ) {
+                                                    Text(
+                                                        "Stash ₹${item.recommendedMonthlyStash.toInt()}",
+                                                        color = PrimaryBlue,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -1178,52 +1331,52 @@ fun DashboardScreen(
             }
         }
 
-        // 🏺 Visual Sinking Funds (Interactive Savings Jars) Overview
-        item {
-            val isPrivacy = LocalPrivacyMode.current
-            val totalSaved = savingsGoals.sumOf { it.currentAmount }
-            val totalTarget = savingsGoals.sumOf { it.targetAmount }
-            val overallProgress = if (totalTarget > 0) (totalSaved / totalTarget).toFloat().coerceIn(0f, 1f) else 0f
+        // 🏺 Visual Sinking Funds (Interactive Savings Jars) Overview (Rendered only when active)
+        if (hasJars) {
+            item {
+                val isPrivacy = LocalPrivacyMode.current
+                val totalSaved = savingsGoals.sumOf { it.currentAmount }
+                val totalTarget = savingsGoals.sumOf { it.targetAmount }
+                val overallProgress = if (totalTarget > 0) (totalSaved / totalTarget).toFloat().coerceIn(0f, 1f) else 0f
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(GreenSuccess.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("🏺", fontSize = 18.sp)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(GreenSuccess.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🏺", fontSize = 18.sp)
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Savings Jars (Sinking Funds)",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${savingsGoals.size} active jars • ${(overallProgress * 100).toInt()}% achieved",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Savings Jars (Sinking Funds)",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (savingsGoals.isEmpty()) "Visual Targets • Active in Budgets tab" else "${savingsGoals.size} active jars • ${(overallProgress * 100).toInt()}% achieved",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
 
-                        if (savingsGoals.isNotEmpty()) {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = GreenSuccess.copy(alpha = 0.15f)),
                                 shape = RoundedCornerShape(10.dp)
@@ -1237,17 +1390,7 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    }
 
-                    if (savingsGoals.isEmpty()) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Track Emergency Fund, Vacations, or Gadgets in dedicated visual sinking jars. Switch to Budgets > Savings Jars to get started with 1-tap starter templates!",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 15.sp
-                        )
-                    } else {
                         Spacer(modifier = Modifier.height(12.dp))
                         LinearProgressIndicator(
                             progress = { overallProgress },
@@ -1290,57 +1433,34 @@ fun DashboardScreen(
             }
         }
 
-        // Quick Stats: Today's Spend & Avg Daily Spend
-        item {
-            val isPrivacy = LocalPrivacyMode.current
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "Today's Spend 📅", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.todayExpenses)}",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "Avg Daily Spend 📊", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.avgDailySpend)}",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-        }
-
         // Section Title
         item {
-            Text(
-                text = "Transactions (${uiState.selectedPeriodFilter.label})",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transactions",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                ) {
+                    Text(
+                        text = "${uiState.transactions.size} records • ${uiState.selectedPeriodFilter.label}",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         if (uiState.transactions.isEmpty()) {

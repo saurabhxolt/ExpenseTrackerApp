@@ -126,6 +126,7 @@ fun BudgetsRoute(
                         uiState = uiState,
                         onDeleteBudget = { item -> viewModel.deleteBudget(item.categoryName, item.limitAmount, item.budgetId) }
                     )
+                } else {
                     val context = androidx.compose.ui.platform.LocalContext.current
                     com.expensetracker.app.features.savings.SavingsGoalsContent(
                         uiState = savingsUiState,

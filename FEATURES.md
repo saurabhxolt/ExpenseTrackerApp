@@ -7,12 +7,12 @@
 ## 👤 Persona 1: Personal Finance End-User
 
 ### 1. Dashboard & Cashflow Cockpit
-* **Net Cashflow Hero Card**: Real-time display of `Income - Expenses` with color-coded status (emerald green for positive, ruby crimson for negative).
-* **Period-Aware Horizon Filter**: Toggle between Today, This Week, This Month, Last Month, and Custom Date Ranges.
-* **Financial Metrics Bar**: Displays granular summaries for Total Income (₹), Total Expenses (₹), Investments (₹), and calculated Savings Rate (%).
-* **Average Daily Spend**: Automatic calculation of burn rate across the selected timeframe.
-* **Safe-to-Spend Today Radar**: Real-time daily discretionary allowance calculation pacing remaining monthly budgets against remaining calendar days in the month, dynamically deducting committed upcoming subscriptions/bills with status badges (Abundant, Balanced, Tight, Exhausted).
-* **Recent Activity Feed**: Chronological transaction stream with 44dp vibrant category avatars, formatted timestamps, and container pill badges.
+* **Executive Financial Snapshot Hero**: Modern 24dp gradient hero card consolidating Net Cashflow, dynamic financial health pill (`Optimal 🟢`, `Balanced 🟡`, `High Outflow 🔴`), animated currency display, savings rate progress bar, and an embedded 3-pill financial flow ribbon (Income 💰, Expenses 💸, Investments 📈).
+* **Period-Aware Horizon Filter**: Toggle between Today, This Week, This Month, Last Month, and Custom Date Ranges via Unified Filter Bar.
+* **Unified Daily Spending Radar**: Consolidated real-time pacing telemetry card featuring Safe-to-Spend Today alongside an integrated 4-cell matrix (Spent Today 📅, Avg Daily Spend 📊, Unspent Pool, and Bills Reserved), eliminating metric duplication and card sprawl.
+* **Smart Financial Horizons Hub**: Interactive, compact command center for Scheduled Inflows, Policy Vault, and Sinking Jars. Replaces bulky multi-card empty states with a single 90dp action hub when unconfigured, expanding into rich progress cards only when active items exist.
+* **Header & Quick Action Bar**: Executive header with current day/date typography and quick pill buttons for Instant Cash Logging (`💵 Cash`) and Receipt OCR (`🧾 Scan`).
+* **Recent Activity Feed**: Chronological transaction stream with vibrant category avatars, formatted timestamps, and count summary pill badge.
 
 ### 2. Transaction Ledger & In-Place Management
 * **Dual-Channel Historical Log**: Unified chronological feed of all parsed SMS, push notifications, and manual entries.
@@ -22,6 +22,7 @@
 * **Manual Transaction Entry**: Floating Action Button modal to manually record cash expenses or offline transfers with category assignment.
 
 ### 3. Budgets & Category Spending Caps
+* **Isolated Tab Navigation**: Clean segmented switcher between "Monthly Budgets 💳" and "Savings Jars 🎯" eliminating layout collisions and visual overlap.
 * **Monthly Spending Thresholds**: Define custom monthly spending limits per category (e.g. ₹10,000 for Food & Dining), strictly scoped to the active calendar month.
 * **Dynamic Category Loading & Safe Upsert**: Pulls real categories dynamically from `CategoryRepository` (including custom user categories) rather than hardcoded lists, with safe upsert logic preventing duplicate category budget entries.
 * **Dynamic Visual Progress Indicators**: Animated progress bars color-coded by utilization:
