@@ -43,6 +43,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -162,6 +171,28 @@ fun SettingsRoute(
                 onImportBackup = {
                     importBackupLauncher.launch("*/*")
                 },
+                onToggleAutoBackup = { viewModel.toggleAutoBackup(context, it) },
+                onPerformImmediateBackup = {
+                    viewModel.performImmediateAutoBackup(context) { success ->
+                        Toast.makeText(
+                            context,
+                            if (success) "Local backup created successfully! 📦" else "Backup failed",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onRestoreAutoBackupFile = { file ->
+                    viewModel.restoreFromAutoBackupFile(
+                        file = file,
+                        context = context,
+                        onSuccess = {
+                            Toast.makeText(context, "Backup restored from ${file.name}! 🎉", Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { err ->
+                            Toast.makeText(context, "Restore failed: $err", Toast.LENGTH_LONG).show()
+                        }
+                    )
+                },
                 onOpenCategories = { subScreen = "CATEGORIES" },
                 onOpenSubscriptions = { subScreen = "SUBSCRIPTIONS" }
             )
@@ -180,9 +211,13 @@ fun SettingsScreen(
     onExportCsv: () -> Unit = {},
     onExportBackup: () -> Unit = {},
     onImportBackup: () -> Unit = {},
+    onToggleAutoBackup: (Boolean) -> Unit = {},
+    onPerformImmediateBackup: () -> Unit = {},
+    onRestoreAutoBackupFile: (File) -> Unit = {},
     onOpenCategories: () -> Unit = {},
     onOpenSubscriptions: () -> Unit = {}
 ) {
+    var showRestoreAutoBackupDialog by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -478,6 +513,68 @@ fun SettingsScreen(
         }
 
         item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(imageVector = Icons.Default.Autorenew, contentDescription = null, tint = PrimaryBlue)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Automated Rolling Backups 🔄", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Weekly encrypted snapshot to local sandbox (keeps last 5)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Switch(
+                            checked = uiState.isAutoBackupEnabled,
+                            onCheckedChange = onToggleAutoBackup,
+                            colors = SwitchDefaults.colors(checkedThumbColor = PrimaryBlue)
+                        )
+                    }
+
+                    if (uiState.isAutoBackupEnabled) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        val lastBackupText = if (uiState.lastAutoBackupTime > 0) {
+                            val fmt = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+                            "Last snapshot: ${fmt.format(Date(uiState.lastAutoBackupTime))}"
+                        } else {
+                            "Last snapshot: None yet"
+                        }
+                        Text(text = lastBackupText, fontSize = 12.sp, color = PrimaryBlue, fontWeight = FontWeight.Medium)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = onPerformImmediateBackup,
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Backup Now", fontSize = 12.sp)
+                            }
+                            if (uiState.availableAutoBackups.isNotEmpty()) {
+                                OutlinedButton(
+                                    onClick = { showRestoreAutoBackupDialog = true },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Restore (${uiState.availableAutoBackups.size})", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
             SettingsActionItem(
                 icon = Icons.Default.Share,
                 title = "Export CSV Spreadsheet Report",
@@ -538,6 +635,56 @@ fun SettingsScreen(
         item {
             ArivTekAboutUsCard()
         }
+    }
+
+    if (showRestoreAutoBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreAutoBackupDialog = false },
+            title = {
+                Text("Restore Local Auto-Backup 📦", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Select a rolling backup snapshot to restore your data. Current database entries will be safely updated or merged.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    uiState.availableAutoBackups.forEach { file ->
+                        val dateStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(file.lastModified()))
+                        val sizeKb = (file.length() / 1024).coerceAtLeast(1)
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showRestoreAutoBackupDialog = false
+                                    onRestoreAutoBackupFile(file)
+                                },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(dateStr, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text("${file.name} • ${sizeKb} KB", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text("Restore 🔄", fontSize = 12.sp, color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRestoreAutoBackupDialog = false }) {
+                    Text("Close", color = PrimaryBlue)
+                }
+            }
+        )
     }
 }
 

@@ -218,6 +218,25 @@
 
 ---
 
+### 📦 21. Automated Local Rolling Backups (Offline Sandbox)
+- **Background WorkManager Ingestion**: Implemented [ScheduledBackupWorker.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/worker/ScheduledBackupWorker.kt) executing weekly periodic encrypted database snapshots. Scheduled uniquely on launch in [MainActivity.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/MainActivity.kt) via `ExistingPeriodicWorkPolicy.KEEP`.
+- **Zero-Internet Local Sandbox Storage**: Saves versioned snapshots (`backup_auto_*.json`) inside the sandboxed directory `context.getExternalFilesDir(null)/backups/`, completely inaccessible to external apps without root and requiring zero internet or broad external storage permissions.
+- **5-Version Rolling Retention**: Enforces strict storage governance by deleting the oldest snapshots when count exceeds 5, preventing disk bloat.
+- **In-App Restore & Manual Trigger**:
+  - Added "Automated Rolling Backups 🔄" card in [SettingsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/settings/SettingsScreen.kt) with an auto-backup toggle switch and a "Backup Now" immediate snapshot button.
+  - Built `RestoreAutoBackupDialog` allowing 1-tap in-place restoration directly from any available local rolling backup file.
+
+---
+
+### 📈 22. Stealth Inflation & Subscription Price Creep Detector
+- **Pure-Offline Analysis Engine**: Implemented [PriceCreepDetector.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/PriceCreepDetector.kt) with merchant name normalization, detecting price hikes exceeding **3%** and **$\ge ₹5$** across recurring merchants and active subscriptions.
+- **Comprehensive Unit Testing**: Added [PriceCreepDetectorTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/analysis/PriceCreepDetectorTest.kt) validating price hike detection, sub-threshold noise filtering, subscription matching, and merchant name sanitization.
+- **Proactive Warning Badges**:
+  - Subscriptions card in [SubscriptionsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt): Displays amber/red warning chip `⚠️ Price Creep Alert: Last charged ₹X (+Y% vs plan ₹Z)`.
+  - Transaction Details Dialog in [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) & [TransactionsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/transactions/TransactionsScreen.kt): Highlights stealth inflation when viewing repeat merchant debits with privacy mode masking support.
+
+---
+
 ## 2. Automated Test Verification
 
 Executed full Gradle unit test suite:
@@ -231,6 +250,7 @@ Verified Debug APK Compilation:
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
 ```
 Result: **BUILD SUCCESSFUL**. Pure offline compilation with zero network permissions verified.
+
 
 
 

@@ -27,6 +27,7 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - features/settings/ (SettingsScreen, SettingsViewModel, EcosystemPromotionCard)
 - features/security/ (BiometricLockManager)
 - core/security/ (PrivacyModeManager, ShakeDetector)
+- core/analysis/ (PriceCreepDetector)
 - features/backup/ (BackupManager)
 - features/reports/ (ReportsExporter)
 - core/database/ (ExpenseDatabase v4, GroupEntity, GroupMemberEntity, SplitExpenseEntity, ExpenseSplitShareEntity, GroupSettlementEntity, SubscriptionEntity, CategoryEntity, MerchantCategoryMappingEntity, SplitDao, SubscriptionDao, CategoryDao, MerchantCategoryMappingDao)
@@ -34,7 +35,7 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - core/promotions/ (PromotionModel, PromotionManager)
 - ingestion/parser/ (RegexTransactionParser, CategoryClassifier, SubscriptionMatcher: Auto SMS Mandate Matching & Cycle Advancement)
 - ingestion/deduplication/ (TransactionDeduplicator: Timeless & Windowed Deduplication & DB False Positive Purging)
-- ingestion/worker/ (BillReminderWorker)
+- ingestion/worker/ (BillReminderWorker, DailyReviewWorker, ScheduledBackupWorker)
 - widget/ (ExpenseWidgetProvider)
 
 # 3. Parser Intelligence & Analytics Architecture
@@ -53,6 +54,8 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - **Analytics Date Filter Pipeline**: StateFlow-driven reactive period filtering ("ALL", "THIS_MONTH", "LAST_MONTH", "LAST_3_MONTHS", "LAST_6_MONTHS", "YEARLY", "CUSTOM") connected directly to Canvas donut and bar chart calculations.
 - **Peek Privacy Mode & Shake-to-Hide Subsystem (`PrivacyModeManager.kt`, `ShakeDetector.kt`)**: Leverages device accelerometer (`Sensor.TYPE_ACCELEROMETER`, 2.6g threshold, 1200ms debounce, haptic feedback) and top bar eye icon. Injects `LocalPrivacyMode` `CompositionLocal` across the Composable hierarchy to mask monetary figures (`₹•••••`) across Dashboard, History, and Budgets, with user preferences configured via DataStore.
 - **Safe-to-Spend Today Radar (`DashboardViewModel.kt`, `DashboardScreen.kt`)**: Calculates real-time daily discretionary allowance pacing remaining monthly budget limits against remaining days in the active month while reserving funds for upcoming committed bills/mandates, surfacing status chips (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
+- **Automated Local Rolling Backups Subsystem (`ScheduledBackupWorker.kt`)**: Background WorkManager periodic worker snapshotting encrypted Room database weekly to the local sandbox (`backups/backup_auto_*.json`) with 5-snapshot rolling retention and on-demand restore dialog in Settings.
+- **Stealth Inflation & Price Creep Detector (`PriceCreepDetector.kt`)**: Real-time analysis engine identifying price increases (>3% and >= ₹5) across repeat merchants and subscriptions, rendering alert badges in Subscriptions and Transaction Details.
 
 # 4. Multi-AI Governance & Modular Documentation Architecture
 - **Master Adapted AI System Prompt**: `PromptForCleanAndroidAppDevelopmentFromAIAgent.md` custom-tailored for offline-first native Android architecture.

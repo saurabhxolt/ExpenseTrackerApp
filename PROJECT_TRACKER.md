@@ -27,6 +27,8 @@
 | **Fast Splash Launch & Dashboard Dialog Wiring** | UI / UX | ✅ Completed | Core Architecture |
 | **Peek Privacy Mode & Shake-to-Hide** | Security / UI | ✅ Completed | Android System |
 | **Safe-to-Spend Today Radar** | Feature / Dashboard | ✅ Completed | Core Architecture |
+| **Automated Local Rolling Backups (Offline)** | Storage / Worker | ✅ Completed | Storage Engine |
+| **Stealth Inflation & Price Creep Detector** | Analysis / NLP | ✅ Completed | Core Architecture |
 
 ---
 

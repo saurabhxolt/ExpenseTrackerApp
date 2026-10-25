@@ -81,6 +81,9 @@ class MainActivity : FragmentActivity() {
         // Schedule daily end-of-day expense review reminder worker (default 9:00 PM)
         com.expensetracker.app.ingestion.worker.DailyReviewWorker.scheduleConfiguredReview(this)
 
+        // Schedule periodic automated local rolling backup worker (weekly)
+        com.expensetracker.app.ingestion.worker.ScheduledBackupWorker.scheduleConfiguredBackup(this)
+
         setContent {
             ExpenseTrackerTheme {
                 Surface(

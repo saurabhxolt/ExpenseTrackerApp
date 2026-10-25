@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import java.io.File
+import com.expensetracker.app.ingestion.worker.ScheduledBackupWorker
+
 data class SettingsUiState(
     val transactionCount: Int = 0,
     val budgetCount: Int = 0,
@@ -32,6 +35,9 @@ data class SettingsUiState(
     val dailyReviewMinute: Int = 0,
     val isShakeToHideEnabled: Boolean = true,
     val isDefaultPrivacyModeEnabled: Boolean = false,
+    val isAutoBackupEnabled: Boolean = true,
+    val lastAutoBackupTime: Long = 0L,
+    val availableAutoBackups: List<File> = emptyList(),
     val announcements: List<Announcement> = emptyList()
 )
 
@@ -53,14 +59,18 @@ class SettingsViewModel @Inject constructor(
     private val _dailyReviewMinute = MutableStateFlow(0)
     private val _isShakeToHideEnabled = MutableStateFlow(true)
     private val _isDefaultPrivacyModeEnabled = MutableStateFlow(false)
+    private val _isAutoBackupEnabled = MutableStateFlow(true)
+    private val _lastAutoBackupTime = MutableStateFlow(0L)
+    private val _availableAutoBackups = MutableStateFlow<List<File>>(emptyList())
     private val _announcements = MutableStateFlow<List<Announcement>>(emptyList())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         combine(transactionRepository.allTransactions, budgetRepository.allBudgets) { t, b -> Pair(t, b) },
         combine(_isBiometricEnabled, _isDailyReviewEnabled, _dailyReviewHour, _dailyReviewMinute) { bio, dr, h, m -> Quad(bio, dr, h, m) },
         combine(_isShakeToHideEnabled, _isDefaultPrivacyModeEnabled) { s, d -> Pair(s, d) },
+        combine(_isAutoBackupEnabled, _lastAutoBackupTime, _availableAutoBackups) { ab, last, list -> Triple(ab, last, list) },
         _announcements
-    ) { tb, settings, privacyPrefs, announcementsList ->
+    ) { tb, settings, privacyPrefs, backupData, announcementsList ->
         SettingsUiState(
             transactionCount = tb.first.size,
             budgetCount = tb.second.size,
@@ -70,6 +80,9 @@ class SettingsViewModel @Inject constructor(
             dailyReviewMinute = settings.m,
             isShakeToHideEnabled = privacyPrefs.first,
             isDefaultPrivacyModeEnabled = privacyPrefs.second,
+            isAutoBackupEnabled = backupData.first,
+            lastAutoBackupTime = backupData.second,
+            availableAutoBackups = backupData.third,
             announcements = announcementsList
         )
     }.stateIn(
@@ -86,6 +99,9 @@ class SettingsViewModel @Inject constructor(
         _dailyReviewMinute.value = m
         _isShakeToHideEnabled.value = privacyModeManager.isShakeToHideEnabled()
         _isDefaultPrivacyModeEnabled.value = privacyModeManager.isDefaultPrivacyModeEnabled()
+        _isAutoBackupEnabled.value = ScheduledBackupWorker.isAutoBackupEnabled(context)
+        _lastAutoBackupTime.value = ScheduledBackupWorker.getLastBackupTime(context)
+        _availableAutoBackups.value = ScheduledBackupWorker.getAvailableBackups(context)
         viewModelScope.launch {
             _announcements.value = promotionManager.getActiveAnnouncements()
         }
@@ -99,6 +115,41 @@ class SettingsViewModel @Inject constructor(
     fun toggleDefaultPrivacyMode(enabled: Boolean) {
         privacyModeManager.setDefaultPrivacyModeEnabled(enabled)
         _isDefaultPrivacyModeEnabled.value = enabled
+    }
+
+    fun toggleAutoBackup(context: Context, enabled: Boolean) {
+        ScheduledBackupWorker.setAutoBackupEnabled(context, enabled)
+        _isAutoBackupEnabled.value = enabled
+    }
+
+    fun performImmediateAutoBackup(context: Context, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = ScheduledBackupWorker.performBackup(context)
+            if (success) {
+                _lastAutoBackupTime.value = ScheduledBackupWorker.getLastBackupTime(context)
+                _availableAutoBackups.value = ScheduledBackupWorker.getAvailableBackups(context)
+            }
+            onResult(success)
+        }
+    }
+
+    fun loadAutoBackups(context: Context) {
+        _availableAutoBackups.value = ScheduledBackupWorker.getAvailableBackups(context)
+        _lastAutoBackupTime.value = ScheduledBackupWorker.getLastBackupTime(context)
+    }
+
+    fun restoreFromAutoBackupFile(
+        file: File,
+        context: Context,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        try {
+            val jsonStr = file.readText()
+            restoreBackupJson(jsonStr, context, onSuccess, onError)
+        } catch (e: Exception) {
+            onError(e.localizedMessage ?: "Failed to read backup file")
+        }
     }
 
     fun toggleBiometric(context: Context, enabled: Boolean) {

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import com.expensetracker.app.core.security.LocalPrivacyMode
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -166,10 +168,11 @@ fun SubscriptionsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
+                        val isPrivacy = LocalPrivacyMode.current
                         Text("Monthly Recurring Commitment", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "₹${String.format("%.2f", uiState.totalMonthlyCost)}",
+                            if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", uiState.totalMonthlyCost)}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.error
@@ -325,8 +328,9 @@ fun SubscriptionCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
+                    val isPrivacy = LocalPrivacyMode.current
                     Text(
-                        text = "₹${String.format("%.2f", item.amount)}",
+                        text = if (isPrivacy) "₹•••••" else "₹${String.format("%.2f", item.amount)}",
                         fontWeight = FontWeight.Bold,
                         color = if (item.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp
@@ -337,6 +341,35 @@ fun SubscriptionCard(
                         fontWeight = FontWeight.SemiBold,
                         color = statusColor
                     )
+                }
+            }
+
+            item.priceHike?.let { hike ->
+                val isPrivacy = LocalPrivacyMode.current
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("⚠️", fontSize = 12.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        val hikeText = if (isPrivacy) {
+                            "Stealth Price Hike: ₹••••• ➔ ₹••••• (+${hike.percentageIncrease}%)"
+                        } else {
+                            "Stealth Price Hike: ₹${hike.previousAmount.toInt()} ➔ ₹${hike.currentAmount.toInt()} (+${hike.percentageIncrease}%)"
+                        }
+                        Text(
+                            text = hikeText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
                 }
             }
 

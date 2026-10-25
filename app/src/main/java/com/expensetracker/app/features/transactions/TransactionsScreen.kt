@@ -133,6 +133,7 @@ fun TransactionsRoute(
             selectedTransactionDetails?.let { trx ->
                 TransactionDetailsDialog(
                     transaction = trx,
+                    allTransactions = uiState.transactions,
                     onDismiss = { selectedTransactionDetails = null },
                     onEdit = {
                         editingTransaction = trx

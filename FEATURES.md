@@ -45,6 +45,7 @@
 * **Due Date Calculation**: Automatic monthly/yearly cycle advancement.
 * **1-Tap "Mark Paid" Action**: Manual override button to advance cycle dates if auto-deduction occurs via non-SMS channel.
 * **Late-Message Deduplication**: Prevents duplicate subscription creation when multiple notifications arrive for the same cycle.
+* **Stealth Inflation & Subscription Price Creep Detector**: Evaluates historical debits for repeat merchants and active subscriptions, flagging price jumps (>3% and >= ₹5) with visual warning alerts and percentage increase indicators.
 
 ---
 
@@ -96,6 +97,8 @@
 * **Safe Name-Based Upsert on Restore**: Restores categories and budgets idempotently by name, preventing duplicate insertion crashes and preserving user-defined emojis.
 * **Verified Restore Callbacks & Widget Auto-Sync**: Toast notifications are bound strictly to verified restore completion, automatically synchronizing widget balances post-import.
 * **CSV & Summary Text Exporter**: Generates accounting-ready CSV files and formatted summary text reports with dedicated symbols for transfers and investments.
+* **Automated Local Rolling Backups (`ScheduledBackupWorker`)**: Background WorkManager periodic worker performing weekly encrypted full-database JSON backups to the local sandbox, retaining the latest 5 rolling snapshots and auto-purging older ones without cloud or internet dependencies.
+* **1-Tap Snapshot Restoration**: Settings interface provides on-demand "Backup Now" execution and an interactive "Restore Local Auto-Backup" dialog displaying snapshot timestamps and sizes for instant recovery.
 
 ### 2. Background Automation
 * **Smart Bill Reminder Worker (`BillReminderWorker`)**: Database-aware WorkManager worker evaluating active subscriptions due in 48 hours and alerting users with customized bill details.

@@ -228,6 +228,7 @@ fun DashboardRoute(
             selectedTransactionDetails?.let { trx ->
                 TransactionDetailsDialog(
                     transaction = trx,
+                    allTransactions = uiState.transactions,
                     onDismiss = { selectedTransactionDetails = null },
                     onEdit = {
                         editingTransaction = trx
@@ -976,6 +977,7 @@ fun TransactionItem(
 @Composable
 fun TransactionDetailsDialog(
     transaction: TransactionEntity,
+    allTransactions: List<TransactionEntity> = emptyList(),
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -983,6 +985,11 @@ fun TransactionDetailsDialog(
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMMM yyyy, hh:mm:ss a", Locale.getDefault()) }
     val fullDateStr = remember(transaction.timestamp) { dateFormat.format(Date(transaction.timestamp)) }
+    val priceHike = remember(transaction, allTransactions) {
+        if (allTransactions.isNotEmpty()) {
+            com.expensetracker.app.core.analysis.PriceCreepDetector.detectPriceHikeForTransaction(transaction, allTransactions)
+        } else null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1072,6 +1079,34 @@ fun TransactionDetailsDialog(
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                priceHike?.let { hike ->
+                    val isPrivacy = LocalPrivacyMode.current
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("📈", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            val hikeMsg = if (isPrivacy) {
+                                "Price Hike Detected: Amount is higher (+${hike.percentageIncrease}%) than prior payments."
+                            } else {
+                                "Price Hike Detected: +₹${String.format("%.0f", hike.difference)} (+${hike.percentageIncrease}%) vs previous payment of ₹${String.format("%.0f", hike.previousAmount)}."
+                            }
+                            Text(
+                                text = hikeMsg,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
 
                 if (transaction.rawText.isNotBlank()) {
                     Card(

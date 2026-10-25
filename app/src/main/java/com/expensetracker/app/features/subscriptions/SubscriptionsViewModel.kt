@@ -21,6 +21,9 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+import com.expensetracker.app.core.analysis.PriceCreepDetector
+import com.expensetracker.app.core.analysis.PriceHikeAlert
+
 data class SubscriptionUiModel(
     val entity: SubscriptionEntity,
     val name: String,
@@ -32,7 +35,8 @@ data class SubscriptionUiModel(
     val isDueSoon: Boolean,
     val category: String,
     val isActive: Boolean,
-    val autoMatched: Boolean = false
+    val autoMatched: Boolean = false,
+    val priceHike: PriceHikeAlert? = null
 )
 
 data class SubscriptionsUiState(
@@ -74,6 +78,12 @@ class SubscriptionsViewModel @Inject constructor(
                 else -> Triple("Next due: $formattedDate", false, false)
             }
 
+            val priceHike = PriceCreepDetector.detectPriceHikeForSubscription(
+                subscriptionName = entity.name,
+                currentAmount = entity.amount,
+                allTransactions = transactions
+            )
+
             SubscriptionUiModel(
                 entity = entity,
                 name = entity.name,
@@ -85,7 +95,8 @@ class SubscriptionsViewModel @Inject constructor(
                 isDueSoon = isDueSoon,
                 category = entity.category,
                 isActive = entity.isActive,
-                autoMatched = entity.autoMatched
+                autoMatched = entity.autoMatched,
+                priceHike = priceHike
             )
         }
 

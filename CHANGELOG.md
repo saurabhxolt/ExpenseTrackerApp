@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased] - Branch `Dev`
 
 ### Added
+- **Automated Local Rolling Backups (`ScheduledBackupWorker`)**: Added periodic weekly WorkManager worker snapshotting the complete encrypted Room database to the local sandbox with 5-version rolling retention, on-demand execution, and an in-app restore dialog in Settings.
+- **Stealth Inflation & Subscription Price Creep Detector (`PriceCreepDetector`)**: Real-time analysis engine identifying price hikes (>3% and >= ₹5) across repeat merchants and subscriptions, rendering alert badges in Subscriptions and Transaction Details.
 - **Peek Privacy Mode & Shake-to-Hide**: Introduced `PrivacyModeManager` and `ShakeDetector` with hardware accelerometer listener (2.6g threshold, 1200ms debounce, haptic feedback) and top bar eye toggle. Exposes `LocalPrivacyMode` CompositionLocal to mask all sensitive balances, budgets, and transaction amounts with `₹•••••` across Dashboard, History, and Budgets, with configurable user preferences in Settings.
 - **Safe-to-Spend Today Radar**: Added daily discretionary spending calculator and UI card in `DashboardViewModel` and `DashboardScreen`. Dynamically paces remaining monthly budget against calendar days remaining in the month while factoring in reserved committed subscriptions and bills, complete with visual status chips (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
 - **3-Month Historical SMS Lookback on Install**: Configured initial inbox scan in `SmsScanner` to fetch from the 1st of 3 months prior (e.g. July 1st if installed in October) instead of only the current month.

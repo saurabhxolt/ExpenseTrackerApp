@@ -63,11 +63,13 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 ## Phase 4: Privacy, Security & Data Export (COMPLETED & HARDENED)
 - Biometric App Lock (Fingerprint, Face Unlock, PIN) with 30s background re-lock grace period and single-prompt debouncing to eliminate duplicate prompt race conditions during cold start.
 - **Peek Privacy Mode & Shake-to-Hide (`PrivacyModeManager.kt`, `ShakeDetector.kt`)**: Hardware accelerometer listener (2.6g threshold, 1200ms debounce, haptic vibration feedback) and top bar eye toggle. Exposes `LocalPrivacyMode` CompositionLocal to mask all sensitive balances, budgets, and transaction amounts with `₹•••••` across Dashboard, History, and Budgets, with configurable user preferences in Settings.
+- **Automated Local Rolling Backups (`ScheduledBackupWorker.kt`)**: Background WorkManager periodic worker snapshotting the complete encrypted Room database weekly to the local sandbox, retaining the latest 5 rolling snapshots and auto-purging older ones without cloud or internet dependencies, with in-app restoration dialog in Settings.
 - Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions, categories (with `isCustom`, `emoji`), budgets (with `period`), subscriptions (with `autoMatched`, `lastPaidDateMs`), merchant mappings, and all Splitwise P2P groups, members, split expenses, shares, and settlements, with name-based upsert avoiding duplicate key violations.
 - High-Throughput Database Indexing (Room Schema v5): Indexed `timestamp`, `(type, timestamp)`, and `category` via non-destructive `MIGRATION_4_5`.
 - CSV & Formatted Summary Text Reports Exporter with dedicated transfer (`↔ `) and investment (`📈 `) indicators.
 
 ## Phase 5: Customization & Subscriptions (COMPLETED & OVERHAULED)
+- **Stealth Inflation & Subscription Price Creep Detector (`PriceCreepDetector.kt`)**: Real-time analysis engine identifying price hikes (>3% and >= ₹5) across repeat merchants and subscriptions, rendering subtle alert badges in Subscriptions and Transaction Details.
 - Unified Editable Category Management (`CategoriesScreen.kt`, `CategoriesViewModel.kt`): Merged system and custom categories into a single editable management list where users can edit category names, transaction types, and emojis.
 - Dynamic Budget Categories & Safe Upsert (`BudgetsViewModel.kt`, `BudgetRepository.kt`): Dynamically surfaces user custom and system categories in Add Budget dialog and ensures idempotent upserting by category name to eliminate duplicate entries.
 - System Color Auto-Assignment (`CategoryColorProvider.kt`): Guarantees unique, non-conflicting vibrant colors for all categories, preventing duplicate color assignments across the app.
