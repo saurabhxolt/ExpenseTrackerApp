@@ -49,4 +49,10 @@ object DatabaseModule {
 
     @Provides
     fun provideCreditCardDao(db: ExpenseDatabase): com.expensetracker.app.core.database.dao.CreditCardDao = db.creditCardDao()
+
+    @Provides
+    fun provideRecurringIncomeDao(db: ExpenseDatabase): com.expensetracker.app.core.database.dao.RecurringIncomeDao = db.recurringIncomeDao()
+
+    @Provides
+    fun provideInsurancePolicyDao(db: ExpenseDatabase): com.expensetracker.app.core.database.dao.InsurancePolicyDao = db.insurancePolicyDao()
 }

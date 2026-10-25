@@ -9,6 +9,8 @@ import com.expensetracker.app.core.database.entity.GroupSettlementEntity
 import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
 import com.expensetracker.app.core.database.entity.SavingsGoalEntity
 import com.expensetracker.app.core.database.entity.CreditCardEntity
+import com.expensetracker.app.core.database.entity.RecurringIncomeEntity
+import com.expensetracker.app.core.database.entity.InsurancePolicyEntity
 import com.expensetracker.app.core.database.entity.SplitExpenseEntity
 import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
@@ -25,7 +27,9 @@ data class BackupData(
     val splitShares: List<ExpenseSplitShareEntity> = emptyList(),
     val groupSettlements: List<GroupSettlementEntity> = emptyList(),
     val savingsGoals: List<SavingsGoalEntity> = emptyList(),
-    val creditCards: List<CreditCardEntity> = emptyList()
+    val creditCards: List<CreditCardEntity> = emptyList(),
+    val recurringIncomes: List<RecurringIncomeEntity> = emptyList(),
+    val insurancePolicies: List<InsurancePolicyEntity> = emptyList()
 )
 
 object BackupManager {
@@ -44,7 +48,9 @@ object BackupManager {
         splitShares: List<ExpenseSplitShareEntity> = emptyList(),
         groupSettlements: List<GroupSettlementEntity> = emptyList(),
         savingsGoals: List<SavingsGoalEntity> = emptyList(),
-        creditCards: List<CreditCardEntity> = emptyList()
+        creditCards: List<CreditCardEntity> = emptyList(),
+        recurringIncomes: List<RecurringIncomeEntity> = emptyList(),
+        insurancePolicies: List<InsurancePolicyEntity> = emptyList()
     ): String {
         val sb = StringBuilder()
         sb.append("{\n")
@@ -217,6 +223,47 @@ object BackupManager {
             sb.append("      \"isActive\": ").append(c.isActive).append(",\n")
             sb.append("      \"createdAt\": ").append(c.createdAt).append("\n")
             sb.append("    }").append(if (idx < creditCards.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 13. Recurring Incomes
+        sb.append("  \"recurringIncomes\": [\n")
+        recurringIncomes.forEachIndexed { idx, inc ->
+            sb.append("    {\n")
+            sb.append("      \"name\": \"").append(escape(inc.name)).append("\",\n")
+            sb.append("      \"amount\": ").append(inc.amount).append(",\n")
+            sb.append("      \"frequency\": \"").append(escape(inc.frequency)).append("\",\n")
+            sb.append("      \"expectedDayOfMonth\": ").append(inc.expectedDayOfMonth).append(",\n")
+            sb.append("      \"nextDueDateMs\": ").append(inc.nextDueDateMs).append(",\n")
+            sb.append("      \"category\": \"").append(escape(inc.category)).append("\",\n")
+            sb.append("      \"settlementMode\": \"").append(escape(inc.settlementMode)).append("\",\n")
+            sb.append("      \"isActive\": ").append(inc.isActive).append(",\n")
+            sb.append("      \"isSalary\": ").append(inc.isSalary).append(",\n")
+            sb.append("      \"lastReceivedDateMs\": ").append(inc.lastReceivedDateMs ?: 0L).append(",\n")
+            sb.append("      \"payerPpiOrBank\": \"").append(escape(inc.payerPpiOrBank)).append("\",\n")
+            sb.append("      \"note\": \"").append(escape(inc.note)).append("\",\n")
+            sb.append("      \"createdAt\": ").append(inc.createdAt).append("\n")
+            sb.append("    }").append(if (idx < recurringIncomes.size - 1) "," else "").append("\n")
+        }
+        sb.append("  ],\n")
+
+        // 14. Insurance Policies
+        sb.append("  \"insurancePolicies\": [\n")
+        insurancePolicies.forEachIndexed { idx, p ->
+            sb.append("    {\n")
+            sb.append("      \"policyName\": \"").append(escape(p.policyName)).append("\",\n")
+            sb.append("      \"policyType\": \"").append(escape(p.policyType)).append("\",\n")
+            sb.append("      \"policyNumber\": \"").append(escape(p.policyNumber)).append("\",\n")
+            sb.append("      \"insurerName\": \"").append(escape(p.insurerName)).append("\",\n")
+            sb.append("      \"premiumAmount\": ").append(p.premiumAmount).append(",\n")
+            sb.append("      \"frequency\": \"").append(escape(p.frequency)).append("\",\n")
+            sb.append("      \"renewalDueDateMs\": ").append(p.renewalDueDateMs).append(",\n")
+            sb.append("      \"taxSection\": \"").append(escape(p.taxSection)).append("\",\n")
+            sb.append("      \"linkedSavingsGoalId\": ").append(p.linkedSavingsGoalId ?: 0L).append(",\n")
+            sb.append("      \"isActive\": ").append(p.isActive).append(",\n")
+            sb.append("      \"lastPaidDateMs\": ").append(p.lastPaidDateMs ?: 0L).append(",\n")
+            sb.append("      \"createdAt\": ").append(p.createdAt).append("\n")
+            sb.append("    }").append(if (idx < insurancePolicies.size - 1) "," else "").append("\n")
         }
         sb.append("  ]\n")
         sb.append("}")
@@ -479,7 +526,62 @@ object BackupManager {
             }
         }
 
-        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements, savingsGoals, creditCards)
+        // 13. Recurring Incomes
+        val recurringIncomes = mutableListOf<RecurringIncomeEntity>()
+        val incomeArrayStr = extractArray(jsonStr, "recurringIncomes")
+        val incomeObjects = splitJsonObjects(incomeArrayStr)
+        for (obj in incomeObjects) {
+            val name = extractString(obj, "name")
+            val amount = extractDouble(obj, "amount")
+            if (name.isNotBlank() && amount > 0) {
+                recurringIncomes.add(
+                    RecurringIncomeEntity(
+                        name = name,
+                        amount = amount,
+                        frequency = extractString(obj, "frequency").ifBlank { "Monthly" },
+                        expectedDayOfMonth = extractLong(obj, "expectedDayOfMonth").toInt().coerceIn(1, 31).takeIf { it > 0 } ?: 1,
+                        nextDueDateMs = extractLong(obj, "nextDueDateMs").takeIf { it > 0 } ?: System.currentTimeMillis(),
+                        category = extractString(obj, "category").ifBlank { "Salary" },
+                        settlementMode = extractString(obj, "settlementMode").ifBlank { "SMS_AUTO_MATCH" },
+                        isActive = extractBoolean(obj, "isActive"),
+                        isSalary = extractBoolean(obj, "isSalary"),
+                        lastReceivedDateMs = extractLong(obj, "lastReceivedDateMs").takeIf { it > 0 },
+                        payerPpiOrBank = extractString(obj, "payerPpiOrBank"),
+                        note = extractString(obj, "note"),
+                        createdAt = extractLong(obj, "createdAt").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        // 14. Insurance Policies
+        val insurancePolicies = mutableListOf<InsurancePolicyEntity>()
+        val policyArrayStr = extractArray(jsonStr, "insurancePolicies")
+        val policyObjects = splitJsonObjects(policyArrayStr)
+        for (obj in policyObjects) {
+            val policyName = extractString(obj, "policyName")
+            val premium = extractDouble(obj, "premiumAmount")
+            if (policyName.isNotBlank() && premium > 0) {
+                insurancePolicies.add(
+                    InsurancePolicyEntity(
+                        policyName = policyName,
+                        policyType = extractString(obj, "policyType").ifBlank { "HEALTH" },
+                        policyNumber = extractString(obj, "policyNumber"),
+                        insurerName = extractString(obj, "insurerName"),
+                        premiumAmount = premium,
+                        frequency = extractString(obj, "frequency").ifBlank { "Yearly" },
+                        renewalDueDateMs = extractLong(obj, "renewalDueDateMs").takeIf { it > 0 } ?: (System.currentTimeMillis() + 180L * 24 * 60 * 60 * 1000),
+                        taxSection = extractString(obj, "taxSection").ifBlank { "NONE" },
+                        linkedSavingsGoalId = extractLong(obj, "linkedSavingsGoalId").takeIf { it > 0 },
+                        isActive = extractBoolean(obj, "isActive"),
+                        lastPaidDateMs = extractLong(obj, "lastPaidDateMs").takeIf { it > 0 },
+                        createdAt = extractLong(obj, "createdAt").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements, savingsGoals, creditCards, recurringIncomes, insurancePolicies)
     }
 
     fun parseBackupJson(jsonStr: String): Triple<List<TransactionEntity>, List<CategoryEntity>, List<BudgetEntity>> {

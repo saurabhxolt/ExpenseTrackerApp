@@ -68,6 +68,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -98,8 +99,15 @@ import com.expensetracker.app.core.ui.theme.PrimaryBlue
 import com.expensetracker.app.core.ui.theme.RedExpense
 import com.expensetracker.app.core.ui.theme.TextPrimary
 import com.expensetracker.app.core.ui.theme.TextSecondary
+import com.expensetracker.app.core.database.entity.RecurringIncomeEntity
+import com.expensetracker.app.core.database.entity.InsurancePolicyEntity
+import com.expensetracker.app.core.analysis.SalaryProvisioningPlan
+import com.expensetracker.app.core.analysis.PolicyProvisioningItem
+import com.expensetracker.app.features.subscriptions.MarkIncomeReceivedDialog
+import com.expensetracker.app.features.subscriptions.SalaryStashDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -110,12 +118,17 @@ fun DashboardRoute(
     val uiState by viewModel.uiState.collectAsState()
     val registeredCards by viewModel.registeredCards.collectAsState()
     val savingsGoals by viewModel.savingsGoals.collectAsState()
+    val recurringIncomes by viewModel.recurringIncomes.collectAsState()
+    val insurancePolicies by viewModel.insurancePolicies.collectAsState()
+    val salaryProvisioningPlan by viewModel.salaryProvisioningPlan.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showQuickCashLog by remember { mutableStateOf(false) }
     var showReceiptScanner by remember { mutableStateOf(false) }
     var selectedTransactionDetails by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
+    var incomeToMarkReceived by remember { mutableStateOf<RecurringIncomeEntity?>(null) }
+    var policyToStash by remember { mutableStateOf<PolicyProvisioningItem?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -199,6 +212,9 @@ fun DashboardRoute(
             DashboardScreen(
                 uiState = uiState,
                 savingsGoals = savingsGoals,
+                recurringIncomes = recurringIncomes,
+                insurancePolicies = insurancePolicies,
+                salaryProvisioningPlan = salaryProvisioningPlan,
                 onPeriodFilterSelected = { viewModel.setPeriodFilter(it) },
                 onMonthYearSelected = { viewModel.setMonthYearFilter(it) },
                 onSortOrderSelected = { viewModel.setSortOrder(it) },
@@ -220,8 +236,32 @@ fun DashboardRoute(
                 onScanInbox = { viewModel.triggerSmsInboxScan(context) },
                 onRequestPermissions = { requestPermissionsAndScan() },
                 onQuickCashClick = { showQuickCashLog = true },
-                onScanReceiptClick = { showReceiptScanner = true }
+                onScanReceiptClick = { showReceiptScanner = true },
+                onMarkIncomeReceivedClick = { incomeToMarkReceived = it },
+                onStashPolicyClick = { policyToStash = it }
             )
+
+            incomeToMarkReceived?.let { income ->
+                MarkIncomeReceivedDialog(
+                    income = income,
+                    onDismiss = { incomeToMarkReceived = null },
+                    onConfirm = { recordInLedger ->
+                        viewModel.markIncomeReceived(income, recordInLedger)
+                        incomeToMarkReceived = null
+                    }
+                )
+            }
+
+            policyToStash?.let { item ->
+                SalaryStashDialog(
+                    item = item,
+                    onDismiss = { policyToStash = null },
+                    onConfirm = { jarId, amount, recordInLedger ->
+                        viewModel.stashSalaryToJar(jarId, amount, recordInLedger)
+                        policyToStash = null
+                    }
+                )
+            }
 
             if (showReceiptScanner) {
                 com.expensetracker.app.features.ocr.ReceiptScannerDialog(
@@ -323,6 +363,9 @@ fun DashboardRoute(
 fun DashboardScreen(
     uiState: DashboardUiState,
     savingsGoals: List<com.expensetracker.app.core.database.entity.SavingsGoalEntity> = emptyList(),
+    recurringIncomes: List<RecurringIncomeEntity> = emptyList(),
+    insurancePolicies: List<InsurancePolicyEntity> = emptyList(),
+    salaryProvisioningPlan: SalaryProvisioningPlan? = null,
     onPeriodFilterSelected: (PeriodFilter) -> Unit = {},
     onMonthYearSelected: (String) -> Unit = {},
     onSortOrderSelected: (String) -> Unit = {},
@@ -332,7 +375,9 @@ fun DashboardScreen(
     onScanInbox: () -> Unit = {},
     onRequestPermissions: () -> Unit = {},
     onQuickCashClick: () -> Unit = {},
-    onScanReceiptClick: () -> Unit = {}
+    onScanReceiptClick: () -> Unit = {},
+    onMarkIncomeReceivedClick: (RecurringIncomeEntity) -> Unit = {},
+    onStashPolicyClick: (PolicyProvisioningItem) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -826,6 +871,307 @@ fun DashboardScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(if (isPrivacy) "Paid: ₹••••• 🟢" else "Paid: ₹${String.format("%.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
                             Text(if (isPrivacy) "Pending: ₹••••• ⏳" else "Pending: ₹${String.format("%.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 💰 Scheduled Inflows & Salary Day Radar Card
+        item {
+            val isPrivacy = LocalPrivacyMode.current
+            val activeIncomes = recurringIncomes.filter { it.isActive }
+            val totalExpectedInflow = activeIncomes.sumOf { it.amount }
+            val cal = Calendar.getInstance()
+            val currentMonth = cal.get(Calendar.MONTH)
+            val currentYear = cal.get(Calendar.YEAR)
+
+            val realizedThisCycle = activeIncomes.filter { income ->
+                income.lastReceivedDateMs?.let { lastMs ->
+                    val c = Calendar.getInstance().apply { timeInMillis = lastMs }
+                    c.get(Calendar.MONTH) == currentMonth && c.get(Calendar.YEAR) == currentYear
+                } ?: false
+            }.sumOf { it.amount }
+
+            val pendingInflow = (totalExpectedInflow - realizedThisCycle).coerceAtLeast(0.0)
+            val inflowProgress = if (totalExpectedInflow > 0) (realizedThisCycle / totalExpectedInflow).toFloat().coerceIn(0f, 1f) else 0f
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(GreenSuccess.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("💰", fontSize = 18.sp)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Scheduled Inflows & Salary",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (activeIncomes.isEmpty()) "Anticipated recurring income streams" else "${activeIncomes.size} active stream(s) • ${(inflowProgress * 100).toInt()}% realized",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (activeIncomes.isNotEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (pendingInflow == 0.0) GreenSuccess.copy(alpha = 0.15f) else PrimaryBlue.copy(alpha = 0.15f)
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    text = if (pendingInflow == 0.0) "All Realized 🟢" else if (isPrivacy) "₹•••••" else "Pending: ₹${String.format(Locale.getDefault(), "%,.0f", pendingInflow)}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (pendingInflow == 0.0) GreenSuccess else PrimaryBlue
+                                )
+                            }
+                        }
+                    }
+
+                    if (activeIncomes.isEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Track your Monthly Salary, Rental income, Dividends, or LIC payouts automatically against SMS credit alerts. Add under Subscriptions > Inflows tab.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 15.sp
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(
+                                text = if (isPrivacy) "Realized: ₹•••••" else "Realized: ₹${String.format(Locale.getDefault(), "%,.0f", realizedThisCycle)} 🟢",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GreenSuccess
+                            )
+                            Text(
+                                text = if (isPrivacy) "Expected: ₹•••••" else "Total: ₹${String.format(Locale.getDefault(), "%,.0f", totalExpectedInflow)}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { inflowProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(CircleShape),
+                            color = GreenSuccess,
+                            trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(activeIncomes) { inc ->
+                                val isReceived = inc.lastReceivedDateMs?.let { lastMs ->
+                                    val c = Calendar.getInstance().apply { timeInMillis = lastMs }
+                                    c.get(Calendar.MONTH) == currentMonth && c.get(Calendar.YEAR) == currentYear
+                                } ?: false
+
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(if (inc.isSalary) "🏢" else "💰", fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column {
+                                            Text(inc.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(
+                                                text = if (isPrivacy) "₹•••••" else "+₹${inc.amount.toInt()} (${if (isReceived) "Realized ✓" else "Due Day ${inc.expectedDayOfMonth}"})",
+                                                fontSize = 9.sp,
+                                                color = if (isReceived) GreenSuccess else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (!isReceived) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                color = GreenSuccess.copy(alpha = 0.15f),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier.clickable { onMarkIncomeReceivedClick(inc) }
+                                            ) {
+                                                Text(
+                                                    "✓ Receive",
+                                                    color = GreenSuccess,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 🛡️ Annual Policy Vault & Salary Day Stash Card
+        item {
+            val isPrivacy = LocalPrivacyMode.current
+            val plan = salaryProvisioningPlan
+            val hasPolicies = insurancePolicies.isNotEmpty()
+            val totalMonthlyPace = plan?.totalRecommendedStash ?: 0.0
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🛡️", fontSize = 18.sp)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Annual Policies & Salary Stash",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (!hasPolicies) "Mediclaim, Term Life, Car, LIC Vault" else "${insurancePolicies.size} policies • ₹${totalMonthlyPace.toInt()}/mo provisioning pace",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (hasPolicies && totalMonthlyPace > 0) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    text = if (isPrivacy) "₹•••••/mo" else "₹${String.format(Locale.getDefault(), "%,.0f", totalMonthlyPace)}/mo",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryBlue
+                                )
+                            }
+                        }
+                    }
+
+                    if (!hasPolicies) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Never face annual premium shock. Register Mediclaim, Term Life, Car, Bike, or LIC policies to auto-create sinking jars and receive Salary Day stash prompts. Subscriptions > Policy Vault.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 15.sp
+                        )
+                    } else if (plan != null && plan.items.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Salary Day Stash Allocation 💡",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(plan.items) { item ->
+                                val p = item.policy
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            when (p.policyType) {
+                                                "HEALTH" -> "🏥"
+                                                "TERM" -> "🛡️"
+                                                "CAR" -> "🚗"
+                                                "BIKE" -> "🏍️"
+                                                else -> "📜"
+                                            },
+                                            fontSize = 14.sp
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column {
+                                            Text(p.policyName, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(
+                                                text = if (item.isFunded) {
+                                                    "Fully Funded 🟢"
+                                                } else {
+                                                    if (isPrivacy) "Pace: ₹•••••/mo" else "Pace: ₹${item.recommendedMonthlyStash.toInt()}/mo"
+                                                },
+                                                fontSize = 9.sp,
+                                                color = if (item.isFunded) GreenSuccess else PrimaryBlue
+                                            )
+                                        }
+
+                                        if (item.linkedJar != null && !item.isFunded && item.recommendedMonthlyStash > 0) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                color = PrimaryBlue.copy(alpha = 0.15f),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier.clickable { onStashPolicyClick(item) }
+                                            ) {
+                                                Text(
+                                                    "Stash ₹${item.recommendedMonthlyStash.toInt()}",
+                                                    color = PrimaryBlue,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

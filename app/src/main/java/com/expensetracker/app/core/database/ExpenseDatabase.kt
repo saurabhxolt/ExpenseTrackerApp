@@ -23,9 +23,13 @@ import net.sqlcipher.database.SupportFactory
 import com.expensetracker.app.core.database.dao.MerchantCategoryMappingDao
 import com.expensetracker.app.core.database.dao.SavingsGoalDao
 import com.expensetracker.app.core.database.dao.CreditCardDao
+import com.expensetracker.app.core.database.dao.RecurringIncomeDao
+import com.expensetracker.app.core.database.dao.InsurancePolicyDao
 import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
 import com.expensetracker.app.core.database.entity.SavingsGoalEntity
 import com.expensetracker.app.core.database.entity.CreditCardEntity
+import com.expensetracker.app.core.database.entity.RecurringIncomeEntity
+import com.expensetracker.app.core.database.entity.InsurancePolicyEntity
 
 @Database(
     entities = [
@@ -40,9 +44,11 @@ import com.expensetracker.app.core.database.entity.CreditCardEntity
         SubscriptionEntity::class,
         MerchantCategoryMappingEntity::class,
         SavingsGoalEntity::class,
-        CreditCardEntity::class
+        CreditCardEntity::class,
+        RecurringIncomeEntity::class,
+        InsurancePolicyEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class ExpenseDatabase : RoomDatabase() {
@@ -54,6 +60,8 @@ abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun merchantCategoryMappingDao(): MerchantCategoryMappingDao
     abstract fun savingsGoalDao(): SavingsGoalDao
     abstract fun creditCardDao(): CreditCardDao
+    abstract fun recurringIncomeDao(): RecurringIncomeDao
+    abstract fun insurancePolicyDao(): InsurancePolicyDao
 
     companion object {
         @Volatile
@@ -110,6 +118,51 @@ abstract class ExpenseDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `recurring_incomes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `frequency` TEXT NOT NULL,
+                        `expectedDayOfMonth` INTEGER NOT NULL,
+                        `nextDueDateMs` INTEGER NOT NULL,
+                        `category` TEXT NOT NULL,
+                        `settlementMode` TEXT NOT NULL,
+                        `isActive` INTEGER NOT NULL,
+                        `isSalary` INTEGER NOT NULL,
+                        `lastReceivedDateMs` INTEGER,
+                        `matchedTransactionId` INTEGER,
+                        `payerPpiOrBank` TEXT NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `insurance_policies` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `policyName` TEXT NOT NULL,
+                        `policyType` TEXT NOT NULL,
+                        `policyNumber` TEXT NOT NULL,
+                        `insurerName` TEXT NOT NULL,
+                        `premiumAmount` REAL NOT NULL,
+                        `frequency` TEXT NOT NULL,
+                        `renewalDueDateMs` INTEGER NOT NULL,
+                        `taxSection` TEXT NOT NULL,
+                        `linkedSavingsGoalId` INTEGER,
+                        `isActive` INTEGER NOT NULL,
+                        `lastPaidDateMs` INTEGER,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getInstance(context: Context, passphrase: ByteArray): ExpenseDatabase {
             return INSTANCE ?: synchronized(this) {
                 val factory = SupportFactory(passphrase)
@@ -119,7 +172,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     "expense_tracker_encrypted.db"
                 )
                     .openHelperFactory(factory)
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

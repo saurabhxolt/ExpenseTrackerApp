@@ -39,6 +39,9 @@
 | **Air-Gapped Offline QR Group Sync** | Feature / Split | ✅ Completed | Core Architecture |
 | **100% On-Device Receipt & Invoice OCR Scanner** | Feature / OCR | ✅ Completed | Core Architecture |
 | **OCR, Card Radar & Savings Jars Usability Overhaul** | OCR / Cards / Sinking | ✅ Completed | Core Architecture |
+| **Room v8 Schema Migration (Inflow & Insurance)** | Core / Room | ✅ Completed | Storage Engine |
+| **Recurring Inflow Engine & Salary Day Radar** | Ingestion / Dashboard | ✅ Completed | Core Architecture |
+| **Annual Insurance Vault & Salary Day Smart Stash** | Subscriptions / Sinking | ✅ Completed | Core Architecture |
 
 ---
 

@@ -55,6 +55,37 @@ class SmsReceiver : BroadcastReceiver() {
                                 Log.d("SmsReceiver", "Saved SMS transaction: ${parsed.merchant} ₹${parsed.amount}")
                                 val subRepo = com.expensetracker.app.core.data.repository.SubscriptionRepository(db.subscriptionDao())
                                 com.expensetracker.app.ingestion.parser.RecurringMandateDetector.autoDetectAndSave(subRepo, parsed)
+
+                                if (entity.type.equals("CREDIT", ignoreCase = true)) {
+                                    try {
+                                        val incomeDao = db.recurringIncomeDao()
+                                        val incomes = incomeDao.getAllIncomesList()
+                                        val match = com.expensetracker.app.core.analysis.RecurringInflowReconciler.reconcile(entity, incomes)
+                                        if (match != null) {
+                                            val nextDue = com.expensetracker.app.core.data.repository.RecurringIncomeRepository.calculateNextDueDate(
+                                                match.recurringIncome.nextDueDateMs,
+                                                match.recurringIncome.frequency
+                                            )
+                                            incomeDao.updateIncome(
+                                                match.recurringIncome.copy(
+                                                    lastReceivedDateMs = System.currentTimeMillis(),
+                                                    matchedTransactionId = rowId,
+                                                    nextDueDateMs = nextDue
+                                                )
+                                            )
+                                            if (match.isSalary) {
+                                                com.expensetracker.app.core.notifications.SalaryProvisioningNotificationHelper.triggerSalaryDayNotification(
+                                                    context,
+                                                    entity.amount,
+                                                    db
+                                                )
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("SmsReceiver", "Error reconciling recurring income", e)
+                                    }
+                                }
+
                                 com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)
                             } else {
                                 Log.d("SmsReceiver", "Duplicate SMS transaction suppressed: ${parsed.merchant} ₹${parsed.amount}")

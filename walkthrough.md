@@ -394,4 +394,42 @@ Result: **BUILD SUCCESSFUL in 1m 6s**. Clean APK packaged with zero network perm
   - **4 One-Tap Starter Templates**: Built 4 ready-to-use templates (`🛡️ Emergency Fund`, `🏖️ Vacation Trip`, `💻 Gadget & Tech`, `🚗 Vehicle Down Payment`) in [SavingsGoalsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/savings/SavingsGoalsScreen.kt) for instant creation.
   - **Dual Ledger Synchronization**: Added `recordInLedger` toggle in [SavingsGoalsViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/savings/SavingsGoalsViewModel.kt) and `DepositWithdrawDialog` to automatically insert `INVESTMENT` transactions (on deposit) and `CREDIT` transactions (on withdrawal) into the main financial ledger.
 
+---
 
+## 33. Recurring Inflow Engine & Annual Policy Vault with Salary Day Smart Stash
+
+### 💰 1. Recurring Inflow Engine & Salary Day Radar
+- **Problem Solved**:
+  Users receive predictable recurring incomes across cycles (Monthly Salary, Rental Income, Dividends, LIC annuity payouts, Freelance retainers), but existing apps either ignore income forecasting or generate duplicate "phantom" ledger entries when bank credit SMS notifications arrive.
+- **Architecture & Implementation**:
+  - **Database Entity & DAO**: Created [RecurringIncomeEntity.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/entity/RecurringIncomeEntity.kt) and [RecurringIncomeDao.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/dao/RecurringIncomeDao.kt) with fields for expected amount, frequency (`Monthly`, `Quarterly`, `Yearly`, `Bi-Weekly`), expected day of month, next due date, settlement mode, primary salary flag (`isSalary`), and last received timestamp.
+  - **Reconciliation Engine**: Built [RecurringInflowReconciler.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/RecurringInflowReconciler.kt) performing multi-attribute fuzzy matching on incoming bank `CREDIT` transactions. Evaluates amount tolerance (±5%), salary keywords (`salary`, `sal cr`, `payroll`, `employer`), and merchant names, advancing the schedule cycle date and linking the transaction ID without duplicate ledger insertions.
+  - **Live Ingestion Hook**: Integrated `reconcileCreditTransaction` into [SmsReceiver.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/sms/SmsReceiver.kt) and [ExpenseNotificationListenerService.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/notification/ExpenseNotificationListenerService.kt).
+  - **Dashboard Scheduled Inflows Horizon Card**: Added a dedicated card on [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) displaying realized income vs total expected inflow for the cycle, visual progress bar, days until salary, and 1-tap "✓ Receive" quick action.
+
+### 🛡️ 2. Annual Insurance & Policy Vault with Salary Day Smart Stash
+- **Problem Solved**:
+  Annual policy premiums (Health Mediclaim, Term Life, Car Insurance, Bike Insurance, LIC policies) arrive as sudden lump-sum expenses (e.g. ₹25,000 to ₹40,000) that shock monthly budgets. Users need automated provisioning so they stash a fraction of their salary each month into dedicated sinking jars right on salary day.
+- **Architecture & Implementation**:
+  - **Database Entity & DAO**: Created [InsurancePolicyEntity.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/entity/InsurancePolicyEntity.kt) and [InsurancePolicyDao.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/dao/InsurancePolicyDao.kt) tracking policy name, type (`HEALTH`, `TERM`, `CAR`, `BIKE`, `LIC`), premium amount, frequency, renewal due date, tax section (`80C`, `80D`, `NONE`), and foreign key linking to a Sinking Fund Jar (`linkedSavingsGoalId`).
+  - **1-Tap Sinking Jar Auto-Creation**: In [InsurancePolicyRepository.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/data/repository/InsurancePolicyRepository.kt), saving a policy with `createJar = true` automatically instantiates a corresponding `SavingsGoalEntity` (e.g. "Car Insurance Jar" targeting ₹24,000).
+  - **Dynamic Provisioning Engine**: Built [SalaryProvisioningCalculator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/SalaryProvisioningCalculator.kt) calculating remaining deficit, months to renewal, and exact recommended monthly stash pace across all active policies.
+  - **Salary Day High-Priority Notification**: Built [SalaryProvisioningNotificationHelper.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/notifications/SalaryProvisioningNotificationHelper.kt) firing an actionable local notification upon salary credit prompting users to stash monthly portions before discretionary outflows begin.
+  - **Unified 3-Tab Subscriptions Center**: Overhauled [SubscriptionsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt) into a 3-tab hub:
+    1. *Mandates & Subscriptions*: Recurring outflows (SIPs, OTT, utilities) with price creep radar.
+    2. *Recurring Inflow Horizon*: Anticipated regular incomes with schedule tracking and presets (`Salary`, `Rent`, `Dividends`, `Freelance`, `Annuity`).
+    3. *Annual Policy Vault*: Insurance policies with tax tags, renewal due countdown, linked jar badges, and 1-tap "Stash to Jar" and "Mark Renewed" actions.
+  - **Full Disaster-Recovery Backup**: Extended [BackupManager.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/backup/BackupManager.kt), [ScheduledBackupWorker.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/worker/ScheduledBackupWorker.kt), and [SettingsViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/settings/SettingsViewModel.kt) to serialize and restore both new tables with complete roundtrip fidelity.
+
+### 🧪 3. Verification & Test Results
+- **Unit Test Coverage**:
+  - [SalaryProvisioningCalculatorTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/analysis/SalaryProvisioningCalculatorTest.kt): Verified deficit calculation, multiple policy aggregation, and fully funded zero-stash guarantees.
+  - [RecurringInflowReconcilerTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/analysis/RecurringInflowReconcilerTest.kt): Verified salary credit keyword matching, rental income fuzzy tolerance, and debit rejection.
+- **Build Verification**:
+  ```cmd
+  cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
+  Result: BUILD SUCCESSFUL (All unit tests passed 100%)
+  
+  cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
+  Result: BUILD SUCCESSFUL in 51s (Clean debug APK assembled with zero network permissions)
+  ```

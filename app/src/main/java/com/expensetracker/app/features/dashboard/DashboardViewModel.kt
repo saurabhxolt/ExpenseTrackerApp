@@ -74,6 +74,8 @@ class DashboardViewModel @Inject constructor(
     private val budgetRepository: com.expensetracker.app.core.data.repository.BudgetRepository,
     private val creditCardRepository: com.expensetracker.app.core.data.repository.CreditCardRepository,
     private val savingsGoalRepository: com.expensetracker.app.core.data.repository.SavingsGoalRepository,
+    private val recurringIncomeRepository: com.expensetracker.app.core.data.repository.RecurringIncomeRepository,
+    private val insurancePolicyRepository: com.expensetracker.app.core.data.repository.InsurancePolicyRepository,
     private val promotionManager: PromotionManager,
     private val categoryClassifier: CategoryClassifier,
     val receiptOcrParser: com.expensetracker.app.core.ocr.ReceiptOcrParser
@@ -84,6 +86,19 @@ class DashboardViewModel @Inject constructor(
 
     val savingsGoals: StateFlow<List<com.expensetracker.app.core.database.entity.SavingsGoalEntity>> = savingsGoalRepository.allGoals
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val recurringIncomes: StateFlow<List<com.expensetracker.app.core.database.entity.RecurringIncomeEntity>> = recurringIncomeRepository.allIncomes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val insurancePolicies: StateFlow<List<com.expensetracker.app.core.database.entity.InsurancePolicyEntity>> = insurancePolicyRepository.allPolicies
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val salaryProvisioningPlan: StateFlow<com.expensetracker.app.core.analysis.SalaryProvisioningPlan> = combine(
+        insurancePolicies,
+        savingsGoals
+    ) { policies, jars ->
+        com.expensetracker.app.core.analysis.SalaryProvisioningCalculator.calculatePlan(policies, jars)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.expensetracker.app.core.analysis.SalaryProvisioningPlan())
 
     private val _isScanning = MutableStateFlow(false)
     private val _isAutoTrackingEnabled = MutableStateFlow(false)
@@ -367,6 +382,46 @@ class DashboardViewModel @Inject constructor(
                 transactionHash = "cash_${System.currentTimeMillis()}_${(1000..9999).random()}"
             )
             repository.insertTransaction(tx)
+        }
+    }
+
+    fun markIncomeReceived(income: com.expensetracker.app.core.database.entity.RecurringIncomeEntity, recordInLedger: Boolean = true) {
+        viewModelScope.launch {
+            var txId: Long? = null
+            if (recordInLedger) {
+                val tx = TransactionEntity(
+                    amount = income.amount,
+                    type = "CREDIT",
+                    merchant = income.name,
+                    category = income.category,
+                    rawText = "Manual recurring income received: ${income.name}",
+                    timestamp = System.currentTimeMillis(),
+                    transactionHash = "MANUAL_INC_${income.id}_${System.currentTimeMillis()}",
+                    isManual = true
+                )
+                txId = repository.insertTransaction(tx)
+            }
+            recurringIncomeRepository.markReceived(income, txId)
+        }
+    }
+
+    fun stashSalaryToJar(jarId: Long, amount: Double, recordInLedger: Boolean = true) {
+        viewModelScope.launch {
+            savingsGoalRepository.depositAmount(jarId, amount)
+            if (recordInLedger) {
+                val jar = savingsGoalRepository.getGoalById(jarId)
+                val tx = TransactionEntity(
+                    amount = amount,
+                    type = "INVESTMENT",
+                    merchant = jar?.title ?: "Savings Jar",
+                    category = "Investments",
+                    rawText = "Salary Stash deposit to ${jar?.title ?: "Savings Jar"}",
+                    timestamp = System.currentTimeMillis(),
+                    transactionHash = "JAR_DEP_${jarId}_${System.currentTimeMillis()}",
+                    isManual = true
+                )
+                repository.insertTransaction(tx)
+            }
         }
     }
 

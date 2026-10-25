@@ -51,6 +51,8 @@ class SettingsViewModel @Inject constructor(
     private val splitDao: com.expensetracker.app.core.database.dao.SplitDao,
     private val savingsGoalDao: com.expensetracker.app.core.database.dao.SavingsGoalDao,
     private val creditCardDao: com.expensetracker.app.core.database.dao.CreditCardDao,
+    private val recurringIncomeDao: com.expensetracker.app.core.database.dao.RecurringIncomeDao,
+    private val insurancePolicyDao: com.expensetracker.app.core.database.dao.InsurancePolicyDao,
     private val promotionManager: PromotionManager,
     private val privacyModeManager: com.expensetracker.app.core.security.PrivacyModeManager
 ) : ViewModel() {
@@ -192,6 +194,8 @@ class SettingsViewModel @Inject constructor(
         val groupSettlements = splitDao.getAllSettlementsList()
         val savingsGoals = savingsGoalDao.getAllGoalsList()
         val creditCards = creditCardDao.getActiveCards()
+        val recurringIncomes = recurringIncomeDao.getAllIncomesList()
+        val insurancePolicies = insurancePolicyDao.getAllPoliciesList()
         return BackupManager.createBackupJson(
             transactions = transactions,
             categories = categories,
@@ -204,7 +208,9 @@ class SettingsViewModel @Inject constructor(
             splitShares = splitShares,
             groupSettlements = groupSettlements,
             savingsGoals = savingsGoals,
-            creditCards = creditCards
+            creditCards = creditCards,
+            recurringIncomes = recurringIncomes,
+            insurancePolicies = insurancePolicies
         )
     }
 
@@ -270,6 +276,12 @@ class SettingsViewModel @Inject constructor(
                 }
                 if (data.creditCards.isNotEmpty()) {
                     creditCardDao.insertAll(data.creditCards)
+                }
+                for (inc in data.recurringIncomes) {
+                    recurringIncomeDao.insertIncome(inc)
+                }
+                for (pol in data.insurancePolicies) {
+                    insurancePolicyDao.insertPolicy(pol)
                 }
                 if (context != null) {
                     com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)

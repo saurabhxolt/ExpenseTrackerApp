@@ -91,6 +91,19 @@
 * **Paid With / Linked Card Selector**: Allows scanned receipts to be directly attributed to a registered credit card, automatically updating credit card radar utilization.
 * **Transparent Raw Text Drawer**: Expandable bottom sheet displaying full raw extracted OCR text for verification and debugging.
 
+### 13. Recurring Inflow Engine & Salary Day Radar
+* **Scheduled Anticipated Inflows**: Configure recurring inflows across common Indian income types (Monthly Salary, Rental Income, Dividends, LIC Annuity Payouts, Freelance Retainers) with cycle frequencies (Monthly, Quarterly, Yearly, Bi-Weekly).
+* **Zero Phantom Income Reconciliation**: Multi-attribute matching engine (`RecurringInflowReconciler`) automatically links real incoming bank `CREDIT` transactions with expected recurring streams by amount tolerance (±5%), merchant/employer keywords, and settlement mode, advancing the cycle date without generating duplicate ledger entries.
+* **Dashboard Scheduled Inflows Horizon Card**: Displays total expected monthly inflows vs realized inflows this cycle, progress gauge, days until salary credit, and 1-tap "Mark Received" quick action.
+* **Peak Liquidity Radar**: Synchronizes with bank salary credit alerts to calculate monthly cashflow runway before discretionary spending starts.
+
+### 14. Annual Insurance & Policy Vault with Salary Day Smart Stash
+* **All-in-One Policy Vault**: Centrally track Health Insurance (Mediclaim 80D), Term Life Insurance (80C), Car Insurance, Bike Insurance, and LIC / Endowment policies with insurer details, policy numbers, and renewal due dates.
+* **1-Tap Sinking Jar Auto-Creation**: Seamlessly creates a dedicated visual Sinking Fund Jar for each policy (e.g. ₹24,000 Car Insurance Jar) with pre-calibrated target amounts, custom color, and emoji.
+* **Dynamic Monthly Provisioning Pace Calculator**: Automatically divides remaining deficit by months until renewal, calculating exact monthly stash required to prevent annual lump-sum premium shock.
+* **Salary Day High-Priority Alert**: Automatically triggers a local high-priority alert (`SalaryProvisioningNotificationHelper`) when salary is credited, prompting the user to allocate monthly insurance portions immediately into linked jars.
+* **1-Tap Dashboard Stash Dialog**: Interactive deposit modal with optional ledger sync (`recordInLedger`) to record stashes as `INVESTMENT` transactions in the main financial ledger.
+
 ---
 
 ## 🤖 Persona 2: Autonomous Ingestion Daemon
@@ -137,7 +150,7 @@
 ## 💾 Persona 4: System Maintenance & Data Pipeline
 
 ### 1. Storage Access Framework (SAF) Backup & Export
-* **Disaster-Recovery JSON Backup (Schema v3)**: Full snapshot export and restore via native Android SAF file picker, encompassing transactions, budgets (with `period`), categories (with `isCustom` and `emoji`), subscriptions (with `autoMatched` and `lastPaidDateMs`), merchant preference mappings, and all Splitwise P2P entities (groups, members, split expenses, shares, settlements).
+* **Disaster-Recovery JSON Backup (Schema v3)**: Full snapshot export and restore via native Android SAF file picker, encompassing transactions, budgets (with `period`), categories (with `isCustom` and `emoji`), subscriptions (with `autoMatched` and `lastPaidDateMs`), merchant preference mappings, Splitwise P2P entities (groups, members, split expenses, shares, settlements), credit cards, savings jars, recurring incomes, and annual insurance policies.
 * **Safe Name-Based Upsert on Restore**: Restores categories and budgets idempotently by name, preventing duplicate insertion crashes and preserving user-defined emojis.
 * **Verified Restore Callbacks & Widget Auto-Sync**: Toast notifications are bound strictly to verified restore completion, automatically synchronizing widget balances post-import.
 * **CSV & Summary Text Exporter**: Generates accounting-ready CSV files and formatted summary text reports with dedicated symbols for transfers and investments.
