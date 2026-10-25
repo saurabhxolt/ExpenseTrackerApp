@@ -93,17 +93,22 @@
 * **Transparent Raw Text Drawer**: Expandable bottom sheet displaying full raw extracted OCR text for verification and debugging.
 
 ### 13. Recurring Inflow Engine & Salary Day Radar
-* **Scheduled Anticipated Inflows**: Configure recurring inflows across common Indian income types (Monthly Salary, Rental Income, Dividends, LIC Annuity Payouts, Freelance Retainers) with cycle frequencies (Monthly, Quarterly, Yearly, Bi-Weekly).
+* **Scheduled Anticipated Inflows**: Configure recurring inflows across common Indian income types (Monthly Salary, Rental Income, Dividends, LIC Annuity Payouts, Freelance Retainers) with cycle frequencies (Monthly, Quarterly, Yearly, Bi-Weekly) and explicit Material3 calendar date picker synchronization.
 * **Zero Phantom Income Reconciliation**: Multi-attribute matching engine (`RecurringInflowReconciler`) automatically links real incoming bank `CREDIT` transactions with expected recurring streams by amount tolerance (±5%), merchant/employer keywords, and settlement mode, advancing the cycle date without generating duplicate ledger entries.
 * **Dashboard Scheduled Inflows Horizon Card**: Displays total expected monthly inflows vs realized inflows this cycle, progress gauge, days until salary credit, and 1-tap "Mark Received" quick action.
 * **Peak Liquidity Radar**: Synchronizes with bank salary credit alerts to calculate monthly cashflow runway before discretionary spending starts.
 
 ### 14. Annual Insurance & Policy Vault with Salary Day Smart Stash
-* **All-in-One Policy Vault**: Centrally track Health Insurance (Mediclaim 80D), Term Life Insurance (80C), Car Insurance, Bike Insurance, and LIC / Endowment policies with insurer details, policy numbers, and renewal due dates.
+* **All-in-One Policy Vault**: Centrally track Health Insurance (Mediclaim 80D), Term Life Insurance (80C), Car Insurance, Bike Insurance, and LIC / Endowment policies with insurer details, policy numbers, and explicit Material3 calendar renewal date picker (preventing hardcoded offsets).
 * **1-Tap Sinking Jar Auto-Creation**: Seamlessly creates a dedicated visual Sinking Fund Jar for each policy (e.g. ₹24,000 Car Insurance Jar) with pre-calibrated target amounts, custom color, and emoji.
 * **Dynamic Monthly Provisioning Pace Calculator**: Automatically divides remaining deficit by months until renewal, calculating exact monthly stash required to prevent annual lump-sum premium shock.
 * **Salary Day High-Priority Alert**: Automatically triggers a local high-priority alert (`SalaryProvisioningNotificationHelper`) when salary is credited, prompting the user to allocate monthly insurance portions immediately into linked jars.
 * **1-Tap Dashboard Stash Dialog**: Interactive deposit modal with optional ledger sync (`recordInLedger`) to record stashes as `INVESTMENT` transactions in the main financial ledger.
+
+### 15. Streamlined Fintech Dashboard Architecture
+* **Compact Executive Net Cashflow Hero (~140dp)**: Gradient card unifying bold net balance, period tag, health status badge, slim savings gauge, and horizontal 3-metric flow ribbon (Inflow, Outflow, Invested).
+* **High-Signal Daily Spending Radar (~75dp)**: Paces daily spending with prominent Safe-to-Spend figure, status chip, spent today total, remaining unspent pool, and cycle days remaining.
+* **Above-the-Fold Immediate Transaction Feed**: Eliminates unconfigured empty-state card bloat, displaying 5+ transactions right upon launch (~300dp from top) without excessive vertical scrolling.
 
 ---
 

@@ -517,7 +517,7 @@ fun DashboardScreen(
             }
         }
 
-        // Dynamic Executive Financial Snapshot & Health Hero Card
+        // Dynamic Executive Financial Snapshot & Health Hero Card (Modern & Compact)
         item {
             val isPositive = uiState.netCashflow >= 0
             val isDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -544,7 +544,7 @@ fun DashboardScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(20.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
             ) {
                 Box(
@@ -555,7 +555,7 @@ fun DashboardScreen(
                                 colors = listOf(gradientStart, gradientEnd)
                             )
                         )
-                        .padding(20.dp)
+                        .padding(16.dp)
                 ) {
                     Column {
                         // Top Header Row
@@ -564,7 +564,7 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = "NET CASHFLOW",
                                     fontSize = 11.sp,
@@ -572,9 +572,10 @@ fun DashboardScreen(
                                     letterSpacing = 1.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = uiState.selectedPeriodFilter.label,
-                                    fontSize = 12.sp,
+                                    text = "• ${uiState.selectedPeriodFilter.label}",
+                                    fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                 )
                             }
@@ -586,17 +587,17 @@ fun DashboardScreen(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .size(6.dp)
                                             .background(healthColor, CircleShape)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(5.dp))
                                     Text(
                                         text = healthStatus,
-                                        fontSize = 11.sp,
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = healthColor
                                     )
@@ -604,23 +605,22 @@ fun DashboardScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         // Large Net Cashflow Amount
                         AnimatedCurrencyText(
                             value = uiState.netCashflow,
                             prefix = if (isPositive) "+₹" else "-₹",
                             style = MaterialTheme.typography.headlineLarge.copy(
-                                fontSize = 32.sp,
+                                fontSize = 28.sp,
                                 fontWeight = FontWeight.Black
                             ),
                             color = cashflowColor
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
                         // Savings Rate & Progress Bar
                         if (uiState.totalIncome > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -628,22 +628,22 @@ fun DashboardScreen(
                             ) {
                                 Text(
                                     text = "Savings: ${String.format(Locale.getDefault(), "%.1f", uiState.savingsRate)}%",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = PrimaryBlue
                                 )
                                 Text(
-                                    text = "Avg Pace: ₹${String.format(Locale.getDefault(), "%.0f", uiState.avgDailySpend)}/day",
-                                    fontSize = 11.sp,
+                                    text = "Avg: ₹${uiState.avgDailySpend.toInt()}/day",
+                                    fontSize = 10.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             LinearProgressIndicator(
                                 progress = { (uiState.savingsRate.toFloat() / 100f).coerceIn(0f, 1f) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(6.dp)
+                                    .height(4.dp)
                                     .clip(CircleShape),
                                 color = PrimaryBlue,
                                 trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
@@ -651,65 +651,65 @@ fun DashboardScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         // Sleek Embedded 3-Pill Breakdown Ribbon
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDark) 0.5f else 0.7f),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(12.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    .padding(vertical = 8.dp, horizontal = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // Inflow
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                    Text("Income 💰", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                    Text("Income 💰", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                     Spacer(modifier = Modifier.height(2.dp))
                                     AnimatedCurrencyText(
                                         value = uiState.totalIncome,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.tertiary
                                     )
                                 }
 
                                 Box(
                                     modifier = Modifier
-                                        .height(24.dp)
+                                        .height(20.dp)
                                         .width(1.dp)
                                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                                 )
 
                                 // Outflow
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                    Text("Expenses 💸", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                    Text("Expenses 💸", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                     Spacer(modifier = Modifier.height(2.dp))
                                     AnimatedCurrencyText(
                                         value = uiState.totalExpenses,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 }
 
                                 Box(
                                     modifier = Modifier
-                                        .height(24.dp)
+                                        .height(20.dp)
                                         .width(1.dp)
                                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                                 )
 
                                 // Investments
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                    Text("Invested 📈", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                    Text("Invested 📈", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                     Spacer(modifier = Modifier.height(2.dp))
                                     AnimatedCurrencyText(
                                         value = uiState.totalInvestments,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
                                         color = PrimaryBlue
                                     )
                                 }
@@ -720,7 +720,7 @@ fun DashboardScreen(
             }
         }
 
-        // ⚡ Daily Spending Radar & Real-Time Pacing Card
+        // ⚡ Daily Spending Radar & Real-Time Pacing Card (Compact & Modern)
         item {
             val isPrivacy = LocalPrivacyMode.current
             val radarStatus = when {
@@ -737,206 +737,116 @@ fun DashboardScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(16.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(PrimaryBlue.copy(alpha = 0.15f), CircleShape),
-                                contentAlignment = Alignment.Center
+                            Text(text = "⚡ Safe-to-Spend", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = radarColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text(text = "⚡", fontSize = 20.sp)
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
                                 Text(
-                                    text = "Daily Spending Radar",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = radarStatus,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${uiState.daysRemainingInMonth} days remaining in cycle",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = radarColor
                                 )
                             }
                         }
 
-                        Surface(
-                            color = radarColor.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = radarStatus,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = radarColor
-                            )
-                        }
+                        Text(
+                            text = if (uiState.todayExpenses > 0) {
+                                if (isPrivacy) "Spent: ₹•••••" else "Spent Today: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.todayExpenses)}"
+                            } else "No spend today yet",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (uiState.todayExpenses > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Bottom
                     ) {
-                        Column {
-                            Text(
-                                text = "Safe-to-Spend Today",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            AnimatedCurrencyText(
-                                value = uiState.safeToSpendToday,
-                                prefix = "₹",
-                                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold),
-                                color = if (uiState.safeToSpendToday > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
-                            )
-                        }
+                        AnimatedCurrencyText(
+                            value = uiState.safeToSpendToday,
+                            prefix = "₹",
+                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp, fontWeight = FontWeight.ExtraBold),
+                            color = if (uiState.safeToSpendToday > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                        )
 
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = if (uiState.hasBudgetSet) {
-                                    if (isPrivacy) "Budget: ₹•••••" else "Budget: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalBudgetLimit)}"
-                                } else {
-                                    "Paced from income"
-                                },
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = PrimaryBlue
-                            )
-                            Text(
-                                text = if (uiState.todayExpenses > 0) "Today: ₹${String.format(Locale.getDefault(), "%.0f", uiState.todayExpenses)}" else "No spend today yet",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = if (isPrivacy) "Unspent: ₹•••••" else "Unspent: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.remainingMonthlyBudget)}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // 4-cell matrix: Spent Today | Avg Daily Spend | Unspent Pool | Bills Reserved
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text("Spent Today 📅", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.2f", uiState.todayExpenses)}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (uiState.todayExpenses > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text("Avg Daily 📊", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.1f", uiState.avgDailySpend)}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text("Unspent Pool", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.2f", uiState.remainingMonthlyBudget)}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text("Bills Reserved", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (isPrivacy) "₹•••••" else "₹${String.format(Locale.getDefault(), "%.2f", uiState.totalPendingBillsThisMonth)}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                        }
+                        Text(
+                            text = "${uiState.daysRemainingInMonth} days remaining",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Avg Pace: ₹${uiState.avgDailySpend.toInt()}/day" + if (uiState.totalPendingBillsThisMonth > 0) " • Reserved: ₹${uiState.totalPendingBillsThisMonth.toInt()}" else "",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
         }
 
-        // Upcoming Mandates & Monthly Bills Commitment Card
+        // Upcoming Mandates & Monthly Bills Commitment Card (Compact)
         if (uiState.totalMonthlyCommitted > 0 || uiState.upcomingSubscriptions.isNotEmpty()) {
             item {
                 val isPrivacy = LocalPrivacyMode.current
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Monthly Mandates & Subscriptions 🔄", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                            Spacer(Modifier.weight(1f))
+                            Text("🔄 Subscriptions", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Spacer(Modifier.width(6.dp))
                             Text(
-                                if (isPrivacy) "Total ₹•••••/mo" else "Total ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalMonthlyCommitted)}/mo",
-                                fontSize = 12.sp,
+                                if (isPrivacy) "₹•••••/mo" else "₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalMonthlyCommitted)}/mo",
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryBlue
                             )
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(if (isPrivacy) "Paid: ₹••••• 🟢" else "Paid: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 12.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
-                            Text(if (isPrivacy) "Pending: ₹••••• ⏳" else "Pending: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(if (isPrivacy) "Paid: ₹••••• 🟢" else "Paid: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalPaidCommitted)} 🟢", fontSize = 11.sp, color = GreenSuccess, fontWeight = FontWeight.Medium)
+                            Text(if (isPrivacy) "Pending: ₹••••• ⏳" else "Pending: ₹${String.format(Locale.getDefault(), "%,.0f", uiState.totalPendingCommitted)} ⏳", fontSize = 11.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -947,106 +857,6 @@ fun DashboardScreen(
         val hasInflows = activeIncomes.isNotEmpty()
         val hasPolicies = insurancePolicies.isNotEmpty()
         val hasJars = savingsGoals.isNotEmpty()
-
-        // 🎯 Financial Horizons: Shown as a single sleek action hub when nothing is set up yet
-        if (!hasInflows && !hasPolicies && !hasJars) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(20.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(PrimaryBlue.copy(alpha = 0.15f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("🎯", fontSize = 18.sp)
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Financial Horizons & Planning",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Automate salary day allocations, policy stashes & jars",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.25f))
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text("💰", fontSize = 20.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("Inflows", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("Salary/Rent", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.25f))
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text("🛡️", fontSize = 20.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("Policy Vault", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("LIC/Mediclaim", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.25f))
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text("🏺", fontSize = 20.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("Savings Jars", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("Sinking Funds", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         // 💰 Scheduled Inflows & Salary Day Radar Card (Rendered only when active)
         if (hasInflows) {

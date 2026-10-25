@@ -51,6 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
@@ -73,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Calendar
 import com.expensetracker.app.core.analysis.PolicyProvisioningItem
 import com.expensetracker.app.core.database.entity.InsurancePolicyEntity
 import com.expensetracker.app.core.database.entity.RecurringIncomeEntity
@@ -941,6 +943,7 @@ private fun PolicyItemCard(
 // DIALOGS
 // ==========================================
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditRecurringIncomeDialog(
     initialEntity: RecurringIncomeEntity?,
@@ -954,6 +957,9 @@ fun AddEditRecurringIncomeDialog(
     var category by remember { mutableStateOf(initialEntity?.category ?: "Salary") }
     var isSalary by remember { mutableStateOf(initialEntity?.isSalary ?: false) }
     var payer by remember { mutableStateOf(initialEntity?.payerPpiOrBank ?: "") }
+    var nextExpectedDateMs by remember { mutableStateOf(initialEntity?.nextDueDateMs ?: System.currentTimeMillis()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     val presets = listOf(
         "🏢 Monthly Salary" to ("Salary" to true),
@@ -1016,6 +1022,32 @@ fun AddEditRecurringIncomeDialog(
                     )
                 }
 
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                ) {
+                    OutlinedTextField(
+                        value = dateFormat.format(Date(nextExpectedDateMs)),
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        label = { Text("Next Expected Date / Cycle Start") },
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 OutlinedTextField(
                     value = payer,
                     onValueChange = { payer = it },
@@ -1035,7 +1067,7 @@ fun AddEditRecurringIncomeDialog(
                     val amt = amountStr.toDoubleOrNull() ?: 0.0
                     val day = dayOfMonth.toIntOrNull()?.coerceIn(1, 31) ?: 1
                     if (name.isNotBlank() && amt > 0) {
-                        onConfirm(name, amt, frequency, day, category, isSalary, payer, System.currentTimeMillis())
+                        onConfirm(name, amt, frequency, day, category, isSalary, payer, nextExpectedDateMs)
                     }
                 }
             ) {
@@ -1046,6 +1078,32 @@ fun AddEditRecurringIncomeDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = nextExpectedDateMs)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { ms ->
+                            nextExpectedDateMs = ms
+                            val cal = Calendar.getInstance().apply { timeInMillis = ms }
+                            dayOfMonth = cal.get(Calendar.DAY_OF_MONTH).toString()
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @Composable
@@ -1084,6 +1142,7 @@ fun MarkIncomeReceivedDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditInsurancePolicyDialog(
     initialEntity: InsurancePolicyEntity?,
@@ -1098,6 +1157,13 @@ fun AddEditInsurancePolicyDialog(
     var frequency by remember { mutableStateOf(initialEntity?.frequency ?: "Yearly") }
     var taxSection by remember { mutableStateOf(initialEntity?.taxSection ?: "80D") }
     var createLinkedJar by remember { mutableStateOf(initialEntity == null) }
+    var renewalDueDateMs by remember {
+        mutableStateOf(
+            initialEntity?.renewalDueDateMs ?: (System.currentTimeMillis() + 365L * 24 * 3600 * 1000)
+        )
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     val policyPresets = listOf(
         "🏥 Health Mediclaim" to Triple("HEALTH", "80D", "#10B981"),
@@ -1167,6 +1233,33 @@ fun AddEditInsurancePolicyDialog(
                     )
                 }
 
+                // Explicit Renewal Due Date Picker
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                ) {
+                    OutlinedTextField(
+                        value = dateFormat.format(Date(renewalDueDateMs)),
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        label = { Text("Renewal Due Date") },
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick Renewal Date")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 OutlinedTextField(
                     value = policyNumber,
                     onValueChange = { policyNumber = it },
@@ -1187,8 +1280,7 @@ fun AddEditInsurancePolicyDialog(
                 onClick = {
                     val prem = premiumStr.toDoubleOrNull() ?: 0.0
                     if (policyName.isNotBlank() && prem > 0) {
-                        val dueMs = System.currentTimeMillis() + (180L * 24 * 3600 * 1000)
-                        onConfirm(policyName, policyType, insurerName, policyNumber, prem, frequency, dueMs, taxSection, createLinkedJar, "#8B5CF6")
+                        onConfirm(policyName, policyType, insurerName, policyNumber, prem, frequency, renewalDueDateMs, taxSection, createLinkedJar, "#8B5CF6")
                     }
                 }
             ) {
@@ -1199,6 +1291,28 @@ fun AddEditInsurancePolicyDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = renewalDueDateMs)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { renewalDueDateMs = it }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @Composable
@@ -1351,18 +1465,31 @@ fun AddEditSubscriptionDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = dateFormat.format(Date(dueDateMs)),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Next Due Date") },
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                ) {
+                    OutlinedTextField(
+                        value = dateFormat.format(Date(dueDateMs)),
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        label = { Text("Next Due Date") },
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {

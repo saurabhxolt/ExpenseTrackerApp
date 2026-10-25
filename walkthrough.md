@@ -478,3 +478,51 @@ Result: **BUILD SUCCESSFUL in 1m 6s**. Clean APK packaged with zero network perm
   Result: BUILD SUCCESSFUL in 42s (40 actionable tasks: 4 executed, 36 up-to-date)
   ```
 
+---
+
+## 35. Date Choice Picker Fix & Above-the-Fold Dashboard UI Overhaul
+
+### 📅 1. Date Choice Picker for Insurance, Subscriptions & Recurring Income
+- **Problem & Root Cause**:
+  - When creating or editing an insurance policy in `AddEditInsurancePolicyDialog`, there was no date picker at all. The code hardcoded `val dueMs = System.currentTimeMillis() + (180L * 24 * 3600 * 1000)`, which automatically jumped 180 days ahead and picked April month directly!
+  - `AddEditSubscriptionDialog` had an unclickable text box wrapper making it finicky to trigger the date picker.
+  - `AddEditRecurringIncomeDialog` lacked an explicit date picker to select the initial scheduling cycle anchor date.
+- **Implemented Fix**:
+  - **Insurance Policies (`AddEditInsurancePolicyDialog`)**:
+    - Removed the hardcoded 180-day offset.
+    - Added `renewalDueDateMs` state defaulting to 1 year ahead for new policies or the existing policy renewal date for edits.
+    - Implemented a Material3 `DatePickerDialog` with `rememberDatePickerState` triggered by tapping an interactive date field with `Icons.Default.CalendarToday`.
+  - **Subscriptions & Mandates (`AddEditSubscriptionDialog`)**:
+    - Wrapped the date field in a full-width clickable `Box` (`clickable { showDatePicker = true }`) with `enabled = false` styling, allowing users to tap anywhere on the field to open the date picker.
+  - **Recurring Inflows (`AddEditRecurringIncomeDialog`)**:
+    - Added `nextDueDateMs` state with a Material3 `DatePickerDialog`.
+    - Selecting a date automatically synchronizes the schedule's `dayOfMonth` (1-31) and anchor date.
+
+### 📊 2. High-Density Dashboard UI Modernization & Above-the-Fold Transactions Feed
+- **Problem & User Feedback**:
+  - The dashboard was overloaded with tall, stacked cards (Hero Card ~260dp, Daily Radar ~240dp, unconfigured Horizons placeholder ~160dp, Subscriptions ~80dp, Header/Filters ~110dp = ~850dp total), completely hiding transactions below the fold.
+- **Implemented Fixes**:
+  - **Compact Executive Hero Card (~140dp)**:
+    - Replaced the bulky 260dp card with a sleek gradient card with bold Net Cashflow, inline period tag, health status pill (`Optimal 🟢`), a slim 4dp savings rate gauge, and a horizontal 3-metric ribbon (`Income 💰`, `Expenses 💸`, `Investments 📈`).
+  - **Compact Daily Spending Radar (~75dp)**:
+    - Replaced the massive 240dp 4-cell matrix with a high-density widget displaying `⚡ Safe-to-Spend Today`, radar status pill, `Spent Today`, `Unspent Pool`, and cycle days remaining.
+  - **Streamlined Mandates Strip (~44dp)**:
+    - Condensed the commitments strip to a compact inline banner.
+  - **Eliminated Empty Horizons Bloat**:
+    - Completely removed the 160dp unconfigured "Financial Horizons & Planning" placeholder card that consumed screen space with empty unclickable tiles.
+  - **Above-the-Fold Transactions Feed**:
+    - Transactions now render at ~296dp from the top, displaying 5+ recent records immediately upon app launch without requiring any scrolling.
+
+### 🧪 3. Verification & Validation
+- **Unit Tests**:
+  ```cmd
+  cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
+  Result: BUILD SUCCESSFUL (30 actionable tasks: 10 executed, 20 up-to-date)
+  ```
+- **Debug APK Assembly**:
+  ```cmd
+  cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
+  Result: BUILD SUCCESSFUL in 41s (40 actionable tasks: 4 executed, 36 up-to-date)
+  ```
+
+
