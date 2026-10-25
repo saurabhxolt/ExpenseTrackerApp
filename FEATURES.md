@@ -70,6 +70,17 @@
 * **Android Quick Settings Tile (`CashQuickLogTileService`)**: Launch rapid cash expense logging straight from Android notification shade / lockscreen.
 * **1-Tap Fast Presets**: Rapidly logs common cash outlays (`☕ Chai ₹20`, `🛺 Auto ₹50`, `🥪 Snacks ₹100`, `🍛 Lunch ₹150`, `🛒 Groceries ₹500`, `⛽ Fuel ₹500`) with zero app navigation.
 
+### 11. Air-Gapped Offline QR Group Sync (Zero-Internet Splitwise)
+* **100% Serverless Peer-to-Peer Sync**: Compresses entire group ledgers (members, expenses, proportional shares, and debt settlements) into high-density GZIP-compressed QR codes via ZXing (`GroupQrSyncEngine`).
+* **Live CameraX Scanner & Screenshot Importer**: Scan a friend's phone screen directly, import a QR screenshot from device gallery, or paste a raw sync code.
+* **Smart Identity Perspective Resolution**: Symmetrically remaps "You" between sender and recipient phones so balances and debt minimization are preserved down to the paisa.
+* **Idempotent Merge Engine**: Prevents duplicate insertions when re-scanning active groups, automatically creating missing members and syncing new expenses.
+
+### 12. 100% On-Device Receipt & Invoice OCR Scanner
+* **Offline Optical Character Recognition**: Leverages Google ML Kit Text Recognition running entirely on-device without network permissions (`ReceiptScannerDialog`, `ReceiptOcrParser`).
+* **Intelligent Total & Merchant Extraction**: Robust regex parsing isolating final amounts from complex restaurant bills, supermarket receipts, and pharmacy invoices (accounting for GST, VAT, service charges, discounts).
+* **Automatic Category Inference**: Predicts transaction categories directly from parsed merchant headers and opens an editable draft review sheet before persisting into encrypted Room database.
+
 ---
 
 ## 🤖 Persona 2: Autonomous Ingestion Daemon

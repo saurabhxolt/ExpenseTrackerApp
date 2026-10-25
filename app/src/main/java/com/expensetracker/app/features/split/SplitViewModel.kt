@@ -32,7 +32,8 @@ data class SplitUiState(
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SplitViewModel @Inject constructor(
-    private val splitRepository: SplitRepository
+    private val splitRepository: SplitRepository,
+    val groupQrSyncEngine: com.expensetracker.app.core.sync.GroupQrSyncEngine
 ) : ViewModel() {
 
     private val _selectedGroupId = MutableStateFlow<Long?>(null)
@@ -125,6 +126,37 @@ class SplitViewModel @Inject constructor(
             return true
         }
         return false
+    }
+
+    suspend fun generateQrForGroup(groupId: Long, senderName: String): Pair<String, android.graphics.Bitmap>? {
+        val payload = splitRepository.exportGroupSyncPayload(groupId, senderName) ?: return null
+        val encodedStr = groupQrSyncEngine.encodeGroupPayload(payload)
+        val bitmap = groupQrSyncEngine.generateQrBitmap(encodedStr, 512)
+        return Pair(encodedStr, bitmap)
+    }
+
+    fun parseGroupQrPayload(rawContent: String): com.expensetracker.app.core.sync.GroupSyncPayload? {
+        return groupQrSyncEngine.decodeGroupPayload(rawContent)
+    }
+
+    fun decodeQrBitmap(bitmap: android.graphics.Bitmap): com.expensetracker.app.core.sync.GroupSyncPayload? {
+        val text = groupQrSyncEngine.decodeQrBitmap(bitmap) ?: return null
+        return groupQrSyncEngine.decodeGroupPayload(text)
+    }
+
+    fun mergeGroupSync(
+        payload: com.expensetracker.app.core.sync.GroupSyncPayload,
+        myIdentityInGroup: String,
+        targetGroupId: Long? = null,
+        onComplete: (Long) -> Unit
+    ) {
+        viewModelScope.launch {
+            val mappedData = groupQrSyncEngine.mapIdentity(payload, myIdentityInGroup)
+            val finalGroupId = splitRepository.mergeGroupSyncData(mappedData, targetGroupId)
+            _selectedGroupId.value = finalGroupId
+            refreshSummary()
+            onComplete(finalGroupId)
+        }
     }
 
     private fun refreshSummary() {

@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,6 +78,7 @@ fun SplitRoute(
 
     SplitScreen(
         uiState = uiState,
+        viewModel = viewModel,
         onSelectGroup = viewModel::selectGroup,
         onCreateGroup = viewModel::createGroup,
         onDeleteGroup = viewModel::deleteGroup,
@@ -94,6 +97,7 @@ fun SplitRoute(
 @Composable
 fun SplitScreen(
     uiState: SplitUiState,
+    viewModel: SplitViewModel,
     onSelectGroup: (Long?) -> Unit,
     onCreateGroup: (name: String, description: String, emoji: String, members: List<String>) -> Unit,
     onDeleteGroup: (GroupEntity) -> Unit,
@@ -106,6 +110,8 @@ fun SplitScreen(
     var showAddExpenseDialog by remember { mutableStateOf(false) }
     var showSettlementDialog by remember { mutableStateOf(false) }
     var showItemizedSplitDialog by remember { mutableStateOf(false) }
+    var showShareQrDialog by remember { mutableStateOf(false) }
+    var showScannerDialog by remember { mutableStateOf(false) }
 
     if (showCreateGroupDialog) {
         CreateGroupDialog(
@@ -154,6 +160,28 @@ fun SplitScreen(
         )
     }
 
+    if (showShareQrDialog && selectedSummary != null) {
+        GroupQrShareDialog(
+            groupId = selectedSummary.group.id,
+            groupName = selectedSummary.group.name,
+            groupEmoji = selectedSummary.group.emoji,
+            viewModel = viewModel,
+            onDismiss = { showShareQrDialog = false }
+        )
+    }
+
+    if (showScannerDialog) {
+        GroupQrScannerDialog(
+            existingGroups = uiState.groups,
+            viewModel = viewModel,
+            onDismiss = { showScannerDialog = false },
+            onSyncSuccess = { newId ->
+                showScannerDialog = false
+                onSelectGroup(newId)
+            }
+        )
+    }
+
     Scaffold(
         floatingActionButton = {
             if (uiState.selectedGroupId == null) {
@@ -188,17 +216,36 @@ fun SplitScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Quick Itemized Split Action Card
-                Button(
-                    onClick = { showItemizedSplitDialog = true },
+                // Quick Itemized Split & Air-Gapped QR Scan Actions
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("🍕 Quick Restaurant Bill Splitter (Proportional Tax & Tip)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { showItemizedSplitDialog = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Text("🍕 Itemized Splitter", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = { showScannerDialog = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Scan Group QR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 if (uiState.groups.isEmpty()) {
@@ -251,8 +298,12 @@ fun SplitScreen(
                         text = "${selectedSummary.group.emoji} ${selectedSummary.group.name}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
                     )
+                    IconButton(onClick = { showShareQrDialog = true }) {
+                        Icon(imageVector = Icons.Default.QrCode, contentDescription = "Share Group QR", tint = PrimaryBlue)
+                    }
                 }
 
                 LazyColumn(

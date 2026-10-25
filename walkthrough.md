@@ -305,24 +305,50 @@
 
 ## 28. Automated Test Verification (Phase 4)
 
+## 29. Air-Gapped Offline QR Group Sync (Zero-Internet Splitwise) (Phase 5)
+
+- **Pure-Offline Sync Engine (`GroupQrSyncEngine.kt`)**:
+  - GZIP Base64 compression: Automatically compresses group payload dictionaries into dense `ET_GRP_Z:1:<base64>` tokens when payload exceeds 250 characters, ensuring dozens of split expenses fit effortlessly into a single QR frame.
+  - QR Code Generation via ZXing `QRCodeWriter`: Generates unblurred, high-contrast monochrome Bitmaps with UTF-8 character encoding and 1-pixel margin.
+  - QR Code Decoding via ZXing `MultiFormatReader`: Decodes directly from camera preview luminance frames or imported image bitmaps.
+  - **Symmetric Identity Perspective Resolution (`mapIdentity`)**: Symmetrically maps member perspectives so that the sender's `"You"` becomes their actual name (e.g. `"Alice"`), while the recipient's chosen identity (e.g. `"Bob"`) becomes `"You"` on the recipient's phone, preserving mathematical debt calculation down to the paisa.
+  - **Idempotent Merge Engine (`mergeGroupSyncData`)**: Evaluates incoming groups, inserting missing members and skipping existing duplicate expenses and settlements via 5-second timestamp windows and title/amount composite matching.
+- **UI Components & Workflows**:
+  - [GroupQrShareDialog.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/GroupQrShareDialog.kt): Displays generated QR code, sender name customization, "Copy Sync Code" button for nearby/bluetooth/text sharing, and 100% on-device privacy badge.
+  - [GroupQrScannerDialog.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/GroupQrScannerDialog.kt): Features CameraX live viewfinder barcode scanner, gallery screenshot picker (`ActivityResultContracts.GetContent`), paste code fallback, and interactive "Merge & Identity Mapping Preview" with 1-tap member chips.
+  - [SplitScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/SplitScreen.kt): Added "Scan Group QR 📲" quick action button in group list and "Share Group QR" icon button in group detail header.
+
+---
+
+## 30. 100% On-Device Receipt & Invoice OCR Scanner (Phase 5)
+
+- **Offline Machine Learning OCR (`ReceiptOcrParser.kt`)**:
+  - Utilizes Google ML Kit Text Recognition running strictly on-device without internet access.
+  - Extracts final payable totals from complex multi-item receipts with GST/SGST/CGST, service charges, discounts, and tips.
+  - Extracts date stamps across common Indian and international formats (`DD/MM/YYYY`, `DD-MM-YYYY`, `DD MMM YYYY`).
+  - Identifies true merchant headers while filtering invoice noise patterns (`Tax Invoice`, `Cash Receipt`, `GSTIN`, `FSSAI`, `Welcome`).
+  - Automatically predicts transaction category using [CategoryClassifier.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/CategoryClassifier.kt).
+- **Interactive UI & Viewfinder (`ReceiptScannerDialog.kt`)**:
+  - CameraX live viewfinder with receipt bounding box and photo capture.
+  - Gallery photo picker fallback for scanned bills or digital receipt screenshots.
+  - Real-time OCR execution spinner.
+  - Review & Edit form with editable Merchant, Amount (`₹`), Date, and Category chips.
+  - 1-Tap "Save to Expenses" persisting the transaction into encrypted Room database.
+  - Direct access via `🧾 Scan` button in [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt).
+
+---
+
+## 31. Automated Test Verification (Phase 5)
+
 Executed full Gradle unit test suite:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
 ```
-Result: **BUILD SUCCESSFUL**. 30 actionable tasks executed with 0 errors across 100% of unit tests, including [CreditCardRadarCalculatorTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/analysis/CreditCardRadarCalculatorTest.kt) and [CashQuickLogTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/features/quicklog/CashQuickLogTest.kt).
+Result: **BUILD SUCCESSFUL**. 30 actionable tasks executed with 0 errors across 105 unit tests, including [GroupQrSyncEngineTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/sync/GroupQrSyncEngineTest.kt) and [ReceiptOcrParserTest.kt](file:///e:/ExpenseTrackerApp/app/src/test/java/com/expensetracker/app/core/ocr/ReceiptOcrParserTest.kt).
 
 Verified Debug APK Compilation:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
 ```
-Result: **BUILD SUCCESSFUL**. Room Schema 7 exported cleanly, APK packaged with zero network permissions.
-
-
-
-
-
-
-
-
-
+Result: **BUILD SUCCESSFUL in 1m 6s**. Clean APK packaged with zero network permissions.
 

@@ -235,4 +235,141 @@ class SplitRepository @Inject constructor(
 
         return transfers
     }
+
+    suspend fun exportGroupSyncPayload(groupId: Long, senderName: String): com.expensetracker.app.core.sync.GroupSyncPayload? {
+        val group = splitDao.getGroupById(groupId) ?: return null
+        val members = splitDao.getMembersListByGroupId(groupId).map { it.memberName }
+        val expenses = splitDao.getExpensesListByGroupId(groupId)
+        val settlements = splitDao.getSettlementsListByGroupId(groupId)
+
+        val expSyncList = expenses.map { exp ->
+            val shares = splitDao.getSharesByExpenseId(exp.id).map {
+                com.expensetracker.app.core.sync.ShareSyncData(it.memberName, it.shareAmount)
+            }
+            com.expensetracker.app.core.sync.ExpenseSyncData(
+                title = exp.title,
+                totalAmount = exp.totalAmount,
+                paidByMember = exp.paidByMember,
+                category = exp.category,
+                timestamp = exp.timestamp,
+                shares = shares
+            )
+        }
+
+        val settSyncList = settlements.map { sett ->
+            com.expensetracker.app.core.sync.SettlementSyncData(
+                fromMember = sett.fromMember,
+                toMember = sett.toMember,
+                amount = sett.amount,
+                timestamp = sett.timestamp
+            )
+        }
+
+        return com.expensetracker.app.core.sync.GroupSyncPayload(
+            version = 1,
+            senderName = senderName.trim().ifBlank { "Friend" },
+            group = com.expensetracker.app.core.sync.GroupSyncData(
+                name = group.name,
+                description = group.description,
+                emoji = group.emoji,
+                createdAt = group.createdAt,
+                members = members,
+                expenses = expSyncList,
+                settlements = settSyncList
+            )
+        )
+    }
+
+    suspend fun mergeGroupSyncData(
+        groupData: com.expensetracker.app.core.sync.GroupSyncData,
+        targetGroupId: Long? = null
+    ): Long {
+        val finalGroupId: Long
+        if (targetGroupId == null) {
+            val group = GroupEntity(
+                name = groupData.name.trim(),
+                description = groupData.description.trim(),
+                emoji = groupData.emoji.ifBlank { "✈️" },
+                createdAt = groupData.createdAt
+            )
+            finalGroupId = splitDao.insertGroup(group)
+
+            val cleanMembers = (listOf("You") + groupData.members.map { it.trim() })
+                .filter { it.isNotBlank() }
+                .distinct()
+
+            val memberEntities = cleanMembers.map {
+                GroupMemberEntity(groupId = finalGroupId, memberName = it)
+            }
+            splitDao.insertMembers(memberEntities)
+        } else {
+            finalGroupId = targetGroupId
+            val existingMembers = splitDao.getMembersListByGroupId(finalGroupId).map { it.memberName }.toSet()
+            val missingMembers = groupData.members
+                .map { it.trim() }
+                .filter { it.isNotBlank() && !existingMembers.contains(it) }
+                .distinct()
+            if (missingMembers.isNotEmpty()) {
+                val newEntities = missingMembers.map {
+                    GroupMemberEntity(groupId = finalGroupId, memberName = it)
+                }
+                splitDao.insertMembers(newEntities)
+            }
+        }
+
+        // Merge Expenses (idempotent matching on title, amount, timestamp)
+        val existingExpenses = splitDao.getExpensesListByGroupId(finalGroupId)
+        for (inExp in groupData.expenses) {
+            val duplicate = existingExpenses.any {
+                it.title.equals(inExp.title.trim(), ignoreCase = true) &&
+                    abs(it.totalAmount - inExp.totalAmount) < 0.01 &&
+                    abs(it.timestamp - inExp.timestamp) < 5000L // 5-second window
+            }
+            if (!duplicate) {
+                val newExp = SplitExpenseEntity(
+                    groupId = finalGroupId,
+                    title = inExp.title.trim(),
+                    totalAmount = inExp.totalAmount,
+                    paidByMember = inExp.paidByMember.trim(),
+                    category = inExp.category,
+                    timestamp = inExp.timestamp
+                )
+                val expenseId = splitDao.insertExpense(newExp)
+
+                val shares = inExp.shares.map {
+                    ExpenseSplitShareEntity(
+                        expenseId = expenseId,
+                        memberName = it.memberName.trim(),
+                        shareAmount = it.shareAmount
+                    )
+                }
+                if (shares.isNotEmpty()) {
+                    splitDao.insertShares(shares)
+                }
+            }
+        }
+
+        // Merge Settlements (idempotent matching on from, to, amount, timestamp)
+        val existingSettlements = splitDao.getSettlementsListByGroupId(finalGroupId)
+        for (inSett in groupData.settlements) {
+            val duplicate = existingSettlements.any {
+                it.fromMember.equals(inSett.fromMember.trim(), ignoreCase = true) &&
+                    it.toMember.equals(inSett.toMember.trim(), ignoreCase = true) &&
+                    abs(it.amount - inSett.amount) < 0.01 &&
+                    abs(it.timestamp - inSett.timestamp) < 5000L
+            }
+            if (!duplicate && inSett.amount > 0) {
+                val newSett = GroupSettlementEntity(
+                    groupId = finalGroupId,
+                    fromMember = inSett.fromMember.trim(),
+                    toMember = inSett.toMember.trim(),
+                    amount = inSett.amount,
+                    timestamp = inSett.timestamp
+                )
+                splitDao.insertSettlement(newSett)
+            }
+        }
+
+        return finalGroupId
+    }
 }

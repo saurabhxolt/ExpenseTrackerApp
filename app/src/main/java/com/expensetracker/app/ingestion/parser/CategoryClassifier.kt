@@ -38,6 +38,10 @@ class CategoryClassifier @Inject constructor(
                 lowerMerchant.contains("food") || lowerMerchant.contains("restaurant") ||
                 lowerMerchant.contains("cafe") || lowerMerchant.contains("atithi") ||
                 lowerMerchant.contains("hotel") || lowerMerchant.contains("dining") ||
+                lowerMerchant.contains("barbeque") || lowerMerchant.contains("bbq") ||
+                lowerMerchant.contains("kitchen") || lowerMerchant.contains("bistro") ||
+                lowerMerchant.contains("pizza") || lowerMerchant.contains("burger") ||
+                lowerMerchant.contains("bakery") ||
                 lowerText.contains("swiggy") || lowerText.contains("zomato") -> "Food & Dining"
 
                 // Groceries & Vegetables

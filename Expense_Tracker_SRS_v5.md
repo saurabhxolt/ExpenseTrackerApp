@@ -41,6 +41,7 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - Hardware-Backed SQLCipher AES-256 (`SecurityKeyManager.kt`): Android KeyStore master key generation and derivation, eliminating static passphrases for Room encryption.
 - Responsive UI Layout (`DashboardScreen.kt`): Added flex weights, `contentPadding`, and vertical wrapping prevention (`maxLines = 1, softWrap = false`) for transaction buttons and dialogs.
 - Precise Amount Extraction ignoring trailing available balance, credit limit, and magnitude scale clauses (billion, million, crore, cr, lakh, points, %).
+- 100% On-Device Receipt & Invoice OCR Scanner (`ReceiptOcrParser.kt`, `ReceiptScannerDialog.kt`): Offline optical character recognition via Google ML Kit Text Recognition with camera viewfinder, automatic total/date/merchant extraction, category prediction, and interactive review sheet before encrypted Room persistence.
 - Dual-channel detection: Android SMS Receiver and NotificationListenerService.
 - Historical 3-Month & Incremental SMS Scanner (`SmsScanner.kt`).
 
@@ -58,6 +59,7 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - **Room Entities**: `GroupEntity`, `GroupMemberEntity`, `SplitExpenseEntity`, `ExpenseSplitShareEntity`, `GroupSettlementEntity`.
 - **Auto-Calculated Net Balances & Debt Minimization Algorithm**: Calculates exact net member balances and minimal transfers ("Who Owes Whom").
 - **Itemized Restaurant & Group Bill Splitter (`ItemizedSplitCalculator.kt`, `ItemizedBillSplitterDialog.kt`)**: Proportionally divides dining bills, GST/taxes, and tips according to individual dish consumption, with 1-click import into group ledgers and formatted WhatsApp summaries.
+- **Air-Gapped Offline QR Group Sync (Zero-Internet Splitwise) (`GroupQrSyncEngine.kt`, `GroupQrShareDialog.kt`, `GroupQrScannerDialog.kt`)**: Serverless peer-to-peer sync compressing group ledgers into high-density GZIP Base64 QR codes via ZXing, with live CameraX barcode scanner, gallery screenshot picker, clipboard paste fallback, symmetric identity perspective remapping ("You" <-> Friend), and idempotent Room merging.
 - **1-Click WhatsApp Settlement Summary Exporter**: Exports formatted markdown summary directly to Android clipboard for instant WhatsApp group pasting.
 - **Settlement Payments**: Record direct settlement payments between group members.
 

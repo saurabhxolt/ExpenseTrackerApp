@@ -109,6 +109,7 @@ fun DashboardRoute(
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var showQuickCashLog by remember { mutableStateOf(false) }
+    var showReceiptScanner by remember { mutableStateOf(false) }
     var selectedTransactionDetails by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
 
@@ -213,8 +214,22 @@ fun DashboardRoute(
                 },
                 onScanInbox = { viewModel.triggerSmsInboxScan(context) },
                 onRequestPermissions = { requestPermissionsAndScan() },
-                onQuickCashClick = { showQuickCashLog = true }
+                onQuickCashClick = { showQuickCashLog = true },
+                onScanReceiptClick = { showReceiptScanner = true }
             )
+
+            if (showReceiptScanner) {
+                com.expensetracker.app.features.ocr.ReceiptScannerDialog(
+                    ocrParser = viewModel.receiptOcrParser,
+                    onDismiss = { showReceiptScanner = false },
+                    onSaveTransaction = { amount, merchant, category, timestamp ->
+                        viewModel.addTransaction(merchant, amount, "DEBIT", category, timestamp = timestamp)
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Saved ₹${amount.toInt()} from receipt! 🧾")
+                        }
+                    }
+                )
+            }
 
             if (showQuickCashLog) {
                 com.expensetracker.app.features.quicklog.QuickCashLogDialog(
@@ -294,7 +309,8 @@ fun DashboardScreen(
     onDeleteTransaction: (TransactionEntity) -> Unit = {},
     onScanInbox: () -> Unit = {},
     onRequestPermissions: () -> Unit = {},
-    onQuickCashClick: () -> Unit = {}
+    onQuickCashClick: () -> Unit = {},
+    onScanReceiptClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -322,10 +338,22 @@ fun DashboardScreen(
                         onClick = onQuickCashClick,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                         shape = RoundedCornerShape(10.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.height(34.dp)
                     ) {
-                        Text("💵 +Cash", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("💵 Cash", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Button(
+                        onClick = onScanReceiptClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Text("🧾 Scan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
 
                     Spacer(modifier = Modifier.width(6.dp))

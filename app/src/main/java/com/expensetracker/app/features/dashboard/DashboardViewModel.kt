@@ -73,7 +73,8 @@ class DashboardViewModel @Inject constructor(
     private val subscriptionRepository: SubscriptionRepository,
     private val budgetRepository: com.expensetracker.app.core.data.repository.BudgetRepository,
     private val promotionManager: PromotionManager,
-    private val categoryClassifier: CategoryClassifier
+    private val categoryClassifier: CategoryClassifier,
+    val receiptOcrParser: com.expensetracker.app.core.ocr.ReceiptOcrParser
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)

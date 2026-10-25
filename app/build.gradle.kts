@@ -104,8 +104,22 @@ dependencies {
     // WorkManager & Background Tasks
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    // QR Code Generation & Decoding (Offline Air-Gapped Sync)
+    implementation("com.google.zxing:core:3.5.3")
+
+    // CameraX (Camera preview for QR scanner and receipt capture)
+    val cameraxVersion = "1.3.1"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+
+    // ML Kit On-Device Text Recognition (Offline Receipt OCR)
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
