@@ -105,6 +105,7 @@ fun SplitScreen(
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var showAddExpenseDialog by remember { mutableStateOf(false) }
     var showSettlementDialog by remember { mutableStateOf(false) }
+    var showItemizedSplitDialog by remember { mutableStateOf(false) }
 
     if (showCreateGroupDialog) {
         CreateGroupDialog(
@@ -117,6 +118,19 @@ fun SplitScreen(
     }
 
     val selectedSummary = uiState.selectedGroupSummary
+
+    if (showItemizedSplitDialog) {
+        ItemizedBillSplitterDialog(
+            initialMembers = selectedSummary?.members ?: emptyList(),
+            groupName = selectedSummary?.group?.name,
+            onDismiss = { showItemizedSplitDialog = false },
+            onImportAsExpense = if (selectedSummary != null) {
+                { title, amount, paidBy, customShares ->
+                    onAddExpense(selectedSummary.group.id, title, amount, paidBy, "Dining", customShares)
+                }
+            } else null
+        )
+    }
 
     if (showAddExpenseDialog && selectedSummary != null) {
         AddSplitExpenseDialog(
@@ -173,6 +187,19 @@ fun SplitScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // Quick Itemized Split Action Card
+                Button(
+                    onClick = { showItemizedSplitDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Text("🍕 Quick Restaurant Bill Splitter (Proportional Tax & Tip)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
 
                 if (uiState.groups.isEmpty()) {
                     Box(
@@ -281,7 +308,7 @@ fun SplitScreen(
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Button(
                                 onClick = { showAddExpenseDialog = true },
@@ -289,8 +316,15 @@ fun SplitScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                             ) {
                                 Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Add Expense", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Add", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                            }
+                            Button(
+                                onClick = { showItemizedSplitDialog = true },
+                                modifier = Modifier.weight(1.15f),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                            ) {
+                                Text("🍕 Itemize", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                             }
                             Button(
                                 onClick = { showSettlementDialog = true },
@@ -298,17 +332,15 @@ fun SplitScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess)
                             ) {
                                 Icon(imageVector = Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Settle Up", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Settle", fontSize = 11.sp, maxLines = 1, softWrap = false)
                             }
                             Button(
                                 onClick = onCopyWhatsAppSummary,
-                                modifier = Modifier.weight(1.1f),
+                                modifier = Modifier.weight(0.9f),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface)
                             ) {
                                 Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("WhatsApp Summary", fontSize = 10.sp, maxLines = 1, softWrap = false)
                             }
                         }
                     }

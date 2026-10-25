@@ -47,6 +47,20 @@
 * **Late-Message Deduplication**: Prevents duplicate subscription creation when multiple notifications arrive for the same cycle.
 * **Stealth Inflation & Subscription Price Creep Detector**: Evaluates historical debits for repeat merchants and active subscriptions, flagging price jumps (>3% and >= ₹5) with visual warning alerts and percentage increase indicators.
 
+### 6. Visual Sinking Funds & Savings Goals (Interactive "Jars")
+* **Interactive Sinking Fund Jars**: Create visual savings goals with custom target amounts, emojis, colors, and deadline targets (Emergency Fund, Vacation, Down Payment, Gadgets).
+* **Dynamic Monthly Savings Pace**: Automatically calculates exact monthly savings pace required to hit the target before deadline.
+* **1-Tap Quick Deposit & Withdraw**: Fast deposit/withdrawal actions with quick rupee chips (`+₹500`, `+₹1,000`, `+₹2,000`, `+₹5,000`) and auto-completion when the target is achieved.
+
+### 7. Indian Tax Season Deductions Organizer (80C / 80D / HRA)
+* **Automated Exemption Inference**: Identifies tax-deductible transactions under Sections 80C (PPF, ELSS, LIC, tuition fees), 80D (health insurance/mediclaim), Section 10(13A) (HRA rent payments), 80CCD (NPS), 80E, and 80G.
+* **Statutory Limit Tracking**: Live progress bars against official ceilings (₹1,50,000 for 80C; ₹25,000 for 80D) and estimated tax savings computation at ~20% tax slab.
+* **1-Tap CA / ITR Report Exporter**: Exports formatted WhatsApp and text summaries detailing eligible debits by section for Chartered Accountant filing.
+
+### 8. Itemized Restaurant & Group Bill Splitter (Proportional Tax & Tip)
+* **Proportional Tax & Tip Distribution**: Eliminates awkward dining math by allocating individual and shared dishes, then proportionally dividing GST, VAT, service charges, and tips based on each diner's exact subtotal ratio.
+* **1-Click Ledger Import & WhatsApp Summary**: Converts computed itemized shares directly into an active group expense or copies a clean, formatted breakdown to the clipboard for group chats.
+
 ---
 
 ## 🤖 Persona 2: Autonomous Ingestion Daemon

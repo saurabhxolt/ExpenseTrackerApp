@@ -7,6 +7,7 @@ import com.expensetracker.app.core.database.entity.GroupEntity
 import com.expensetracker.app.core.database.entity.GroupMemberEntity
 import com.expensetracker.app.core.database.entity.GroupSettlementEntity
 import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
+import com.expensetracker.app.core.database.entity.SavingsGoalEntity
 import com.expensetracker.app.core.database.entity.SplitExpenseEntity
 import com.expensetracker.app.core.database.entity.SubscriptionEntity
 import com.expensetracker.app.core.database.entity.TransactionEntity
@@ -21,7 +22,8 @@ data class BackupData(
     val groupMembers: List<GroupMemberEntity> = emptyList(),
     val splitExpenses: List<SplitExpenseEntity> = emptyList(),
     val splitShares: List<ExpenseSplitShareEntity> = emptyList(),
-    val groupSettlements: List<GroupSettlementEntity> = emptyList()
+    val groupSettlements: List<GroupSettlementEntity> = emptyList(),
+    val savingsGoals: List<SavingsGoalEntity> = emptyList()
 )
 
 object BackupManager {
@@ -38,7 +40,8 @@ object BackupManager {
         groupMembers: List<GroupMemberEntity> = emptyList(),
         splitExpenses: List<SplitExpenseEntity> = emptyList(),
         splitShares: List<ExpenseSplitShareEntity> = emptyList(),
-        groupSettlements: List<GroupSettlementEntity> = emptyList()
+        groupSettlements: List<GroupSettlementEntity> = emptyList(),
+        savingsGoals: List<SavingsGoalEntity> = emptyList()
     ): String {
         val sb = StringBuilder()
         sb.append("{\n")
@@ -58,7 +61,8 @@ object BackupManager {
             sb.append("      \"note\": \"").append(escape(t.note)).append("\",\n")
             sb.append("      \"accountDigits\": \"").append(escape(t.accountDigits)).append("\",\n")
             sb.append("      \"transactionHash\": \"").append(escape(t.transactionHash)).append("\",\n")
-            sb.append("      \"isManual\": ").append(t.isManual).append("\n")
+            sb.append("      \"isManual\": ").append(t.isManual).append(",\n")
+            sb.append("      \"taxDeductibleSection\": \"").append(escape(t.taxDeductibleSection ?: "")).append("\"\n")
             sb.append("    }").append(if (idx < transactions.size - 1) "," else "").append("\n")
         }
         sb.append("  ],\n")
@@ -177,6 +181,23 @@ object BackupManager {
             sb.append("      \"timestamp\": ").append(s.timestamp).append("\n")
             sb.append("    }").append(if (idx < groupSettlements.size - 1) "," else "").append("\n")
         }
+        sb.append("  ],\n")
+
+        // 11. Savings Goals
+        sb.append("  \"savingsGoals\": [\n")
+        savingsGoals.forEachIndexed { idx, g ->
+            sb.append("    {\n")
+            sb.append("      \"title\": \"").append(escape(g.title)).append("\",\n")
+            sb.append("      \"targetAmount\": ").append(g.targetAmount).append(",\n")
+            sb.append("      \"currentAmount\": ").append(g.currentAmount).append(",\n")
+            sb.append("      \"targetDate\": ").append(g.targetDate).append(",\n")
+            sb.append("      \"colorHex\": \"").append(escape(g.colorHex)).append("\",\n")
+            sb.append("      \"emoji\": \"").append(escape(g.emoji)).append("\",\n")
+            sb.append("      \"note\": \"").append(escape(g.note)).append("\",\n")
+            sb.append("      \"isCompleted\": ").append(g.isCompleted).append(",\n")
+            sb.append("      \"createdAt\": ").append(g.createdAt).append("\n")
+            sb.append("    }").append(if (idx < savingsGoals.size - 1) "," else "").append("\n")
+        }
         sb.append("  ]\n")
         sb.append("}")
 
@@ -218,7 +239,8 @@ object BackupManager {
                         note = extractString(obj, "note"),
                         accountDigits = extractString(obj, "accountDigits"),
                         transactionHash = hash,
-                        isManual = extractBoolean(obj, "isManual")
+                        isManual = extractBoolean(obj, "isManual"),
+                        taxDeductibleSection = extractString(obj, "taxDeductibleSection").ifBlank { null }
                     )
                 )
             }
@@ -388,7 +410,31 @@ object BackupManager {
             }
         }
 
-        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements)
+        // 11. Savings Goals
+        val savingsGoals = mutableListOf<SavingsGoalEntity>()
+        val goalArrayStr = extractArray(jsonStr, "savingsGoals")
+        val goalObjects = splitJsonObjects(goalArrayStr)
+        for (obj in goalObjects) {
+            val title = extractString(obj, "title")
+            val targetAmount = extractDouble(obj, "targetAmount")
+            if (title.isNotBlank() && targetAmount > 0) {
+                savingsGoals.add(
+                    SavingsGoalEntity(
+                        title = title,
+                        targetAmount = targetAmount,
+                        currentAmount = extractDouble(obj, "currentAmount"),
+                        targetDate = extractLong(obj, "targetDate"),
+                        colorHex = extractString(obj, "colorHex").ifBlank { "#10B981" },
+                        emoji = extractString(obj, "emoji").ifBlank { "🎯" },
+                        note = extractString(obj, "note"),
+                        isCompleted = extractBoolean(obj, "isCompleted"),
+                        createdAt = extractLong(obj, "createdAt").takeIf { it > 0 } ?: System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        return BackupData(transactions, categories, budgets, subscriptions, merchantMappings, groups, groupMembers, splitExpenses, splitShares, groupSettlements, savingsGoals)
     }
 
     fun parseBackupJson(jsonStr: String): Triple<List<TransactionEntity>, List<CategoryEntity>, List<BudgetEntity>> {

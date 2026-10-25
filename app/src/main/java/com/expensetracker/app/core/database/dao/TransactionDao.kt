@@ -65,6 +65,9 @@ interface TransactionDao {
     @Query("UPDATE transactions SET category = :newCategoryName WHERE category = :oldCategoryName")
     suspend fun updateTransactionCategoryName(oldCategoryName: String, newCategoryName: String)
 
+    @Query("UPDATE transactions SET taxDeductibleSection = :section WHERE id = :id")
+    suspend fun updateTaxSection(id: Long, section: String?)
+
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 }

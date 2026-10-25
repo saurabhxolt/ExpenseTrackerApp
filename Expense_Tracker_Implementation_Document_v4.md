@@ -24,14 +24,16 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - features/analytics/ (AnalyticsScreen, AnalyticsViewModel, CanvasDonutChart, CanvasBarChart, TransactionTypeFilterChips)
 - features/categories/ (CategoriesScreen, CategoriesViewModel, CategoryEmojiProvider, CategoryColorProvider)
 - features/subscriptions/ (SubscriptionsScreen, SubscriptionsViewModel, AddEditSubscriptionDialog, SubscriptionRadarBanner, AutoPaidBadges)
+- features/savings/ (SavingsGoalsScreen, SavingsGoalsViewModel, AddEditSavingsGoalDialog, DepositWithdrawDialog)
+- features/split/ (SplitScreen, SplitViewModel, ItemizedBillSplitterDialog)
 - features/settings/ (SettingsScreen, SettingsViewModel, EcosystemPromotionCard)
 - features/security/ (BiometricLockManager)
 - core/security/ (PrivacyModeManager, ShakeDetector)
-- core/analysis/ (PriceCreepDetector)
+- core/analysis/ (PriceCreepDetector, TaxDeductionAnalyzer, ItemizedSplitCalculator)
 - features/backup/ (BackupManager)
 - features/reports/ (ReportsExporter)
-- core/database/ (ExpenseDatabase v4, GroupEntity, GroupMemberEntity, SplitExpenseEntity, ExpenseSplitShareEntity, GroupSettlementEntity, SubscriptionEntity, CategoryEntity, MerchantCategoryMappingEntity, SplitDao, SubscriptionDao, CategoryDao, MerchantCategoryMappingDao)
-- core/data/repository/ (SplitRepository, SubscriptionRepository, CategoryRepository, SubscriptionDetector)
+- core/database/ (ExpenseDatabase v6, SavingsGoalEntity, GroupEntity, GroupMemberEntity, SplitExpenseEntity, ExpenseSplitShareEntity, GroupSettlementEntity, SubscriptionEntity, CategoryEntity, MerchantCategoryMappingEntity, SavingsGoalDao, SplitDao, SubscriptionDao, CategoryDao, MerchantCategoryMappingDao, MIGRATION_5_6)
+- core/data/repository/ (SavingsGoalRepository, SplitRepository, SubscriptionRepository, CategoryRepository, RecurringMandateDetector)
 - core/promotions/ (PromotionModel, PromotionManager)
 - ingestion/parser/ (RegexTransactionParser, CategoryClassifier, SubscriptionMatcher: Auto SMS Mandate Matching & Cycle Advancement)
 - ingestion/deduplication/ (TransactionDeduplicator: Timeless & Windowed Deduplication & DB False Positive Purging)
@@ -56,6 +58,10 @@ Version: 5.5 | Technical Stack & Architectural Guidelines
 - **Safe-to-Spend Today Radar (`DashboardViewModel.kt`, `DashboardScreen.kt`)**: Calculates real-time daily discretionary allowance pacing remaining monthly budget limits against remaining days in the active month while reserving funds for upcoming committed bills/mandates, surfacing status chips (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
 - **Automated Local Rolling Backups Subsystem (`ScheduledBackupWorker.kt`)**: Background WorkManager periodic worker snapshotting encrypted Room database weekly to the local sandbox (`backups/backup_auto_*.json`) with 5-snapshot rolling retention and on-demand restore dialog in Settings.
 - **Stealth Inflation & Price Creep Detector (`PriceCreepDetector.kt`)**: Real-time analysis engine identifying price increases (>3% and >= ₹5) across repeat merchants and subscriptions, rendering alert badges in Subscriptions and Transaction Details.
+- **Visual Sinking Funds & Savings Goals Subsystem (`SavingsGoalEntity.kt`, `SavingsGoalDao.kt`, `SavingsGoalRepository.kt`, `SavingsGoalsViewModel.kt`, `SavingsGoalsScreen.kt`)**: Implements interactive savings jars in `BudgetsScreen.kt` with custom target amounts, emojis, colors, deadline timeframes, dynamic monthly saving pace calculators, and 1-tap quick deposit/withdraw dialogs (`+₹500`, `+₹1,000`, `+₹2,000`, `+₹5,000`).
+- **Indian Tax Season Deductions Organizer (`TaxDeductionAnalyzer.kt`, `TaxSeasonDeductionsCard.kt`)**: Automatically identifies and groups tax-exempt debits under Sections 80C (₹1.5L cap), 80D (₹25k cap), Section 10(13A) HRA, 80CCD, 80E, and 80G, tracks statutory limits, estimates tax savings at 20% slab, and provides 1-tap CA/ITR export.
+- **Itemized Restaurant & Group Bill Splitter Subsystem (`ItemizedSplitCalculator.kt`, `ItemizedBillSplitterDialog.kt`)**: Proportionally divides dining bills, GST/taxes, and tips according to individual dish consumption, with 1-click import into group ledgers and formatted WhatsApp summaries.
+- **Room v6 Database Migration & Backup Synchronization**: Schema version 6 introduces `savings_goals` table, `taxDeductibleSection` column on `transactions`, and `MIGRATION_5_6`. Full entity roundtrip serialization added to `BackupManager.kt` and `ScheduledBackupWorker.kt`.
 
 # 4. Multi-AI Governance & Modular Documentation Architecture
 - **Master Adapted AI System Prompt**: `PromptForCleanAndroidAppDevelopmentFromAIAgent.md` custom-tailored for offline-first native Android architecture.

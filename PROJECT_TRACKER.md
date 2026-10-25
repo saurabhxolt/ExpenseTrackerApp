@@ -29,6 +29,10 @@
 | **Safe-to-Spend Today Radar** | Feature / Dashboard | ✅ Completed | Core Architecture |
 | **Automated Local Rolling Backups (Offline)** | Storage / Worker | ✅ Completed | Storage Engine |
 | **Stealth Inflation & Price Creep Detector** | Analysis / NLP | ✅ Completed | Core Architecture |
+| **Room v6 Schema Migration & SavingsGoalEntity**| Core / Room | ✅ Completed | Storage Engine |
+| **Visual Sinking Funds & Savings Jars** | Feature / Savings | ✅ Completed | Core Architecture |
+| **Indian Tax Season Deductions Organizer** | Analysis / Tax | ✅ Completed | Core Architecture |
+| **Itemized Restaurant / Group Bill Splitter** | Feature / Split | ✅ Completed | Core Architecture |
 
 ---
 

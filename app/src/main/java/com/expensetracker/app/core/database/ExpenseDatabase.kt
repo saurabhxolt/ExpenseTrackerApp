@@ -21,7 +21,9 @@ import com.expensetracker.app.core.database.entity.TransactionEntity
 import net.sqlcipher.database.SupportFactory
 
 import com.expensetracker.app.core.database.dao.MerchantCategoryMappingDao
+import com.expensetracker.app.core.database.dao.SavingsGoalDao
 import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
+import com.expensetracker.app.core.database.entity.SavingsGoalEntity
 
 @Database(
     entities = [
@@ -34,9 +36,10 @@ import com.expensetracker.app.core.database.entity.MerchantCategoryMappingEntity
         ExpenseSplitShareEntity::class,
         GroupSettlementEntity::class,
         SubscriptionEntity::class,
-        MerchantCategoryMappingEntity::class
+        MerchantCategoryMappingEntity::class,
+        SavingsGoalEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class ExpenseDatabase : RoomDatabase() {
@@ -46,6 +49,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun splitDao(): SplitDao
     abstract fun subscriptionDao(): SubscriptionDao
     abstract fun merchantCategoryMappingDao(): MerchantCategoryMappingDao
+    abstract fun savingsGoalDao(): SavingsGoalDao
 
     companion object {
         @Volatile
@@ -59,6 +63,28 @@ abstract class ExpenseDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `taxDeductibleSection` TEXT DEFAULT NULL")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `savings_goals` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `targetAmount` REAL NOT NULL,
+                        `currentAmount` REAL NOT NULL,
+                        `targetDate` INTEGER NOT NULL,
+                        `colorHex` TEXT NOT NULL,
+                        `emoji` TEXT NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `isCompleted` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getInstance(context: Context, passphrase: ByteArray): ExpenseDatabase {
             return INSTANCE ?: synchronized(this) {
                 val factory = SupportFactory(passphrase)
@@ -68,7 +94,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     "expense_tracker_encrypted.db"
                 )
                     .openHelperFactory(factory)
-                    .addMigrations(MIGRATION_4_5)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

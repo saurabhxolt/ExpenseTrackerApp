@@ -49,6 +49,7 @@ class SettingsViewModel @Inject constructor(
     private val subscriptionDao: SubscriptionDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val splitDao: com.expensetracker.app.core.database.dao.SplitDao,
+    private val savingsGoalDao: com.expensetracker.app.core.database.dao.SavingsGoalDao,
     private val promotionManager: PromotionManager,
     private val privacyModeManager: com.expensetracker.app.core.security.PrivacyModeManager
 ) : ViewModel() {
@@ -258,6 +259,9 @@ class SettingsViewModel @Inject constructor(
                 }
                 if (data.groupSettlements.isNotEmpty()) {
                     splitDao.insertSettlements(data.groupSettlements)
+                }
+                if (data.savingsGoals.isNotEmpty()) {
+                    savingsGoalDao.insertAll(data.savingsGoals)
                 }
                 if (context != null) {
                     com.expensetracker.app.widget.ExpenseWidgetProvider.updateAllWidgets(context)

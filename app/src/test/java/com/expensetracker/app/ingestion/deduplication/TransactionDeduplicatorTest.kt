@@ -84,6 +84,13 @@ class TransactionDeduplicatorTest {
                 }
             }
         }
+
+        override suspend fun updateTaxSection(id: Long, section: String?) {
+            val index = storedTransactions.indexOfFirst { it.id == id }
+            if (index >= 0) {
+                storedTransactions[index] = storedTransactions[index].copy(taxDeductibleSection = section)
+            }
+        }
     }
 
     @Test

@@ -44,7 +44,8 @@ data class AnalyticsUiState(
     val selectedMonthYear: String = "ALL",
     val selectedTransactionType: String = "DEBIT",
     val customStartDateMs: Long? = null,
-    val customEndDateMs: Long? = null
+    val customEndDateMs: Long? = null,
+    val taxSummary: com.expensetracker.app.core.analysis.TaxDeductionAnalyzer.TaxSummary? = null
 )
 
 @HiltViewModel
@@ -141,6 +142,7 @@ class AnalyticsViewModel @Inject constructor(
             .sortedByDescending { it.totalAmount }
 
         val topCategory = shares.firstOrNull()?.categoryName ?: "None"
+        val taxSummary = com.expensetracker.app.core.analysis.TaxDeductionAnalyzer.computeSummary(transactions)
 
         AnalyticsUiState(
             categoryShares = shares,
@@ -155,7 +157,8 @@ class AnalyticsViewModel @Inject constructor(
             selectedMonthYear = filterState.monthYear,
             selectedTransactionType = filterState.transactionType,
             customStartDateMs = filterState.customStartMs,
-            customEndDateMs = filterState.customEndMs
+            customEndDateMs = filterState.customEndMs,
+            taxSummary = taxSummary
         )
     }.stateIn(
         scope = viewModelScope,

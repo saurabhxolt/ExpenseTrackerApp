@@ -53,10 +53,11 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
   4. **Budgets** (`Icons.Default.AccountBalanceWallet`)
   5. **Analytics** (`Icons.Default.PieChart`)
 
-## Phase 3: Offline Peer-to-Peer Split Expenses (Splitwise Alternative) (COMPLETED)
+## Phase 3: Offline Peer-to-Peer Split Expenses (Splitwise Alternative) (COMPLETED & ENHANCED)
 - **100% Offline Group Ledger Engine**: Track shared trip expenses, apartment bills, and dinner splits without external cloud servers or user registration.
 - **Room Entities**: `GroupEntity`, `GroupMemberEntity`, `SplitExpenseEntity`, `ExpenseSplitShareEntity`, `GroupSettlementEntity`.
 - **Auto-Calculated Net Balances & Debt Minimization Algorithm**: Calculates exact net member balances and minimal transfers ("Who Owes Whom").
+- **Itemized Restaurant & Group Bill Splitter (`ItemizedSplitCalculator.kt`, `ItemizedBillSplitterDialog.kt`)**: Proportionally divides dining bills, GST/taxes, and tips according to individual dish consumption, with 1-click import into group ledgers and formatted WhatsApp summaries.
 - **1-Click WhatsApp Settlement Summary Exporter**: Exports formatted markdown summary directly to Android clipboard for instant WhatsApp group pasting.
 - **Settlement Payments**: Record direct settlement payments between group members.
 
@@ -64,8 +65,8 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - Biometric App Lock (Fingerprint, Face Unlock, PIN) with 30s background re-lock grace period and single-prompt debouncing to eliminate duplicate prompt race conditions during cold start.
 - **Peek Privacy Mode & Shake-to-Hide (`PrivacyModeManager.kt`, `ShakeDetector.kt`)**: Hardware accelerometer listener (2.6g threshold, 1200ms debounce, haptic vibration feedback) and top bar eye toggle. Exposes `LocalPrivacyMode` CompositionLocal to mask all sensitive balances, budgets, and transaction amounts with `₹•••••` across Dashboard, History, and Budgets, with configurable user preferences in Settings.
 - **Automated Local Rolling Backups (`ScheduledBackupWorker.kt`)**: Background WorkManager periodic worker snapshotting the complete encrypted Room database weekly to the local sandbox, retaining the latest 5 rolling snapshots and auto-purging older ones without cloud or internet dependencies, with in-app restoration dialog in Settings.
-- Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions, categories (with `isCustom`, `emoji`), budgets (with `period`), subscriptions (with `autoMatched`, `lastPaidDateMs`), merchant mappings, and all Splitwise P2P groups, members, split expenses, shares, and settlements, with name-based upsert avoiding duplicate key violations.
-- High-Throughput Database Indexing (Room Schema v5): Indexed `timestamp`, `(type, timestamp)`, and `category` via non-destructive `MIGRATION_4_5`.
+- Encrypted JSON Disaster-Recovery Backup & Restore via SAF (Schema v3): Complete snapshot covering transactions (with `taxDeductibleSection`), categories (with `isCustom`, `emoji`), budgets (with `period`), subscriptions (with `autoMatched`, `lastPaidDateMs`), merchant mappings, savings goals (`savingsGoals`), and all Splitwise P2P groups, members, split expenses, shares, and settlements, with name-based upsert avoiding duplicate key violations.
+- High-Throughput Database Indexing & Schema v6: Added `savings_goals` table, `taxDeductibleSection` column on `transactions`, and indexes on `timestamp`, `(type, timestamp)`, and `category` via non-destructive `MIGRATION_4_5` and `MIGRATION_5_6`.
 - CSV & Formatted Summary Text Reports Exporter with dedicated transfer (`↔ `) and investment (`📈 `) indicators.
 
 ## Phase 5: Customization & Subscriptions (COMPLETED & OVERHAULED)
@@ -76,10 +77,12 @@ Students, salaried employees, families, freelancers, room-mates, trip groups, an
 - Smart Name-Based Category Emojis (`CategoryEmojiProvider.kt`): Maps category names and keywords to visual emojis (🍕 Food, 🛒 Groceries, 🚗 Transportation, ⛽ Fuel, 💡 Bills, 📈 Investments, 🏠 Rent, 💳 EMI, 💰 Income, 💸 Transfers).
 - Recurring Subscriptions & Mandates Architecture (`SubscriptionEntity`, `SubscriptionDao`, `RecurringMandateDetector`): Full database-backed management of recurring mandates (Netflix, Rent, SIPs, Autopays) with automated SMS/notification NLP detection, auto-detection during 3-month historical scan, manual creation dialogs, cycle billing (Monthly, Yearly, Weekly, Quarterly), pause/resume toggles, and status due badges (*Due Today*, *Overdue*, *Due in X Days*).
 - Monthly Budget Calendar Scoping: Category spent calculations in `BudgetsViewModel.kt` are strictly bounded to the active calendar month.
+- **Visual Sinking Funds & Savings Goals (Interactive "Jars") (`SavingsGoalEntity.kt`, `SavingsGoalsViewModel.kt`, `SavingsGoalsScreen.kt`)**: Interactive savings jars with target amounts, visual progress gauges, monthly savings pace calculators, and 1-tap deposit/withdraw dialogs integrated into `BudgetsScreen.kt`.
 - Custom Transaction Date Selection: `AddTransactionDialog` supports an interactive Date Picker allowing manual logging of expenses, income, or investments for any historical date/time.
 
 ## Phase 6: Visual Canvas Charts & Quick Stats (COMPLETED & ENHANCED)
 - **Safe-to-Spend Today Radar (`DashboardScreen.kt`, `DashboardViewModel.kt`)**: Real-time daily discretionary allowance calculation pacing remaining monthly budgets against remaining calendar days in the month, dynamically deducting committed upcoming subscriptions/bills with status badges (*Abundant*, *Balanced*, *Tight*, *Budget Exhausted*).
+- **Indian Tax Season Deductions Organizer (80C / 80D / HRA) (`TaxDeductionAnalyzer.kt`, `TaxSeasonDeductionsCard.kt`)**: Automatic inference and tracking of tax-exempt transactions under Sections 80C, 80D, Section 10(13A) HRA, 80CCD, 80E, 80G, statutory limits gauges, and 1-tap CA/ITR export.
 - Interactive Donut Breakdown by Transaction Type (`AnalyticsScreen.kt`, `AnalyticsViewModel.kt`): Calculates Donut chart percentages strictly relative to the selected Transaction Type (`Expenses 💸`, `Income 💰`, `Investments 📈`, `Transfers 🔄`, or `All 🌐`).
 - Interactive Jetpack Compose Canvas Income vs Expense Bar Chart.
 - Financial Analytics Date & Period Filtering Bar: Single unified Period Selector dropdown ("All Time", "This Month", "Last Month", "Quarter", "6 Months", "Yearly", "Custom Dates", Specific Month choices).

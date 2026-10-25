@@ -60,39 +60,153 @@ import com.expensetracker.app.core.ui.theme.RedExpense
 
 @Composable
 fun BudgetsRoute(
-    viewModel: BudgetsViewModel
+    viewModel: BudgetsViewModel,
+    savingsViewModel: com.expensetracker.app.features.savings.SavingsGoalsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    val savingsUiState by savingsViewModel.uiState.collectAsState()
+
+    var selectedTab by remember { mutableStateOf(0) } // 0: Budgets, 1: Savings Goals
+    var showAddBudgetDialog by remember { mutableStateOf(false) }
+    var showAddGoalDialog by remember { mutableStateOf(false) }
+    var editingGoal by remember { mutableStateOf<com.expensetracker.app.core.database.entity.SavingsGoalEntity?>(null) }
+    var depositGoal by remember { mutableStateOf<com.expensetracker.app.core.database.entity.SavingsGoalEntity?>(null) }
+    var withdrawGoal by remember { mutableStateOf<com.expensetracker.app.core.database.entity.SavingsGoalEntity?>(null) }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    if (selectedTab == 0) showAddBudgetDialog = true else showAddGoalDialog = true
+                },
                 containerColor = PrimaryBlue,
                 contentColor = Color.White,
                 shape = CircleShape
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Budget")
+                Icon(imageVector = Icons.Default.Add, contentDescription = if (selectedTab == 0) "Add Budget" else "Add Goal")
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            BudgetsScreen(
-                uiState = uiState,
-                onDeleteBudget = { item -> viewModel.deleteBudget(item.categoryName, item.limitAmount, item.budgetId) }
-            )
-
-            if (showAddDialog) {
-                AddBudgetDialog(
-                    availableCategories = uiState.availableCategories,
-                    onDismiss = { showAddDialog = false },
-                    onConfirm = { category, limit ->
-                        viewModel.saveBudget(category, limit)
-                        showAddDialog = false
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Segmented Header Switcher
+            androidx.compose.material3.TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = PrimaryBlue
+            ) {
+                androidx.compose.material3.Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = {
+                        Text(
+                            text = "Monthly Budgets 💳",
+                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+                androidx.compose.material3.Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = {
+                        Text(
+                            text = "Savings Jars 🎯",
+                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
                 )
             }
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (selectedTab == 0) {
+                    BudgetsScreen(
+                        uiState = uiState,
+                        onDeleteBudget = { item -> viewModel.deleteBudget(item.categoryName, item.limitAmount, item.budgetId) }
+                    )
+                } else {
+                    com.expensetracker.app.features.savings.SavingsGoalsContent(
+                        uiState = savingsUiState,
+                        onAddGoalClick = { showAddGoalDialog = true },
+                        onDepositClick = { depositGoal = it },
+                        onWithdrawClick = { withdrawGoal = it },
+                        onEditGoalClick = { editingGoal = it },
+                        onDeleteGoalClick = { savingsViewModel.deleteGoal(it) },
+                        onToggleComplete = { savingsViewModel.toggleComplete(it) }
+                    )
+                }
+            }
+        }
+
+        if (showAddBudgetDialog) {
+            AddBudgetDialog(
+                availableCategories = uiState.availableCategories,
+                onDismiss = { showAddBudgetDialog = false },
+                onConfirm = { category, limit ->
+                    viewModel.saveBudget(category, limit)
+                    showAddBudgetDialog = false
+                }
+            )
+        }
+
+        if (showAddGoalDialog) {
+            com.expensetracker.app.features.savings.AddEditSavingsGoalDialog(
+                initialGoal = null,
+                onDismiss = { showAddGoalDialog = false },
+                onConfirm = { title, target, current, days, colorHex, emoji, note ->
+                    val deadline = if (days > 0) System.currentTimeMillis() + (days.toLong() * 24 * 60 * 60 * 1000) else 0L
+                    savingsViewModel.createGoal(title, target, current, deadline, colorHex, emoji, note)
+                    showAddGoalDialog = false
+                }
+            )
+        }
+
+        editingGoal?.let { goal ->
+            com.expensetracker.app.features.savings.AddEditSavingsGoalDialog(
+                initialGoal = goal,
+                onDismiss = { editingGoal = null },
+                onConfirm = { title, target, current, days, colorHex, emoji, note ->
+                    val deadline = if (days > 0) System.currentTimeMillis() + (days.toLong() * 24 * 60 * 60 * 1000) else goal.targetDate
+                    savingsViewModel.updateGoal(
+                        goal.copy(
+                            title = title,
+                            targetAmount = target,
+                            currentAmount = current,
+                            targetDate = deadline,
+                            colorHex = colorHex,
+                            emoji = emoji,
+                            note = note
+                        )
+                    )
+                    editingGoal = null
+                }
+            )
+        }
+
+        depositGoal?.let { goal ->
+            com.expensetracker.app.features.savings.DepositWithdrawDialog(
+                goal = goal,
+                isDeposit = true,
+                onDismiss = { depositGoal = null },
+                onConfirm = { amount ->
+                    savingsViewModel.depositAmount(goal.id, amount)
+                    depositGoal = null
+                }
+            )
+        }
+
+        withdrawGoal?.let { goal ->
+            com.expensetracker.app.features.savings.DepositWithdrawDialog(
+                goal = goal,
+                isDeposit = false,
+                onDismiss = { withdrawGoal = null },
+                onConfirm = { amount ->
+                    savingsViewModel.withdrawAmount(goal.id, amount)
+                    withdrawGoal = null
+                }
+            )
         }
     }
 }

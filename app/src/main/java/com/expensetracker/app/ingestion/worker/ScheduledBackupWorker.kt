@@ -88,6 +88,7 @@ class ScheduledBackupWorker(
                 val splitExpenses = db.splitDao().getAllSplitExpensesList()
                 val splitShares = db.splitDao().getAllExpenseSharesList()
                 val groupSettlements = db.splitDao().getAllSettlementsList()
+                val savingsGoals = db.savingsGoalDao().getAllGoals().first()
 
                 val json = BackupManager.createBackupJson(
                     transactions = transactions,
@@ -99,7 +100,8 @@ class ScheduledBackupWorker(
                     groupMembers = groupMembers,
                     splitExpenses = splitExpenses,
                     splitShares = splitShares,
-                    groupSettlements = groupSettlements
+                    groupSettlements = groupSettlements,
+                    savingsGoals = savingsGoals
                 )
 
                 val dir = getBackupDirectory(context)

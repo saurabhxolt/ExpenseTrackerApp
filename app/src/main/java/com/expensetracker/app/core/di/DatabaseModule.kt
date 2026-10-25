@@ -43,4 +43,7 @@ object DatabaseModule {
 
     @Provides
     fun provideMerchantCategoryMappingDao(db: ExpenseDatabase): MerchantCategoryMappingDao = db.merchantCategoryMappingDao()
+
+    @Provides
+    fun provideSavingsGoalDao(db: ExpenseDatabase): com.expensetracker.app.core.database.dao.SavingsGoalDao = db.savingsGoalDao()
 }

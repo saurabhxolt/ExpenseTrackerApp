@@ -26,5 +26,6 @@ data class TransactionEntity(
     val accountDigits: String = "",
     val transactionHash: String,
     val isDuplicate: Boolean = false,
-    val isManual: Boolean = false
+    val isManual: Boolean = false,
+    val taxDeductibleSection: String? = null // e.g. "80C", "80D", "10(13A)", "80CCD", "80E", "80G"
 )

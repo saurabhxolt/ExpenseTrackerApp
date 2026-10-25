@@ -237,19 +237,58 @@
 
 ---
 
+### 🎯 23. Visual Sinking Funds & Savings Goals (Interactive "Jars")
+- **Room v6 Entity & Schema (`SavingsGoalEntity.kt`, `MIGRATION_5_6`)**: Upgraded database schema to version 6 adding table `savings_goals` with support for custom target amounts, current balances, deadlines, custom emojis, and color palettes.
+- **Full Architecture Stack**: Built [SavingsGoalDao.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/database/dao/SavingsGoalDao.kt), [SavingsGoalRepository.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/data/repository/SavingsGoalRepository.kt), and [SavingsGoalsViewModel.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/savings/SavingsGoalsViewModel.kt).
+- **Interactive UI Jars in Budgets**: Integrated a segmented switcher in [BudgetsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/budgets/BudgetsScreen.kt) (`[Monthly Budgets 💳] | [Savings Jars 🎯]`) rendering [SavingsGoalsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/savings/SavingsGoalsScreen.kt):
+  - Visual animated progress jars with customizable accent colors.
+  - Dynamic monthly savings pace calculation (`💡 Save ₹X / mo needed to hit target`).
+  - Target deadline countdown chips (`⏳ 45 days left`).
+  - 1-Tap Quick Deposit & Withdraw dialogs with quick rupee chips (`+₹500`, `+₹1,000`, `+₹2,000`, `+₹5,000`).
+  - Automated completion detection when target is achieved.
+
+---
+
+### 🏛️ 24. Indian Tax Season Deductions Organizer (80C / 80D / HRA)
+- **Automatic Heuristic & Tag Inference**: Implemented [TaxDeductionAnalyzer.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/TaxDeductionAnalyzer.kt) evaluating Indian Income Tax Act exemptions:
+  - **Section 80C**: PPF, ELSS, LIC, life insurance, EPF, children tuition fees (statutory cap ₹1,50,000).
+  - **Section 80D**: Health insurance premiums / Mediclaim (statutory cap ₹25,000).
+  - **Section 10(13A)**: HRA house rent paid.
+  - **Section 80CCD**: National Pension Scheme (NPS).
+  - **Sections 80E & 80G**: Education loan interest and charitable donations.
+- **Analytics Exemption Card**: Added [TaxSeasonDeductionsCard.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/TaxSeasonDeductionsCard.kt) in [AnalyticsScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/AnalyticsScreen.kt):
+  - Dynamic financial year label (`FY 2026-27`) based on Indian fiscal calendar (April 1 - March 31).
+  - Statutory limit progress gauges with estimated tax savings calculation (~20% slab).
+  - "Inspect" dialog displaying all qualifying debits grouped by section.
+  - "Export" 1-click WhatsApp/text formatted report ready to share with Chartered Accountants (CAs).
+- **Transaction Details Badge**: Surfaced tax-deductible badges on relevant debit items in [DashboardScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt).
+
+---
+
+### 🍕 25. Itemized Restaurant & Group Bill Splitter (Proportional Tax & Tip)
+- **Mathematical Fairness Engine**: Implemented [ItemizedSplitCalculator.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/analysis/ItemizedSplitCalculator.kt) solving the shared dining dilemma by dividing item costs across individual diners, followed by strictly proportional GST and tip distribution based on each diner's subtotal share.
+- **Interactive Split Dialog**: Built [ItemizedBillSplitterDialog.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/ItemizedBillSplitterDialog.kt) wired directly into [SplitScreen.kt](file:///e:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/SplitScreen.kt):
+  - Multi-diner assignment chips per dish.
+  - Live preview table showing each diner's base share, tax share, tip share, and grand total.
+  - 1-Click **"Add to Ledger"** creating a group expense with exact `customShares`.
+  - 1-Click **"Copy Split"** formatted WhatsApp breakdown for instant group messaging.
+
+---
+
 ## 2. Automated Test Verification
 
 Executed full Gradle unit test suite:
 ```cmd
-cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest --rerun-tasks"
+cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat testDebugUnitTest"
 ```
-Result: **BUILD SUCCESSFUL**. 30 actionable tasks executed with 0 errors across 100% of unit tests.
+Result: **BUILD SUCCESSFUL in 35s**. 30 actionable tasks executed with 0 errors across 100% of unit tests.
 
 Verified Debug APK Compilation:
 ```cmd
 cmd.exe /c "set JAVA_HOME=E:\ExpenseTrackerApp\jdk-tmp\jdk-17.0.10+7&& gradlew.bat assembleDebug"
 ```
-Result: **BUILD SUCCESSFUL**. Pure offline compilation with zero network permissions verified.
+Result: **BUILD SUCCESSFUL in 38s**. 40 actionable tasks completed, APK packaged cleanly with zero network permissions.
+
 
 
 

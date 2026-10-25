@@ -371,6 +371,11 @@ fun AnalyticsScreen(
             }
         }
 
+        // 🏛️ Indian Tax Season Deductions Organizer
+        item {
+            TaxSeasonDeductionsCard(taxSummary = uiState.taxSummary)
+        }
+
         // Top Category Badge Card
         item {
             val topCategoryColor = CategoryColorProvider.getCategoryColor(uiState.topSpendingCategory)

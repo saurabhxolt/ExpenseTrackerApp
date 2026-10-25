@@ -1108,6 +1108,32 @@ fun TransactionDetailsDialog(
                     }
                 }
 
+                // 🏛️ Tax Deductible Section Indicator
+                val detectedSection = remember(transaction) {
+                    transaction.taxDeductibleSection ?: com.expensetracker.app.core.analysis.TaxDeductionAnalyzer.inferSection(transaction.merchant, transaction.category, transaction.rawText)
+                }
+                detectedSection?.let { section ->
+                    androidx.compose.material3.Surface(
+                        color = PrimaryBlue.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🏛️", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Tax Exempt: ${com.expensetracker.app.core.analysis.TaxDeductionAnalyzer.getSectionDisplayName(section)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                        }
+                    }
+                }
+
                 if (transaction.rawText.isNotBlank()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
