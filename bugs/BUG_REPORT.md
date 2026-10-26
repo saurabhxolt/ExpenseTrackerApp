@@ -430,17 +430,196 @@
 
 ---
 
-## 📋 Remediation Priority Matrix
+### 15. Raw Unformatted Numbers in `AnimatedCurrencyText` (Zero Commas)
+* **Screenshot**: Screenshot 1 (Dashboard).
+* **Component**: Hero Currency Ticker.
+* **File Reference**: [DashboardScreen.kt:L2050-L2076](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L2050-L2076)
+* **Severity**: High (Financial Presentation)
+* **Visual Symptom**:
+  All primary dashboard numbers are displayed as raw digits without commas:
+  - Net Cashflow: `-₹218612.27` (should be `-₹2,18,612.27`)
+  - Income: `₹15096.34` (should be `₹15,096.34`)
+  - Expenses: `₹233708.59` (should be `₹2,33,708.59`)
+  - Invested: `₹20708.00` (should be `₹20,708.00`)
+  - Safe-to-Spend: `₹0.00`
+* **Root Cause**:
+  In `AnimatedCurrencyText()`, line 2070 uses raw formatting:
+  `val formatted = if (animatedValue >= 0) "$prefix${String.format("%.2f", animatedValue)}" else "-₹${String.format("%.2f", -animatedValue)}"`
+  This completely ignores number grouping separators.
+* **Code Fix**:
+  Use `NumberFormat` or Indian locale formatting:
+  ```kotlin
+  val indianFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN")).apply {
+      maximumFractionDigits = 2
+      currency = Currency.getInstance("INR")
+  }
+  ```
 
-| Priority | Defect | Target File | Impact |
-|:---|:---|:---|:---|
-| **P0 (Critical)** | Vertical `₹27,067/mo` text collapse | [DashboardScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) | Eliminates prominent visual breakage on home screen |
-| **P0 (Critical)** | Bottom Navigation `"Dashboa..."` truncation | [MainScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/main/MainScreen.kt) | Fixes global navigation visual defect |
-| **P0 (Critical)** | Multi-line `Pending: ₹120,000` badge | [DashboardScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt) | Prevents badge text from splintering into 4 rows |
-| **P1 (High)** | FAB covering empty-state text & list items | [BudgetsScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/budgets/BudgetsScreen.kt), [SubscriptionsScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt) | Restores readability and interactive button access |
-| **P1 (High)** | Mandate titled literally `"Rs"` | [RegexTransactionParser.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/RegexTransactionParser.kt) | Prevents currency noise from being saved as merchants |
-| **P1 (High)** | 64.5% unclassified General Expense | [CategoryClassifier.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/CategoryClassifier.kt) | Restores meaningful expense categorization |
-| **P2 (Medium)** | Strip leading `Upi-` from merchants | [RegexTransactionParser.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/RegexTransactionParser.kt) | Cleans merchant names and fixes category preference matching |
-| **P2 (Medium)** | 80D Tax limit 3-line break (`₹25,00` / `0`) | [TaxSeasonDeductionsCard.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/TaxSeasonDeductionsCard.kt) | Fixes tax summary layout and readability |
-| **P2 (Medium)** | Cashflow bar label collision | [AnalyticsScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/AnalyticsScreen.kt) | Aligns labels under bars with comma formatting |
-| **P3 (Low)** | Plural grammar `"1 Streams"` & whitespace | [SubscriptionsScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt) | Improves linguistic and text polish |
+---
+
+### 16. Inverted / Misleading Positive Emojis on Zero/Deficit Values
+* **Screenshots**: Screenshot 1 (Dashboard), Screenshot 8 (Inflows).
+* **Component**: Status Indicator Badges.
+* **File References**:
+  - [DashboardScreen.kt:L672, L937](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L672)
+  - [SubscriptionsScreen.kt:L486](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt#L486)
+* **Severity**: Medium (Visual Semantics)
+* **Visual Symptom**:
+  - Subscriptions card shows: `Paid: ₹0 🟢` (Green check emoji for zero payments made!).
+  - Inflows card shows: `Realized: ₹0 🟢` (Green check emoji for zero income received!).
+  - Safe-to-Spend card shows: `Cap Reached 🔴` with `Unspent: ₹0` rendered in bright positive green!
+* **Root Cause**:
+  The emoji `🟢` and the color `GreenSuccess` are hardcoded strings rather than conditionally rendered based on whether the amount is positive:
+  ```kotlin
+  text = if (isPrivacy) "Realized: ₹•••••" else "Realized: ₹${String.format(Locale.getDefault(), "%,.0f", realizedThisCycle)} 🟢"
+  ```
+* **Code Fix**:
+  Make the indicator conditional:
+  ```kotlin
+  val indicator = if (realizedThisCycle > 0) "🟢" else "⚪"
+  val paidIndicator = if (totalPaidComm > 0) "🟢" else "⏳"
+  val unspentColor = if (safeSpendToday <= 0.0) MaterialTheme.colorScheme.error else GreenSuccess
+  ```
+
+---
+
+### 17. Redundant Dual Cash Logging Actions in Dashboard
+* **Screenshot**: Screenshot 1 (Dashboard).
+* **Component**: Top App Bar & Header Row.
+* **File References**:
+  - [MainScreen.kt:L247-L249](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/main/MainScreen.kt#L247-L249)
+  - [DashboardScreen.kt:L543-L555](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L543-L555)
+* **Severity**: Low (UI Clutter)
+* **Visual Symptom**:
+  Within 50dp of vertical space, the user sees two cash logging triggers:
+  1. Top App Bar: Raw emoji `IconButton { Text("💵") }`.
+  2. Dashboard Header: Styled Button `Button { Text("💵 Cash") }`.
+* **Code Fix**:
+  Keep the top app bar clean and uncluttered (logo + Privacy Mode toggle + Settings gear), and preserve the explicit, labeled `💵 Cash` button in the Dashboard action row.
+
+---
+
+### 18. Aggressive Merchant Name Truncation Due to Row-Level Action Buttons
+* **Screenshots**: Screenshots 1, 2.
+* **Component**: Transaction Item Card.
+* **File Reference**: [TransactionsScreen.kt:L375-L425](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/transactions/TransactionsScreen.kt#L375-L425)
+* **Severity**: Medium (Information Density)
+* **Visual Symptom**:
+  Merchant names truncate after only 12–15 characters (e.g. `"Upi-sweet R..."`, `"Bharat Petro..."`, `"Upi-vishal M..."`), despite large phone screens.
+* **Root Cause**:
+  Each transaction row contains:
+  `[Icon (40dp)] + [Merchant & Date Column] + [Amount Text (80dp)] + [Pencil Icon (40dp)] + [Trash Icon (40dp)]`
+  The action buttons permanently consume 80dp of horizontal space on every single row.
+* **Code Fix**:
+  Remove permanent row-level action buttons. Clicking any card already opens the rich `TransactionDetailsDialog` (which features Edit, Delete, Undo, and View SMS). This immediately frees up 80dp per row, allowing merchant names to display fully without truncation.
+
+---
+
+### 19. Date Formatting Inconsistency Across Tabs
+* **Screenshots**: Screenshot 1 vs Screenshot 2.
+* **Component**: Transaction Date Formatter.
+* **Severity**: Low (Consistency)
+* **Visual Symptom**:
+  - In Dashboard: `"24 Oct, 10:09 pm"` (omits year).
+  - In History: `"24 Oct 2026, 10:09 pm"` (includes year).
+* **Code Fix**:
+  Standardize across all transaction lists:
+  Show year only when the transaction is from a previous calendar year:
+  ```kotlin
+  fun formatTransactionDate(timestampMs: Long): String {
+      val txCal = Calendar.getInstance().apply { timeInMillis = timestampMs }
+      val nowCal = Calendar.getInstance()
+      val isCurrentYear = txCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR)
+      val pattern = if (isCurrentYear) "dd MMM, hh:mm a" else "dd MMM yyyy, hh:mm a"
+      return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(timestampMs))
+  }
+  ```
+
+---
+
+### 20. Split Bills Screen Action & Icon Semantics Mismatch
+* **Screenshot**: Screenshot 3 (Split Bills).
+* **Component**: Split Screen Scaffold & FAB.
+* **File Reference**: [SplitScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/SplitScreen.kt)
+* **Severity**: Low (UX Semantics)
+* **Visual Symptom**:
+  The FAB icon is `Icons.Default.PersonAdd` (a single person silhouette with a plus sign) on a screen titled `"Split Bills & Group Ledger"`.
+* **Code Fix**:
+  Replace with `Icons.Default.GroupAdd` to semantically convey creating a shared group ledger.
+
+---
+
+## 🚀 Comprehensive Product & UI/UX Improvement Blueprint
+
+### A. Typography & Indian Numbering Formatting Engine
+1. **Centralized Currency Formatter**:
+   Create a dedicated object `IndianCurrencyFormatter`:
+   ```kotlin
+   object IndianCurrencyFormatter {
+       fun format(amount: Double, includeDecimals: Boolean = false): String {
+           val isNegative = amount < 0
+           val absAmount = Math.abs(amount)
+           val formatted = if (includeDecimals) {
+               String.format(Locale("en", "IN"), "%,.2f", absAmount)
+           } else {
+               String.format(Locale("en", "IN"), "%,.0f", absAmount)
+           }
+           return if (isNegative) "-₹$formatted" else "₹$formatted"
+       }
+   }
+   ```
+2. **Standardize all UI displays**:
+   Replace raw `%.0f` and `%.2f` calls in Dashboard, Analytics Donut, Bar Comparison, Credit Cards, and Mandates with `IndianCurrencyFormatter.format()`.
+
+### B. Categorization & Merchant Intelligence Overhaul (The 64.5% Solution)
+1. **Unconditional Prefix Cleaning**:
+   Strip `UPI-`, `UPI `, `IMPS-`, `NEFT-`, `POS ` before passing merchant names to both `CategoryClassifier` and `MerchantCategoryMappingDao`.
+2. **Indian Merchant & Taxonomy Expansion**:
+   Add keyword coverage for:
+   - **Dining / Food**: `sweet`, `sweets`, `mithai`, `rasoi`, `bhojan`, `dhaba`, `canteen`, `roll`, `biryani`, `chiken`, `chicken`, `mutton`, `fish`, `shawarma`, `dessert`, `snack`, `deluscio`, `cherry bell`, `halwai`, `juice`, `tea`, `chai`, `coffee`, `tiffin`.
+   - **Shopping & Retail**: `vishal`, `megamart`, `mart`, `bazaar`, `bazar`, `pilgrim`, `store`, `fashions`, `cloth`, `apparel`, `footwear`, `jewel`, `optics`, `trends`, `pantaloons`, `max`, `decathlon`, `lenskart`.
+   - **Groceries**: `dmart`, `more`, `nature's basket`, `spencer`, `smart bazaar`, `kirana`, `provisions`, `dairy`, `milk`.
+3. **Fuzzy Memory Matching**:
+   Ensure user edits to a merchant category (e.g. assigning "Food & Dining" to "Sweet Rasoi") match future variations like "UPI-SWEET RASOI" by storing normalized canonical merchant tokens.
+
+### C. Dashboard & Information Hierarchy Polish
+1. **Hero Cashflow Card**:
+   - Change minus sign display to an en-dash `−₹2,18,612.27` for typographic elegance.
+   - Separate investment outflows cleanly from general expenses so users understand whether money was consumed or saved/invested.
+2. **Safe-to-Spend Card**:
+   - When cap is reached, display `Unspent: ₹0` in neutral grey or amber rather than vibrant green.
+   - Add a micro-explanation: `"Monthly expenses exceeded income by ₹X. Resets on 1st Nov."`
+3. **Banner Dismissibility**:
+   - Provide an `[✕]` dismiss button on the top carousel banner so users who want an uncluttered financial cockpit can hide promotional banners.
+
+### D. Empty State Design & Guided Onboarding
+Currently, the Budgets, Split Bills, and Inflows screens show large black voids when no items exist:
+1. **Split Bills Empty State**:
+   Add starter template chips: `[🏖️ Goa Trip]` `[🏠 Apartment Rent & Wifi]` `[🍕 Friday Dinner Split]`. Tapping a chip immediately creates a pre-configured group ledger.
+2. **Budgets Empty State**:
+   Add a 1-tap `[Auto-Generate Budgets based on Past 30 Days Spend]` button so users don't have to manually configure 10 categories.
+3. **Inflows Empty State**:
+   Add quick presets: `[🏢 Add Monthly Salary]` `[🏠 Add House Rent Received]` `[📈 Add SIP Dividend]`.
+
+---
+
+## 📋 Comprehensive Remediation Priority Matrix
+
+| Priority | ID | Defect / Improvement | Target Component & File | User Impact |
+|:---|:---|:---|:---|:---|
+| **P0 (Critical)** | 2 | Vertical `₹27,067/mo` text collapse | [DashboardScreen.kt:1027](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L1027) | Fixes broken layout on the primary home screen |
+| **P0 (Critical)** | 1 | Bottom Navigation `"Dashboa..."` truncation | [MainScreen.kt:187](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/main/MainScreen.kt#L187) | Fixes global navigation visual defect on all screens |
+| **P0 (Critical)** | 3 | Multi-line `Pending: ₹120,000` badge | [DashboardScreen.kt:887](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L887) | Prevents badge text from splintering into 4 lines |
+| **P1 (High)** | 4 | FAB covering empty-state text & list items | [BudgetsScreen.kt:76](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/budgets/BudgetsScreen.kt#L76), [SubscriptionsScreen.kt:296](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt#L296) | Restores readability and action button accessibility |
+| **P1 (High)** | 5 | Mandate titled literally `"Rs"` | [RegexTransactionParser.kt:546](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/RegexTransactionParser.kt#L546) | Prevents currency stop words from being ingested as merchants |
+| **P1 (High)** | 9 | 64.5% unclassified General Expense | [CategoryClassifier.kt:33](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/CategoryClassifier.kt#L33) | Restores meaningful insights to analytics and budgeting |
+| **P1 (High)** | 15 | Raw unformatted currency (`₹218612.27`) | [DashboardScreen.kt:2050](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L2050), [AnalyticsScreen.kt:359](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/AnalyticsScreen.kt#L359) | Formats all financial amounts with proper Indian grouping commas |
+| **P2 (Medium)** | 6 | Strip leading `Upi-` from merchants | [RegexTransactionParser.kt:579](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/ingestion/parser/RegexTransactionParser.kt#L579) | Cleans merchant names and enables preference matching |
+| **P2 (Medium)** | 7 | 80D Tax limit 3-line break (`₹25,00` / `0`) | [TaxSeasonDeductionsCard.kt:275](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/TaxSeasonDeductionsCard.kt#L275) | Eliminates digit breaking in tax deductions summary |
+| **P2 (Medium)** | 8 | Cashflow bar label collision | [AnalyticsScreen.kt:359](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/analytics/AnalyticsScreen.kt#L359) | Aligns labels under bars with 3-column layout |
+| **P2 (Medium)** | 16 | Misleading positive emojis on 0/deficit | [DashboardScreen.kt:672](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/dashboard/DashboardScreen.kt#L672), [SubscriptionsScreen.kt:486](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt#L486) | Corrects visual indicator semantics across cards |
+| **P2 (Medium)** | 18 | Aggressive merchant truncation | [TransactionsScreen.kt:375](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/transactions/TransactionsScreen.kt#L375) | Frees 80dp per row by shifting actions to tap dialog |
+| **P3 (Low)** | 10 | Plural grammar `"1 Streams"` & whitespace | [SubscriptionsScreen.kt:465](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/subscriptions/SubscriptionsScreen.kt#L465) | Linguistic and string trim polish |
+| **P3 (Low)** | 11 | Cut-off filter chips in Unified Filter Bar | [UnifiedFilterBar.kt:45](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/core/ui/components/UnifiedFilterBar.kt#L45) | Fixes active state logic and compacts chip labels |
+| **P3 (Low)** | 17 | Redundant dual cash logging buttons | [MainScreen.kt:247](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/main/MainScreen.kt#L247) | Removes visual duplication in dashboard header |
+| **P3 (Low)** | 20 | Split Bills FAB icon mismatch | [SplitScreen.kt](file:///E:/ExpenseTrackerApp/app/src/main/java/com/expensetracker/app/features/split/SplitScreen.kt) | Changes `person_add` to `group_add` |
