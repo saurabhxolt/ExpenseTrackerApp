@@ -44,6 +44,7 @@
 | **Annual Insurance Vault & Salary Day Smart Stash** | Subscriptions / Sinking | ✅ Completed | Core Architecture |
 | **Budgets Tab Collision Fix & Dashboard Modernization** | UI / Budgets / Dashboard | ✅ Completed | Senior UI Architect |
 | **Subscription & Policy Date Pickers & Dashboard UI Overhaul** | Subscriptions / Dashboard | ✅ Completed | Senior UI Architect |
+| **Visual Regression & Screenshot Bug Audit (9 Screens)** | UI / Ingestion / Quality | ✅ Documented | Senior Android Architect |
 
 ---
 
